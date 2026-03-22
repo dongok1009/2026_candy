@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://<USERNAME>.github.io/2026_candy",
+  "homepage": "https://dongok1009.github.io/2026_candy",
   "scripts": {
     "dev": "vite",
     "predeploy": "npm run build",
