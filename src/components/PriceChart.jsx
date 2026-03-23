@@ -129,6 +129,56 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     const syncSeriesList = [candlestickSeries, macdLineRef.current, stochKRef.current];
 
     let syncCleanup = null;
+    let isFetchingMore = false;
+    
+    const fetchMorePastData = async () => {
+      if (isFetchingMore || dataRef.current.length === 0 || inspectTime) return;
+      isFetchingMore = true;
+      try {
+        const firstTimestamp = dataRef.current[0].time * 1000;
+        const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=500&endTime=${firstTimestamp - 1}`;
+        const response = await fetch(url);
+        const moreData = await response.json();
+        
+        if (moreData.length > 0 && !isDestroyed) {
+          const formattedMore = moreData.map(d => ({
+            time: Math.floor(d[0] / 1000),
+            open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+          }));
+          
+          const newData = [...formattedMore, ...dataRef.current];
+          dataRef.current = newData;
+          
+          const allCloses = newData.map(d => d.close);
+          const allRsi = calculateRSI(allCloses);
+          const allMacd = calculateMACD(allCloses);
+          const allStoch = calculateStochRSI(allRsi);
+          const allBB = calculateBollingerBands(allCloses);
+
+          candlestickSeries.setData(newData);
+          if (macdLineRef.current) macdLineRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allMacd.macdLine[i] })).filter(d => d.value !== null));
+          if (macdSignalRef.current) macdSignalRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allMacd.signalLine[i] })).filter(d => d.value !== null));
+          if (macdHistRef.current) macdHistRef.current.setData(newData.map((d, i) => ({ 
+            time: d.time, value: allMacd.histogram[i], color: allMacd.histogram[i] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+          })).filter(d => d.value !== null));
+          if (stochKRef.current) stochKRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allStoch.kLine[i] })).filter(d => d.value !== null));
+          if (stochDRef.current) stochDRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allStoch.dLine[i] })).filter(d => d.value !== null));
+          if (bbMiddleRef.current) bbMiddleRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allBB.middle[i] })).filter(d => d.value !== null));
+          if (bbUpperRef.current) bbUpperRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allBB.upper[i] })).filter(d => d.value !== null));
+          if (bbLowerRef.current) bbLowerRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allBB.lower[i] })).filter(d => d.value !== null));
+          
+          if (stoch80Ref.current) stoch80Ref.current.setData(newData.map(d => ({ time: d.time, value: 80 })));
+          if (stochFillRef.current) stochFillRef.current.setData(newData.map(d => ({ time: d.time, value: 80 })));
+          
+          const ghostData = newData.map(d => ({ time: d.time, value: 0 }));
+          if (priceGhostRef.current) priceGhostRef.current.setData(ghostData);
+          if (macdGhostRef.current) macdGhostRef.current.setData(ghostData);
+          if (stochGhostRef.current) stochGhostRef.current.setData(ghostData);
+        }
+      } catch (err) { console.error('Error loading more history:', err); }
+      finally { isFetchingMore = false; }
+    };
+
     const setupSync = () => {
       if (isDestroyed) return;
       let isSyncing = false;
@@ -141,6 +191,9 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
             if (i !== index) c.timeScale().setVisibleLogicalRange(range);
           });
           isSyncing = false;
+
+          // Lazy load: if near the left edge, fetch more
+          if (range.from < 50) fetchMorePastData();
         });
 
         chart.subscribeCrosshairMove((param) => {
@@ -180,52 +233,56 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
 
     const fetchHistory = async () => {
       try {
+        const fetchLimit = 500; // Fetch enough for initial view + indicators
         const url = inspectTime 
-          ? `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}&endTime=${inspectTime * 1000}`
-          : `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+          ? `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${fetchLimit}&endTime=${inspectTime * 1000}`
+          : `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${fetchLimit}`;
+        
         const response = await fetch(url);
         const data = await response.json();
         if (isDestroyed) return;
-        const formattedData = data.map(d => ({
+        
+        const allData = data.map(d => ({
           time: Math.floor(d[0] / 1000),
           open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
         }));
-        dataRef.current = formattedData;
-        candlestickSeries.setData(formattedData);
+
+        dataRef.current = allData;
         
-        const closes = formattedData.map(d => d.close);
-        const rsiValues = calculateRSI(closes);
-        const { macdLine: mLine, signalLine: sLine, histogram: hist } = calculateMACD(closes);
-        const { kLine, dLine } = calculateStochRSI(rsiValues);
-        const { middle, upper, lower } = calculateBollingerBands(closes);
-        
-        if (bbMiddleRef.current) bbMiddleRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: middle[i] })).filter(d => d.value !== null));
-        if (bbUpperRef.current) bbUpperRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: upper[i] })).filter(d => d.value !== null));
-        if (bbLowerRef.current) bbLowerRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: lower[i] })).filter(d => d.value !== null));
-        if (macdLineRef.current) macdLineRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: mLine[i] })).filter(d => d.value !== null));
-        if (macdSignalRef.current) macdSignalRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: sLine[i] })).filter(d => d.value !== null));
-        if (macdHistRef.current) macdHistRef.current.setData(formattedData.map((d, i) => ({ 
-          time: d.time, value: hist[i], color: hist[i] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+        const allCloses = allData.map(d => d.close);
+        const allRsi = calculateRSI(allCloses);
+        const allMacd = calculateMACD(allCloses);
+        const allStoch = calculateStochRSI(allRsi);
+        const allBB = calculateBollingerBands(allCloses);
+
+        candlestickSeries.setData(allData);
+        if (bbMiddleRef.current) bbMiddleRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allBB.middle[i] })).filter(d => d.value !== null));
+        if (bbUpperRef.current) bbUpperRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allBB.upper[i] })).filter(d => d.value !== null));
+        if (bbLowerRef.current) bbLowerRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allBB.lower[i] })).filter(d => d.value !== null));
+        if (macdLineRef.current) macdLineRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allMacd.macdLine[i] })).filter(d => d.value !== null));
+        if (macdSignalRef.current) macdSignalRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allMacd.signalLine[i] })).filter(d => d.value !== null));
+        if (macdHistRef.current) macdHistRef.current.setData(allData.map((d, i) => ({ 
+          time: d.time, value: allMacd.histogram[i], color: allMacd.histogram[i] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
         })).filter(d => d.value !== null));
-        if (stochKRef.current) stochKRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: kLine[i] })).filter(d => d.value !== null));
-        if (stochDRef.current) stochDRef.current.setData(formattedData.map((d, i) => ({ time: d.time, value: dLine[i] })).filter(d => d.value !== null));
-        if (stoch80Ref.current) stoch80Ref.current.setData(formattedData.map(d => ({ time: d.time, value: 80 })));
-        if (stochFillRef.current) stochFillRef.current.setData(formattedData.map(d => ({ time: d.time, value: 80 })));
+        if (stochKRef.current) stochKRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allStoch.kLine[i] })).filter(d => d.value !== null));
+        if (stochDRef.current) stochDRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allStoch.dLine[i] })).filter(d => d.value !== null));
         
-        // Ghost data (all time points)
-        const ghostData = formattedData.map(d => ({ time: d.time, value: 0 }));
+        if (stoch80Ref.current) stoch80Ref.current.setData(allData.map(d => ({ time: d.time, value: 80 })));
+        if (stochFillRef.current) stochFillRef.current.setData(allData.map(d => ({ time: d.time, value: 80 })));
+        
+        const ghostData = allData.map(d => ({ time: d.time, value: 0 }));
         if (priceGhostRef.current) priceGhostRef.current.setData(ghostData);
         if (macdGhostRef.current) macdGhostRef.current.setData(ghostData);
         if (stochGhostRef.current) stochGhostRef.current.setData(ghostData);
         
-        // Ensure the searched date (last candle) is visible at the right edge
         setTimeout(() => {
-          charts.forEach(c => c.timeScale().fitContent());
-        }, 100);
+          const total = allData.length;
+          charts.forEach(c => c.timeScale().setVisibleLogicalRange({ from: total - limit, to: total }));
+        }, 200);
         
-        const lastIdx = formattedData.length - 1;
-        setMacdLegend({ hist: hist[lastIdx], macd: mLine[lastIdx], signal: sLine[lastIdx] });
-        setStochLegend({ k: kLine[lastIdx], d: dLine[lastIdx] });
+        const lastI = allData.length - 1;
+        setMacdLegend({ hist: allMacd.histogram[lastI], macd: allMacd.macdLine[lastI], signal: allMacd.signalLine[lastI] });
+        setStochLegend({ k: allStoch.kLine[lastI], d: allStoch.dLine[lastI] });
 
         setDataLoaded(true);
         syncCleanup = setupSync();

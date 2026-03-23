@@ -310,7 +310,7 @@ const Dashboard = () => {
               <h3>{symbol} Real-Time Chart (1h)</h3>
             </div>
             <PriceChart 
-              symbol={symbol} interval="1h" lastCandle={candle1h} limit={limit} rule={rules['1h']}
+              symbol={symbol} interval="1h" lastCandle={candle1h} limit={72} rule={rules['1h']}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1h', state)}
             />
@@ -321,7 +321,7 @@ const Dashboard = () => {
               <h3>{symbol} Real-Time Chart (1d)</h3>
             </div>
             <PriceChart 
-              symbol={symbol} interval="1d" lastCandle={candle1d} limit={limit} rule={rules['1d']}
+              symbol={symbol} interval="1d" lastCandle={candle1d} limit={60} rule={rules['1d']}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1d', state)}
             />
