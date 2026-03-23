@@ -23,8 +23,8 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   '5m': {
-    long: { macdValueEnabled: true, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false },
-    short: { macdValueEnabled: true, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false }
+    long: { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: true, stochCrossEnabled: true },
+    short: { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: true, stochCrossEnabled: true }
   },
   '1h': {
     long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true },
@@ -49,14 +49,14 @@ const Dashboard = () => {
   const prevSignalRef = useRef(null);
 
   const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules');
+    const saved = localStorage.getItem('trading_rules_v4');
     return saved ? JSON.parse(saved) : DEFAULT_RULES;
   });
 
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules', JSON.stringify(rules));
+    localStorage.setItem('trading_rules_v4', JSON.stringify(rules));
   }, [rules]);
 
   React.useEffect(() => {
@@ -103,7 +103,9 @@ const Dashboard = () => {
 
     if (prevSignalRef.current !== globalSignal) {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
-        const message = `🚨 <b>[${symbol}] ${globalSignal} Signal Triggered!</b>\n\n` +
+        const kstTime = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace(/\..+/, '');
+        const message = `🚨 <b>[${symbol}] ${globalSignal} Signal!</b>\n\n` +
+                        `• Time (KST): ${kstTime}\n` +
                         `• 5m: ${signals['5m']}\n` +
                         `• 1h: ${signals['1h']}\n` +
                         `• 1d: ${signals['1d']}\n\n` +
@@ -226,30 +228,31 @@ const Dashboard = () => {
       </header>
 
       <main className="dashboard-main">
-        <div style={{ display: 'flex', gap: '30px', marginBottom: '24px', alignItems: 'center' }}>
-          <div className="symbol-selector" style={{ marginBottom: 0 }}>
+        <div className="dashboard-controls" style={{ display: 'flex', gap: '20px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="symbol-selector" style={{ marginBottom: 0, flexWrap: 'wrap', gap: '8px' }}>
             {['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'].map(s => (
               <button 
                 key={s} 
                 className={`symbol-btn ${symbol === s ? 'active' : ''}`}
                 onClick={() => setSymbol(s)}
+                style={{ padding: '6px 12px', fontSize: '13px' }}
               >
                 {s.replace('USDT', '')}
               </button>
             ))}
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#848e9c' }}>History Depth:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#848e9c' }}>History:</span>
             <select 
               value={limit} 
               onChange={(e) => setLimit(Number(e.target.value))}
-              style={{ background: '#1e2329', border: '1px solid #242a2e', color: '#d1d4dc', padding: '8px 12px', borderRadius: '6px', outline: 'none', cursor: 'pointer', fontWeight: 600 }}
+              style={{ background: '#1e2329', border: '1px solid #242a2e', color: '#d1d4dc', padding: '6px 10px', borderRadius: '6px', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
             >
-              <option value={200}>200 Candles</option>
-              <option value={500}>500 Candles</option>
-              <option value={1000}>1,000 Candles</option>
-              <option value={1500}>1,500 Candles (Max)</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+              <option value={1000}>1,000</option>
+              <option value={1500}>1,500</option>
             </select>
           </div>
         </div>

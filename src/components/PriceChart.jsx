@@ -36,7 +36,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
   const [borderColor, setBorderColor] = useState('#242a2e');
   const [macdLegend, setMacdLegend] = useState({ hist: 0, macd: 0, signal: 0 });
   const [stochLegend, setStochLegend] = useState({ k: 0, d: 0 });
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  useEffect(() => {
+    const handleWinResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleWinResize);
+    return () => window.removeEventListener('resize', handleWinResize);
+  }, []);
 
   useEffect(() => {
     setDataLoaded(false);
@@ -66,10 +73,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     };
 
     // 1. Price Chart
+    priceChartContainerRef.current.innerHTML = '';
+    macdChartContainerRef.current.innerHTML = '';
+    stochChartContainerRef.current.innerHTML = '';
+
     const priceChart = createChart(priceChartContainerRef.current, {
       ...commonOptions,
-      height: 350,
-      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: 80 },
+      height: isMobile ? 345 : 483,
+      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
     priceChartRef.current = priceChart;
@@ -85,8 +96,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     // 2. MACD Chart
     const macdChart = createChart(macdChartContainerRef.current, {
       ...commonOptions,
-      height: 150,
-      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: 80 },
+      height: isMobile ? 138 : 207,
+      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
     macdChartRef.current = macdChart;
@@ -98,8 +109,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     // 3. StochRSI Chart
     const stochChart = createChart(stochChartContainerRef.current, {
       ...commonOptions,
-      height: 150,
-      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: 80 },
+      height: isMobile ? 138 : 207,
+      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
     stochChartRef.current = stochChart;
@@ -169,7 +180,10 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
 
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+        const url = inspectTime 
+          ? `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}&endTime=${inspectTime * 1000}`
+          : `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+        const response = await fetch(url);
         const data = await response.json();
         if (isDestroyed) return;
         const formattedData = data.map(d => ({
@@ -204,6 +218,11 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
         if (macdGhostRef.current) macdGhostRef.current.setData(ghostData);
         if (stochGhostRef.current) stochGhostRef.current.setData(ghostData);
         
+        // Ensure the searched date (last candle) is visible at the right edge
+        setTimeout(() => {
+          charts.forEach(c => c.timeScale().fitContent());
+        }, 100);
+        
         const lastIdx = formattedData.length - 1;
         setMacdLegend({ hist: hist[lastIdx], macd: mLine[lastIdx], signal: sLine[lastIdx] });
         setStochLegend({ k: kLine[lastIdx], d: dLine[lastIdx] });
@@ -220,10 +239,11 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       if (syncCleanup) syncCleanup();
       charts.forEach(c => c.remove());
     };
-  }, [symbol, interval, limit]);
+  }, [symbol, interval, limit, inspectTime]);
 
+  // Handle Real-time Streaming
   useEffect(() => {
-    if (!dataLoaded || !lastCandle || !candlestickSeriesRef.current) return;
+    if (!dataLoaded || !lastCandle || !candlestickSeriesRef.current || inspectTime) return;
     if (lastCandle.symbol !== symbol) return; // Guard against stale data from other symbols
     const { time, open, high, low, close } = lastCandle;
     const formattedCandle = { time, open, high, low, close };
@@ -241,15 +261,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     const { middle, upper, lower } = calculateBollingerBands(closes);
 
     const lastTime = formattedCandle.time;
-    const i = fullData.length - 1;
-    if (bbMiddleRef.current) bbMiddleRef.current.update({ time: lastTime, value: middle[i] });
-    if (bbUpperRef.current) bbUpperRef.current.update({ time: lastTime, value: upper[i] });
-    if (bbLowerRef.current) bbLowerRef.current.update({ time: lastTime, value: lower[i] });
-    if (macdLineRef.current) macdLineRef.current.update({ time: lastTime, value: mLine[i] });
-    if (macdSignalRef.current) macdSignalRef.current.update({ time: lastTime, value: sLine[i] });
-    if (macdHistRef.current) macdHistRef.current.update({ time: lastTime, value: hist[i], color: hist[i] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)' });
-    if (stochKRef.current) stochKRef.current.update({ time: lastTime, value: kLine[i] });
-    if (stochDRef.current) stochDRef.current.update({ time: lastTime, value: dLine[i] });
+    if (bbMiddleRef.current) bbMiddleRef.current.update({ time: lastTime, value: middle[fullData.length - 1] });
+    if (bbUpperRef.current) bbUpperRef.current.update({ time: lastTime, value: upper[fullData.length - 1] });
+    if (bbLowerRef.current) bbLowerRef.current.update({ time: lastTime, value: lower[fullData.length - 1] });
+    if (macdLineRef.current) macdLineRef.current.update({ time: lastTime, value: mLine[fullData.length - 1] });
+    if (macdSignalRef.current) macdSignalRef.current.update({ time: lastTime, value: sLine[fullData.length - 1] });
+    if (macdHistRef.current) macdHistRef.current.update({ time: lastTime, value: hist[fullData.length - 1], color: hist[fullData.length - 1] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)' });
+    if (stochKRef.current) stochKRef.current.update({ time: lastTime, value: kLine[fullData.length - 1] });
+    if (stochDRef.current) stochDRef.current.update({ time: lastTime, value: dLine[fullData.length - 1] });
     if (stoch20Ref.current) stoch20Ref.current.update({ time: lastTime, value: 20 });
     if (stoch80Ref.current) stoch80Ref.current.update({ time: lastTime, value: 80 });
     if (stochFillRef.current) stochFillRef.current.update({ time: lastTime, value: 80 });
@@ -259,13 +278,29 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     if (macdGhostRef.current) macdGhostRef.current.update(ghostUpdate);
     if (stochGhostRef.current) stochGhostRef.current.update(ghostUpdate);
 
-    setMacdLegend({ hist: hist[i], macd: mLine[i], signal: sLine[i] });
-    setStochLegend({ k: kLine[i], d: dLine[i] });
+    // Update Legends for live candle
+    const lastI = fullData.length - 1;
+    setMacdLegend({ hist: hist[lastI], macd: mLine[lastI], signal: sLine[lastI] });
+    setStochLegend({ k: kLine[lastI], d: dLine[lastI] });
+  }, [lastCandle, dataLoaded]);
 
+  // Handle Signal Evaluation (Unified logic for both Live and Past)
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const fullData = dataRef.current;
+    if (fullData.length === 0) return;
+
+    const i = fullData.length - 1;
     const evalIdx = inspectTime ? fullData.findIndex(d => d.time <= inspectTime && d.time + (interval === '5m' ? 300 : interval === '1h' ? 3600 : 86400) > inspectTime) : i;
     const targetIdx = evalIdx === -1 ? i : evalIdx;
+    
+    const closes = fullData.map(d => d.close);
+    const rsiValues = calculateRSI(closes);
+    const { macdLine: mLine, signalLine: sLine } = calculateMACD(closes);
+    const { kLine, dLine } = calculateStochRSI(rsiValues);
+
     evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx]);
-  }, [lastCandle, dataLoaded, inspectTime]);
+  }, [dataLoaded, lastCandle, inspectTime]);
 
   const evaluateSignal = (lastM, lastS, lastK, lastD) => {
     let isLong = true; let isShort = true;
@@ -297,7 +332,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     <div className="chart-wrapper" style={{ border: `4px solid ${borderColor}`, borderRadius: '12px', overflow: 'hidden', padding: '10px', background: '#161a1e', transition: 'border-color 0.3s ease' }}>
       <div ref={priceChartContainerRef} style={{ width: '100%', position: 'relative' }} />
       
-      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
+      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', flexWrap: 'wrap', rowGap: '5px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
         <span style={{ fontWeight: 'bold' }}>MACD</span>
         <span style={{ color: macdLegend.hist >= 0 ? '#26a69a' : '#ef5350' }}>Hist: {formatVal(macdLegend.hist)}</span>
         <span style={{ color: '#2962FF' }}>MACD: {formatVal(macdLegend.macd)}</span>
@@ -305,7 +340,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       </div>
       <div ref={macdChartContainerRef} style={{ width: '100%', position: 'relative' }} />
       
-      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
+      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', flexWrap: 'wrap', rowGap: '5px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
         <span style={{ fontWeight: 'bold' }}>Stoch RSI</span>
         <span style={{ color: '#26a69a' }}>%K: {formatVal(stochLegend.k)}</span>
         <span style={{ color: '#ef5350' }}>%D: {formatVal(stochLegend.d)}</span>

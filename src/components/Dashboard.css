@@ -10,8 +10,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
+  padding: 15px 0;
   border-bottom: 1px solid #242a2e;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .logo-section {
@@ -78,25 +80,36 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 768px) {
+  .dashboard-header {
+    justify-content: center;
+    text-align: center;
   }
-}
-@media (max-width: 600px) {
+  .logo-section {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .stat-card {
+    padding: 8px;
+  }
+  .stat-card-value {
+    font-size: 14px;
   }
 }
 
 .stat-card {
   background: #161a1e;
   border: 1px solid #242a2e;
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 10px;
   transition: transform 0.2s;
 }
 
@@ -109,15 +122,15 @@
 }
 
 .stat-card-title {
-  font-size: 13px;
+  font-size: 11px;
   color: #848e9c;
   font-weight: 500;
 }
 
 .stat-card-value {
-  font-size: 24px;
+  font-size: 14px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .stat-card-change {
@@ -131,52 +144,67 @@
 .global-signal-header {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  margin: 30px 0;
-  padding: 20px;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 15px;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .signal-btn {
-  padding: 12px 40px;
-  border-radius: 8px;
+  flex: 1;
+  padding: 10px 5px;
+  border-radius: 6px;
   font-weight: 800;
-  font-size: 1.2rem;
-  letter-spacing: 2px;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
   color: #474d57;
   background: #1e2329;
   border: 1px solid #242a2e;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0.4;
   cursor: default;
+  text-align: center;
+  min-width: 80px;
 }
 
 .signal-btn.active {
   opacity: 1;
-  transform: scale(1.05);
+  transform: scale(1.02);
+}
+
+@media (max-width: 480px) {
+  .global-signal-header {
+    gap: 6px;
+    padding: 10px;
+  }
+  .signal-btn {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    min-width: 70px;
+  }
 }
 
 .signal-btn.long.active {
   background: #26a69a;
   color: #ffffff;
   border-color: #26a69a;
-  box-shadow: 0 0 20px rgba(38, 166, 154, 0.4);
+  box-shadow: 0 0 15px rgba(38, 166, 154, 0.3);
 }
 
 .signal-btn.holding.active {
   background: #f3ba2f;
   color: #0b0e11;
   border-color: #f3ba2f;
-  box-shadow: 0 0 20px rgba(243, 186, 47, 0.4);
+  box-shadow: 0 0 15px rgba(243, 186, 47, 0.3);
 }
 
 .signal-btn.short.active {
   background: #ef5350;
   color: #ffffff;
   border-color: #ef5350;
-  box-shadow: 0 0 20px rgba(239, 83, 80, 0.4);
+  box-shadow: 0 0 15px rgba(239, 83, 80, 0.3);
 }
 
 .charts-container.single-col {
@@ -189,21 +217,29 @@
 .chart-section {
   background: #161a1e;
   border: 1px solid #242a2e;
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 15px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+@media (max-width: 768px) {
+  .chart-section {
+    padding: 12px;
+  }
 }
 
 .chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .chart-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #d1d4dc;
 }
@@ -211,9 +247,9 @@
 .conditions-footer {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 30px;
-  margin-top: 40px;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 30px;
 }
 
 .footer-header {
@@ -234,7 +270,13 @@
 .conditions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .conditions-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .condition-item h4 {
