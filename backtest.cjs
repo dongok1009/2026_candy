@@ -95,6 +95,7 @@ const LEVERAGE = 5;
 const TARGET_ROI = 0.03; // 3%
 const TARGET_SL_ROI = 0.15; // 15%
 const INITIAL_BALANCE = 1000;
+const SLIPPAGE_RATE = 0; // Ideal entry (no delay)
 
 const TP_PRICE_MOVE = TARGET_ROI / LEVERAGE;
 const SL_PRICE_MOVE = TARGET_SL_ROI / LEVERAGE;
@@ -234,7 +235,10 @@ async function runBacktest() {
                          (res5m.signal === 'short' && res1h.signal === 'short' && res1d.signal === 'short') ? 'short' : 'hold';
 
     if (globalSignal !== prevGlobalSignal && globalSignal !== 'hold') {
-      const entryPrice = k5m.close;
+      const rawPrice = k5m.close;
+      // Apply 0.1% slippage for realistic 30s-delayed entry
+      const entryPrice = globalSignal === 'long' ? rawPrice * (1 + SLIPPAGE_RATE) : rawPrice * (1 - SLIPPAGE_RATE);
+
       inTrade = {
         entryTimeKST: toKSTString(time),
         type: globalSignal.toUpperCase(),
