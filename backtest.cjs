@@ -88,16 +88,26 @@ const calculateStochRSI = (rsiValues, period = 14, k = 3, d = 3) => {
 // --- Config ---
 const SYMBOL = 'BTCUSDT';
 const START_TIME = new Date('2023-09-01T00:00:00Z').getTime();
-const ACTUAL_START_TIME = new Date('2025-01-01T00:00:00Z').getTime();
+const ACTUAL_START_TIME = new Date('2025-07-26T00:00:00Z').getTime();
 const END_TIME = Date.now();
 
-const LEVERAGE = 5;
-const TARGET_ROI = 0.03; // 3%
-const TARGET_SL_ROI = 0.15; // 15%
+const LEVERAGE = 10;
+const TARGET_NET_ROI = 0.06; // 6% net profit
+const TARGET_SL_ROI = 0.30; // 30%
 const INITIAL_BALANCE = 1000;
-const SLIPPAGE_RATE = 0; // Ideal entry (no delay)
+const SLIPPAGE_RATE = 0;
 
-const TP_PRICE_MOVE = TARGET_ROI / LEVERAGE;
+// Binance Futures Fees
+const TAKER_FEE_RATE = 0.0005; // 0.05%
+const MAKER_FEE_RATE = 0.0002; // 0.02%
+const FUNDING_FEE_RATE = 0.0001; // 0.01% every 8 hours
+
+// To get 6% NET on margin, we need Gross ROI = 6% + (Fees on Notion)
+// Fees on Notion as % of Margin = (0.0005 + 0.0002) * LEVERAGE
+const TOTAL_FEES_ON_MARGIN = (TAKER_FEE_RATE + MAKER_FEE_RATE) * LEVERAGE;
+const GROSS_TARGET_ROI = TARGET_NET_ROI + TOTAL_FEES_ON_MARGIN;
+
+const TP_PRICE_MOVE = GROSS_TARGET_ROI / LEVERAGE;
 const SL_PRICE_MOVE = TARGET_SL_ROI / LEVERAGE;
 
 const RULES = {
@@ -116,7 +126,14 @@ const RULES = {
 };
 
 function toKSTString(timestamp) {
-  return new Date(timestamp + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace(/\..+/, '');
+  const d = new Date(timestamp + 9 * 60 * 60 * 1000);
+  const Y = d.getUTCFullYear();
+  const M = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const D = String(d.getUTCDate()).padStart(2, '0');
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  const s = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`;
 }
 
 // --- Data Fetching ---
@@ -124,7 +141,7 @@ async function fetchKlines(symbol, interval, startTime, endTime) {
   let allKlines = [];
   let currentStart = startTime;
   console.log(`Fetching ${interval} klines for ${symbol}...`);
-  while (allKlines.length < 400000 && currentStart < endTime) { 
+  while (allKlines.length < 1000000 && currentStart < endTime) { 
     try {
       const response = await axios.get(`https://fapi.binance.com/fapi/v1/klines`, {
         params: { symbol, interval, startTime: currentStart, limit: 1500 }
@@ -133,7 +150,7 @@ async function fetchKlines(symbol, interval, startTime, endTime) {
       allKlines.push(...response.data);
       currentStart = response.data[response.data.length - 1][0] + 1;
       if (response.data.length < 1500) break;
-      await new Promise(r => setTimeout(r, 60)); 
+      await new Promise(r => setTimeout(r, 300)); 
     } catch (e) {
       console.error(`Error fetching ${interval}:`, e.message);
       break;
@@ -179,80 +196,97 @@ async function runBacktest() {
   const klines1d = await fetchKlines(SYMBOL, '1d', START_TIME, END_TIME);
 
   console.log(`Data fetched (${klines5m.length} 5m candles). Processing...`);
-
   const closes5m = klines5m.map(k => k.close);
   const indicators5m = { macd: calculateMACD(closes5m), stoch: calculateStochRSI(calculateRSI(closes5m)) };
   const indicators1h = { macd: calculateMACD(klines1h.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1h.map(k => k.close))) };
   const indicators1d = { macd: calculateMACD(klines1d.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1d.map(k => k.close))) };
 
+    console.log(`Data fetched (${klines5m.length} 5m candles). Fetching 1m for exit precision...`);
+  const klines1m = await fetchKlines(SYMBOL, '1m', ACTUAL_START_TIME, END_TIME);
+  console.log(`1m data fetched (${klines1m.length} candles). Processing...`);
+
   let balance = INITIAL_BALANCE;
-  let inTrade = null; 
+  let inTrade = null;
   const tradeHistory = [];
   let prevGlobalSignal = 'hold';
+
+  // Optimization: 1m index pointer
+  let m1Idx = 0;
 
   for (let i = 0; i < klines5m.length; i++) {
     const k5m = klines5m[i];
     const time = k5m.time;
 
-    if (inTrade) {
-      let closed = false;
-      let result = 0;
-      if (inTrade.type === 'LONG') {
-        if (k5m.high >= inTrade.tp) { result = TARGET_ROI; closed = true; }
-        else if (k5m.low <= inTrade.sl) { result = -TARGET_SL_ROI; closed = true; }
-      } else { 
-        if (k5m.low <= inTrade.tp) { result = TARGET_ROI; closed = true; }
-        else if (k5m.high >= inTrade.sl) { result = -TARGET_SL_ROI; closed = true; }
-      }
-      if (closed) {
-        balance = balance * (1 + result);
-        tradeHistory.push({
-          ...inTrade,
-          exitTimeKST: toKSTString(time),
-          exitPrice: result > 0 ? inTrade.tp : inTrade.sl,
-          result: result > 0 ? 'WIN' : 'LOSS',
-          profit: result,
-          balance: balance
-        });
-        inTrade = null;
-      }
-      continue;
-    }
-
     if (time < ACTUAL_START_TIME) continue;
 
     const res5m = getSignalWithData(RULES['5m'], indicators5m.macd.macdLine[i], indicators5m.macd.signalLine[i], indicators5m.stoch.kLine[i], indicators5m.stoch.dLine[i]);
-    
     const idx1h = klines1h.findIndex(k => k.time > time) - 1;
     const realIdx1h = idx1h < 0 ? klines1h.length - 1 : idx1h;
     const res1h = getSignalWithData(RULES['1h'], indicators1h.macd.macdLine[realIdx1h], indicators1h.macd.signalLine[realIdx1h], indicators1h.stoch.kLine[realIdx1h], indicators1h.stoch.dLine[realIdx1h]);
-    
     const idx1d = klines1d.findIndex(k => k.time > time) - 1;
     const realIdx1d = idx1d < 0 ? klines1d.length - 1 : idx1d;
     const res1d = getSignalWithData(RULES['1d'], indicators1d.macd.macdLine[realIdx1d], indicators1d.macd.signalLine[realIdx1d], indicators1d.stoch.kLine[realIdx1d], indicators1d.stoch.dLine[realIdx1d]);
+    
+    // Extra Restriction: Daily StochRSI |K - D| > 2
+    const kdDiff1d = Math.abs((indicators1d.stoch.kLine[realIdx1d] || 0) - (indicators1d.stoch.dLine[realIdx1d] || 0));
+    if (kdDiff1d <= 2) {
+      res1d.signal = 'hold';
+    }
 
     const globalSignal = (res5m.signal === 'long' && res1h.signal === 'long' && res1d.signal === 'long') ? 'long' :
                          (res5m.signal === 'short' && res1h.signal === 'short' && res1d.signal === 'short') ? 'short' : 'hold';
 
     if (globalSignal !== prevGlobalSignal && globalSignal !== 'hold') {
+      const type = globalSignal.toUpperCase();
       const rawPrice = k5m.close;
-      // Apply 0.1% slippage for realistic 30s-delayed entry
-      const entryPrice = globalSignal === 'long' ? rawPrice * (1 + SLIPPAGE_RATE) : rawPrice * (1 - SLIPPAGE_RATE);
+      const entryPrice = type === 'LONG' ? rawPrice * (1 + SLIPPAGE_RATE) : rawPrice * (1 - SLIPPAGE_RATE);
+      const tp = type === 'LONG' ? entryPrice * (1 + TP_PRICE_MOVE) : entryPrice * (1 - TP_PRICE_MOVE);
+      const sl = type === 'LONG' ? entryPrice * (1 - SL_PRICE_MOVE) : entryPrice * (1 + SL_PRICE_MOVE);
 
-      inTrade = {
-        entryTimeKST: toKSTString(time),
-        type: globalSignal.toUpperCase(),
-        entryPrice: entryPrice,
-        leverage: LEVERAGE,
-        tp: globalSignal === 'long' ? entryPrice * (1 + TP_PRICE_MOVE) : entryPrice * (1 - TP_PRICE_MOVE),
-        sl: globalSignal === 'long' ? entryPrice * (1 - SL_PRICE_MOVE) : entryPrice * (1 + SL_PRICE_MOVE),
-        // Add detail logs
-        details: {
-          '5m': { ...res5m.data, cond: res5m.signal },
-          '1h': { ...res1h.data, cond: res1h.signal },
-          '1d': { ...res1d.data, cond: res1d.signal }
+      // Start 1m exit search
+      while (m1Idx < klines1m.length && klines1m[m1Idx].time < time) m1Idx++;
+      
+      let exitCandle = null;
+      let result = 0;
+      for (let j = m1Idx; j < klines1m.length; j++) {
+        const k1m = klines1m[j];
+        
+        // Funding Fee Deduction (Inside trade duration ONLY)
+        const d = new Date(k1m.time);
+        if (d.getUTCMinutes() === 0 && [0, 8, 16].includes(d.getUTCHours())) {
+          balance *= (1 - (FUNDING_FEE_RATE * LEVERAGE));
         }
-      };
+
+        if (type === 'LONG') {
+          if (k1m.high >= tp) { result = TARGET_NET_ROI; exitCandle = k1m; break; }
+          if (k1m.low <= sl) { result = -TARGET_SL_ROI - TOTAL_FEES_ON_MARGIN; exitCandle = k1m; break; }
+        } else {
+          if (k1m.low <= tp) { result = TARGET_NET_ROI; exitCandle = k1m; break; }
+          if (k1m.high >= sl) { result = -TARGET_SL_ROI - TOTAL_FEES_ON_MARGIN; exitCandle = k1m; break; }
+        }
+      }
+
+      if (exitCandle) {
+        balance *= (1 + result);
+        tradeHistory.push({
+          entryTimeKST: toKSTString(time), entryTimeRaw: time, type, leverage: LEVERAGE, entryPrice,
+          tp, sl,
+          exitTimeKST: toKSTString(exitCandle.time), exitPrice: result > 0 ? tp : sl,
+          result: result > 0 ? 'WIN' : 'LOSS',
+          profit: result, balance,
+          details: {
+            '5m': { ...res5m.data, cond: res5m.signal },
+            '1h': { ...res1h.data, cond: res1h.signal },
+            '1d': { ...res1d.data, cond: res1d.signal }
+          }
+        });
+        
+        // Fast-forward 5m loop to after exit candle
+        while (i < klines5m.length && klines5m[i].time <= exitCandle.time) i++;
+        i--; // Adjust for loop increment
+        prevGlobalSignal = globalSignal;
+        continue;
+      }
     }
     prevGlobalSignal = globalSignal;
   }

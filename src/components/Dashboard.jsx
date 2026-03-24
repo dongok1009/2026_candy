@@ -103,7 +103,8 @@ const Dashboard = () => {
 
     if (prevSignalRef.current !== globalSignal) {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
-        const kstTime = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace(/\..+/, '');
+        const d_kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth()+1).padStart(2,'0')}-${String(d_kst.getUTCDate()).padStart(2,'0')} ${String(d_kst.getUTCHours()).padStart(2,'0')}:${String(d_kst.getUTCMinutes()).padStart(2,'0')}:${String(d_kst.getUTCSeconds()).padStart(2,'0')}`;
         const message = `🚨 <b>[${symbol}] ${globalSignal} Signal!</b>\n\n` +
                         `• Time (KST): ${kstTime}\n` +
                         `• 5m: ${signals['5m']}\n` +
@@ -204,6 +205,7 @@ const Dashboard = () => {
               <span style={{ fontSize: '13px', color: '#f3ba2f', fontWeight: 'bold' }}>Target Past Date:</span>
               <input 
                 type="datetime-local" 
+                step="1"
                 value={pastDateInput}
                 onChange={(e) => setPastDateInput(e.target.value)}
                 style={{ background: '#1e2329', border: '1px solid #f3ba2f', color: '#d1d4dc', padding: '6px 10px', borderRadius: '4px', outline: 'none', colorScheme: 'dark' }}
