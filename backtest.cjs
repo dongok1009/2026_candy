@@ -92,7 +92,7 @@ const ACTUAL_START_TIME = new Date('2025-07-26T00:00:00Z').getTime();
 const END_TIME = Date.now();
 
 const LEVERAGE = 5;
-const TARGET_NET_ROI = 0.03; // 3% net profit
+const TARGET_NET_ROI = 0.04; // 4% net profit
 const TARGET_SL_ROI = 0.15; // 15%
 const INITIAL_BALANCE = 1000;
 const SLIPPAGE_RATE = 0;
@@ -288,7 +288,9 @@ async function runBacktest() {
         // Fast-forward 5m loop to after exit candle
         while (i < klines5m.length && klines5m[i].time <= exitCandle.time) i++;
         i--; // Adjust for loop increment
-        prevGlobalSignal = globalSignal;
+        
+        // Reset prevGlobalSignal so we can re-enter immediately on the next candle if conditions stay valid
+        prevGlobalSignal = 'hold';
         continue;
       }
     }
