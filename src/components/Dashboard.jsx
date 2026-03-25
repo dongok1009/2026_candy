@@ -31,8 +31,8 @@ const DEFAULT_RULES = {
     short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true }
   },
   '1d': {
-    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true },
-    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true }
+    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 150 },
+    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 150 }
   }
 };
 
@@ -49,14 +49,14 @@ const Dashboard = () => {
   const prevSignalRef = useRef(null);
 
   const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules_v4');
+    const saved = localStorage.getItem('trading_rules_v5');
     return saved ? JSON.parse(saved) : DEFAULT_RULES;
   });
 
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules_v4', JSON.stringify(rules));
+    localStorage.setItem('trading_rules_v5', JSON.stringify(rules));
   }, [rules]);
 
   React.useEffect(() => {

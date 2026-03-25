@@ -237,6 +237,12 @@ async function runBacktest() {
       res1d.signal = 'hold';
     }
 
+    // Extra Restriction: Daily MACD Histogram Magnitude > 150
+    const macdHist1d = Math.abs((indicators1d.macd.macdLine[realIdx1d] || 0) - (indicators1d.macd.signalLine[realIdx1d] || 0));
+    if (macdHist1d <= 150) {
+      res1d.signal = 'hold';
+    }
+
     const globalSignal = (res5m.signal === 'long' && res1h.signal === 'long' && res1d.signal === 'long') ? 'long' :
                          (res5m.signal === 'short' && res1h.signal === 'short' && res1d.signal === 'short') ? 'short' : 'hold';
 

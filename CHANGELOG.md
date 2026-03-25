@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-03-25
+
+### Added
+- **1일봉 MACD-Signal 필터**: 1일봉 MACD 히스토그램(|MACD - Signal|)의 임계값에 따른 진입 제한 조건 추가.
+- **Interactive MACD Filter**: 대시보드 하단에서 1일봉의 MACD 히스토그램 필터를 활성화하고 임계값을 실시간으로 조정할 수 있는 기능 탑재.
+
+### Changed
+- **UI 개선**: 설정창의 숫자 입력 필드 너비를 확장하여 시인성 확보.
+
 ## [1.2.0] - 2026-03-25
 
 ### Optimized

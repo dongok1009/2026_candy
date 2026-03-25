@@ -373,6 +373,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
         if (rule.long.macdValueEnabled) { activeLongCondCount++; if (!(lastM < parseFloat(rule.long.macdValue))) isLong = false; }
         if (rule.long.macdCrossEnabled) { activeLongCondCount++; if (!(lastM > lastS)) isLong = false; }
         if (rule.long.stochCrossEnabled) { activeLongCondCount++; if (!(lastD !== null && lastK !== null && lastD < lastK)) isLong = false; }
+        if (rule.long.macdHistEnabled) { activeLongCondCount++; if (!(Math.abs(lastM - lastS) > parseFloat(rule.long.macdHistValue))) isLong = false; }
         if (activeLongCondCount === 0) isLong = false;
       } else isLong = false;
       if (rule?.short) {
@@ -380,6 +381,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
         if (rule.short.macdValueEnabled) { activeShortCondCount++; if (!(lastM > parseFloat(rule.short.macdValue))) isShort = false; }
         if (rule.short.macdCrossEnabled) { activeShortCondCount++; if (!(lastM < lastS)) isShort = false; }
         if (rule.short.stochCrossEnabled) { activeShortCondCount++; if (!(lastD !== null && lastK !== null && lastD > lastK)) isShort = false; }
+        if (rule.short.macdHistEnabled) { activeShortCondCount++; if (!(Math.abs(lastM - lastS) > parseFloat(rule.short.macdHistValue))) isShort = false; }
         if (activeShortCondCount === 0) isShort = false;
       } else isShort = false;
     }

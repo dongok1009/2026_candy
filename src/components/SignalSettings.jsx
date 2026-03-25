@@ -68,6 +68,12 @@ const SignalSettings = ({
               <input type="checkbox" checked={rules['1d'].long.stochCrossEnabled} onChange={e => updateRule('1d', 'long', 'stochCrossEnabled', e.target.checked)} />
               Stoch D &lt; Stoch K
             </label>
+            <span className="and-text">AND</span>
+            <label>
+              <input type="checkbox" checked={rules['1d'].long.macdHistEnabled} onChange={e => updateRule('1d', 'long', 'macdHistEnabled', e.target.checked)} />
+              |MACD-Sig| &gt;
+            </label>
+            <input type="number" className="rule-input" style={{ width: '90px' }} value={rules['1d'].long.macdHistValue} onChange={e => updateRule('1d', 'long', 'macdHistValue', e.target.value)} />
           </div>
         </div>
 
@@ -117,6 +123,12 @@ const SignalSettings = ({
               <input type="checkbox" checked={rules['1d'].short.stochCrossEnabled} onChange={e => updateRule('1d', 'short', 'stochCrossEnabled', e.target.checked)} />
               Stoch D &gt; Stoch K
             </label>
+            <span className="and-text">AND</span>
+            <label>
+              <input type="checkbox" checked={rules['1d'].short.macdHistEnabled} onChange={e => updateRule('1d', 'short', 'macdHistEnabled', e.target.checked)} />
+              |MACD-Sig| &gt;
+            </label>
+            <input type="number" className="rule-input" style={{ width: '90px' }} value={rules['1d'].short.macdHistValue} onChange={e => updateRule('1d', 'short', 'macdHistValue', e.target.value)} />
           </div>
         </div>
 
