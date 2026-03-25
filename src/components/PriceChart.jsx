@@ -347,7 +347,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     const fullData = dataRef.current;
     if (fullData.length === 0) return;
 
-    const i = fullData.length - 1;
+    const i = fullData.length - 2; // Default to last completed candle
+    if (i < 0) return; // Not enough data
     const evalIdx = inspectTime ? fullData.findIndex(d => d.time <= inspectTime && d.time + (interval === '5m' ? 300 : interval === '1h' ? 3600 : 86400) > inspectTime) : i;
     const targetIdx = evalIdx === -1 ? i : evalIdx;
     
@@ -355,6 +356,10 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     const rsiValues = calculateRSI(closes);
     const { macdLine: mLine, signalLine: sLine } = calculateMACD(closes);
     const { kLine, dLine } = calculateStochRSI(rsiValues);
+
+    // Update Legends to match the target signal point
+    setMacdLegend({ hist: mLine[targetIdx] - sLine[targetIdx], macd: mLine[targetIdx], signal: sLine[targetIdx] });
+    setStochLegend({ k: kLine[targetIdx], d: dLine[targetIdx] });
 
     evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx]);
   }, [dataLoaded, lastCandle, inspectTime]);

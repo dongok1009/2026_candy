@@ -91,19 +91,18 @@ const START_TIME = new Date('2023-09-01T00:00:00Z').getTime();
 const ACTUAL_START_TIME = new Date('2025-07-26T00:00:00Z').getTime();
 const END_TIME = Date.now();
 
-const LEVERAGE = 10;
-const TARGET_NET_ROI = 0.06; // 6% net profit
-const TARGET_SL_ROI = 0.30; // 30%
+const LEVERAGE = 5;
+const TARGET_NET_ROI = 0.03; // 3% net profit
+const TARGET_SL_ROI = 0.15; // 15%
 const INITIAL_BALANCE = 1000;
 const SLIPPAGE_RATE = 0;
 
 // Binance Futures Fees
-const TAKER_FEE_RATE = 0.0005; // 0.05%
-const MAKER_FEE_RATE = 0.0002; // 0.02%
+const TAKER_FEE_RATE = 0.0005; // 0.05% (Market Buy)
+const MAKER_FEE_RATE = 0.0002; // 0.02% (Limit Sell)
 const FUNDING_FEE_RATE = 0.0001; // 0.01% every 8 hours
 
-// To get 6% NET on margin, we need Gross ROI = 6% + (Fees on Notion)
-// Fees on Notion as % of Margin = (0.0005 + 0.0002) * LEVERAGE
+// To get 3.00% NET on margin, we need Gross ROI = 3.00% + (Fees on Notion)
 const TOTAL_FEES_ON_MARGIN = (TAKER_FEE_RATE + MAKER_FEE_RATE) * LEVERAGE;
 const GROSS_TARGET_ROI = TARGET_NET_ROI + TOTAL_FEES_ON_MARGIN;
 
@@ -217,13 +216,18 @@ async function runBacktest() {
     const k5m = klines5m[i];
     const time = k5m.time;
 
-    if (time < ACTUAL_START_TIME) continue;
-
-    const res5m = getSignalWithData(RULES['5m'], indicators5m.macd.macdLine[i], indicators5m.macd.signalLine[i], indicators5m.stoch.kLine[i], indicators5m.stoch.dLine[i]);
-    const idx1h = klines1h.findIndex(k => k.time > time) - 1;
+    if (time < ACTUAL_START_TIME || i === 0) continue;
+    
+    // Always use the PREVIOUS (completed) candle data for signals
+    const res5m = getSignalWithData(RULES['5m'], indicators5m.macd.macdLine[i-1], indicators5m.macd.signalLine[i-1], indicators5m.stoch.kLine[i-1], indicators5m.stoch.dLine[i-1]);
+    
+    // Find the latest 1h candle that ended BEFORE 'time'
+    const idx1h = klines1h.findIndex(k => k.time >= time) - 1; 
     const realIdx1h = idx1h < 0 ? klines1h.length - 1 : idx1h;
     const res1h = getSignalWithData(RULES['1h'], indicators1h.macd.macdLine[realIdx1h], indicators1h.macd.signalLine[realIdx1h], indicators1h.stoch.kLine[realIdx1h], indicators1h.stoch.dLine[realIdx1h]);
-    const idx1d = klines1d.findIndex(k => k.time > time) - 1;
+    
+    // Find the latest 1d candle that ended BEFORE 'time'
+    const idx1d = klines1d.findIndex(k => k.time >= time) - 1;
     const realIdx1d = idx1d < 0 ? klines1d.length - 1 : idx1d;
     const res1d = getSignalWithData(RULES['1d'], indicators1d.macd.macdLine[realIdx1d], indicators1d.macd.signalLine[realIdx1d], indicators1d.stoch.kLine[realIdx1d], indicators1d.stoch.dLine[realIdx1d]);
     
