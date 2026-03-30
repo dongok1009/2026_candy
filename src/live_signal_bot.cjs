@@ -81,28 +81,21 @@ const calculateStochRSI = (rsi, p = 14, k = 3, d = 3) => {
 };
 
 async function sendTelegram(message) {
-    if (!TELEGRAM_TOKEN || !CHAT_ID) {
-        console.log("⚠️ Telegram secrets not set. Skipping alert.");
-        return;
-    }
+    if (!TELEGRAM_TOKEN || !CHAT_ID) return console.log("⚠️ No Telegram Secrets.");
     const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
     try {
         await axios.post(url, { chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' });
-        console.log("✉️ Telegram alert sent!");
-    } catch (e) {
-        console.error('Telegram failed:', e.message);
-    }
+        console.log("✉️ Alert Sent!");
+    } catch (e) { console.error('Telegram failed:', e.message); }
 }
 
-async function fetchKlines(interval, limit = 100) {
+async function fetchKlines(interval, limit = 200) {
   const res = await axios.get(`https://fapi.binance.com/fapi/v1/klines`, { params: { symbol: SYMBOL, interval, limit } });
   return res.data.map(d => ({ low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), time: d[0] }));
 }
 
 async function runLiveCheck() {
   try {
-    console.log(`[v3.4.2] Monitoring Signal... (${new Date().toLocaleString()})`);
-    
     const klines5m = await fetchKlines('5m');
     const klines1h = await fetchKlines('1h');
     const klines1d = await fetchKlines('1d');
@@ -111,39 +104,45 @@ async function runLiveCheck() {
     const ind1h = { macd: calculateMACD(klines1h.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1h.map(k => k.close))) };
     const ind1d = { macd: calculateMACD(klines1d.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1d.map(k => k.close))) };
 
-    const i5 = ind5m.stoch.k.length - 1;
-    const ih = ind1h.stoch.k.length - 1;
-    const id = ind1d.stoch.k.length - 1;
+    const getSigAt = (i5, ih, id) => {
+        const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
+        const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih] ? 'short' : 'hold');
+        const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id] && ind1d.stoch.k[id] > ind1d.stoch.d[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] && ind1d.stoch.k[id] < ind1d.stoch.d[id] ? 'short' : 'hold');
+        if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
+        if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
+        return 'hold';
+    };
 
-    const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
-    const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih] ? 'short' : 'hold');
-    const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id] && ind1d.stoch.k[id] > ind1d.stoch.d[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] && ind1d.stoch.k[id] < ind1d.stoch.d[id] ? 'short' : 'hold');
+    // Current indices (Last closed)
+    const cur5 = ind5m.stoch.k.length - 1;
+    const curH = ind1h.stoch.k.length - 1;
+    const curD = ind1d.stoch.k.length - 1;
 
-    let sig = 'hold';
-    if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') sig = 'long';
-    if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') sig = 'short';
+    const currentSig = getSigAt(cur5, curH, curD);
+    const prevSig = getSigAt(cur5 - 1, curH, curD); // Approximate prev sig
 
-    if (sig !== 'hold') {
-      const entryPrice = sig === 'long' ? klines5m[klines5m.length - 1].low : klines5m[klines5m.length - 1].high;
+    console.log(`[v3.4.2 Check] Prev: ${prevSig}, Current: ${currentSig}`);
+
+    // Alert ONLY when signal just appeared (from HOLD to LONG/SHORT)
+    if (currentSig !== 'hold' && prevSig === 'hold') {
+      const entryPrice = currentSig === 'long' ? klines5m[klines5m.length - 1].low : klines5m[klines5m.length - 1].high;
       const totalFeesOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
       const grossTP = TARGET_NET_ROI + totalFeesOnMargin;
-      const tpPrice = sig === 'long' ? entryPrice * (1 + grossTP/LEVERAGE) : entryPrice * (1 - grossTP/LEVERAGE);
-      const slPrice = sig === 'long' ? entryPrice * (1 - SL_ROI/LEVERAGE) : entryPrice * (1 + SL_ROI/LEVERAGE);
+      const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP/LEVERAGE) : entryPrice * (1 - grossTP/LEVERAGE);
+      const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI/LEVERAGE) : entryPrice * (1 + SL_ROI/LEVERAGE);
 
-      const message = `🚀 *[v3.4.2 LIVE 신호 발생]*\n\n` +
-                      `📌 *포지션*: ${sig.toUpperCase()}\n` +
-                      `💵 *진입 희망가(Limit)*: $${entryPrice.toLocaleString()}\n` +
+      const message = `🚀 *[v3.4.2 신규 신호 발생]*\n\n` +
+                      `📌 *포지션*: ${currentSig.toUpperCase()}\n` +
+                      `💵 *진입 희망가*: $${entryPrice.toLocaleString()}\n` +
                       `✅ *목표가(TP)*: $${tpPrice.toLocaleString()} (+3%)\n` +
                       `❌ *손절가(SL)*: $${slPrice.toLocaleString()} (-15%)\n\n` +
-                      `🕒 *발생 시간*: ${new Date().toLocaleString('ko-KR')}`;
+                      `🔔 *알림*: 새로운 추세가 시작되었습니다.`;
       
       await sendTelegram(message);
     } else {
-      console.log("💤 No active signals at the moment.");
+      console.log("💤 No NEW signal change detected.");
     }
-  } catch (e) {
-    console.error('Monitoring Error:', e.message);
-  }
+  } catch (e) { console.error('Error:', e.message); }
 }
 
 runLiveCheck();
