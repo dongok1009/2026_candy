@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backtest Results (Large CSVs)
+*.csv
+backtest_v340_results_with_indicators.csv
+v3.4.1_Full_Indicators_*.csv
+v310_comparison_full_log_1m.csv
+backtest_high_precision_1m.csv
