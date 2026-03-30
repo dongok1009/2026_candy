@@ -82,47 +82,55 @@ const calculateStochRSI = (rsi, p = 14, k = 3, d = 3) => {
 };
 
 async function sendTelegram(message) {
-    if (!TELEGRAM_TOKEN || !CHAT_ID) return console.log("⚠️ No Telegram Secrets.");
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-    try {
-        await axios.post(url, { chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' });
-        console.log("✉️ Alert Sent!");
-    } catch (e) { console.error('Telegram failed:', e.message); }
+  if (!TELEGRAM_TOKEN || !CHAT_ID) return console.log("⚠️ No Telegram Secrets.");
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+  try {
+    await axios.post(url, { chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' });
+    console.log("✉️ Alert Sent!");
+  } catch (e) { console.error('Telegram failed:', e.message); }
 }
 
-async function fetchBybitKlines(interval, limit = 200) {
-    const bybitMap = { '5m': '5', '1h': '60', '1d': 'D' };
-    const url = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=${bybitMap[interval] || interval}&limit=${limit}`;
-    const res = await axios.get(url, { timeout: 5000 });
-    // Bybit list is [newest...oldest], reverse to [oldest...newest]
-    return res.data.result.list.reverse().map(d => ({
-        time: parseInt(d[0]),
-        open: parseFloat(d[1]),
-        high: parseFloat(d[2]),
-        low: parseFloat(d[3]),
-        close: parseFloat(d[4])
-    }));
+async function fetchPriceData(interval, limit = 200) {
+  const urls = [
+    `https://api.bytick.com/v5/market/kline?category=linear&symbol=${SYMBOL}&interval=${interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D')}&limit=${limit}`, // 1. Bybit 공식 우회 도메인
+    `https://data-api.binance.vision/api/v3/klines?symbol=${SYMBOL}&interval=${interval}&limit=${limit}`, // 2. Binance 공식 데이터 노드
+    `https://api.mexc.com/api/v3/klines?symbol=${SYMBOL}&interval=${interval}&limit=${limit}` // 3. MEXC (백업)
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await axios.get(url, { timeout: 5000 });
+      console.log(`✅ Data fetched from: ${new URL(url).hostname}`);
+      if (url.includes('bytick') || url.includes('bybit')) {
+        return res.data.result.list.reverse().map(d => ({ time: parseInt(d[0]), low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]) }));
+      }
+      return res.data.map(d => ({ low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), time: d[0] }));
+    } catch (e) {
+      console.log(`⚠️ Skip ${new URL(url).hostname}: ${e.message}`);
+    }
+  }
+  throw new Error("❌ All Preferred APIs (Bybit/Binance) are blocked.");
 }
 
 async function runLiveCheck() {
   try {
-    console.log(`[v5.0.0 Bybit Check] (${new Date().toLocaleString()})`);
-    
-    const klines5m = await fetchBybitKlines('5m');
-    const klines1h = await fetchBybitKlines('1h');
-    const klines1d = await fetchBybitKlines('1d');
+    console.log(`[v5.0.0 Global Check] (${new Date().toLocaleString()})`);
+
+    const klines5m = await fetchPriceData('5m');
+    const klines1h = await fetchPriceData('1h');
+    const klines1d = await fetchPriceData('1d');
 
     const ind5m = { stoch: calculateStochRSI(calculateRSI(klines5m.map(k => k.close))) };
     const ind1h = { macd: calculateMACD(klines1h.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1h.map(k => k.close))) };
     const ind1d = { macd: calculateMACD(klines1d.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1d.map(k => k.close))) };
 
     const getSigAt = (i5, ih, id) => {
-        const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
-        const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih] ? 'short' : 'hold');
-        const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id] && ind1d.stoch.k[id] > ind1d.stoch.d[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] && ind1d.stoch.k[id] < ind1d.stoch.d[id] ? 'short' : 'hold');
-        if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
-        if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
-        return 'hold';
+      const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
+      const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih] ? 'short' : 'hold');
+      const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id] && ind1d.stoch.k[id] > ind1d.stoch.d[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] && ind1d.stoch.k[id] < ind1d.stoch.d[id] ? 'short' : 'hold');
+      if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
+      if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
+      return 'hold';
     };
 
     const cur5 = ind5m.stoch.k.length - 1;
@@ -138,22 +146,22 @@ async function runLiveCheck() {
       const entryPrice = currentSig === 'long' ? klines5m[klines5m.length - 1].low : klines5m[klines5m.length - 1].high;
       const totalFeesOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
       const grossTP = TARGET_NET_ROI + totalFeesOnMargin;
-      const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP/LEVERAGE) : entryPrice * (1 - grossTP/LEVERAGE);
-      const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI/LEVERAGE) : entryPrice * (1 + SL_ROI/LEVERAGE);
+      const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
+      const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI / LEVERAGE) : entryPrice * (1 + SL_ROI / LEVERAGE);
 
       const message = `🚀 *[v5.0.0 Bybit LIVE 알림]*\n\n` +
-                      `📌 *포지션*: ${currentSig.toUpperCase()} (바이빗 가격 기준)\n` +
-                      `💵 *진입 희망가*: $${entryPrice.toLocaleString()}\n` +
-                      `✅ *목표가(TP)*: $${tpPrice.toLocaleString()} (+3%)\n` +
-                      `❌ *손절가(SL)*: $${slPrice.toLocaleString()} (-15%)\n\n` +
-                      `🛡️ *우회 상태*: 깃허브 서버(IP 차단) 우회 성공!`;
-      
+        `📌 *포지션*: ${currentSig.toUpperCase()} (바이빗 가격 기준)\n` +
+        `💵 *진입 희망가*: $${entryPrice.toLocaleString()}\n` +
+        `✅ *목표가(TP)*: $${tpPrice.toLocaleString()} (+3%)\n` +
+        `❌ *손절가(SL)*: $${slPrice.toLocaleString()} (-15%)\n\n` +
+        `🛡️ *우회 상태*: 깃허브 서버(IP 차단) 우회 성공!`;
+
       await sendTelegram(message);
     } else {
       console.log("💤 No NEW signal on Bybit.");
       // 수동 실행 시 "정상 우회 연결 확인" 메시지 전송
       if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
-          await sendTelegram("✅ *[v5.0.0 Bybit 우회 성공]*\n\n바이빗 API를 통해 깃허브 서버 차단을 완벽하게 우회하였습니다! 🎉\n\n이제 정상적으로 매매 신호를 실시간 전송합니다.");
+        await sendTelegram("✅ *[v5.0.0 Bybit 우회 성공]*\n\n바이빗 API를 통해 깃허브 서버 차단을 완벽하게 우회하였습니다! 🎉\n\n이제 정상적으로 매매 신호를 실시간 전송합니다.");
       }
     }
   } catch (e) {
