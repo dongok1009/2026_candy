@@ -143,25 +143,31 @@ async function runLiveCheck() {
     console.log(`Current: ${currentSig}, Prev: ${prevSig}`);
 
     if (currentSig !== 'hold' && prevSig === 'hold') {
-      const entryPrice = currentSig === 'long' ? klines5m[klines5m.length - 1].low : klines5m[klines5m.length - 1].high;
+      const signalPrice = klines5m[klines5m.length - 1].close; // 신호 발생 시점 현재가
+      const prevLow = klines5m[klines5m.length - 1].low;
+      const prevHigh = klines5m[klines5m.length - 1].high;
+
+      // v5.1.0: 지능형 진입가 (Market vs Limit 중 더 유리한 가격 선택)
+      const entryPrice = currentSig === 'long' ? Math.min(signalPrice, prevLow) : Math.max(signalPrice, prevHigh);
+
       const totalFeesOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
       const grossTP = TARGET_NET_ROI + totalFeesOnMargin;
       const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
       const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI / LEVERAGE) : entryPrice * (1 + SL_ROI / LEVERAGE);
 
-      const message = `🚀 *[v5.0.0 Bybit LIVE 알림]*\n\n` +
-        `📌 *포지션*: ${currentSig.toUpperCase()} (바이빗 가격 기준)\n` +
+      const message = `🚀 *[v5.1.0 Bybit LIVE 알림]*\n\n` +
+        `📌 *포지션*: ${currentSig.toUpperCase()} (지능형 진입)\n` +
         `💵 *진입 희망가*: $${entryPrice.toLocaleString()}\n` +
         `✅ *목표가(TP)*: $${tpPrice.toLocaleString()} (+3%)\n` +
         `❌ *손절가(SL)*: $${slPrice.toLocaleString()} (-15%)\n\n` +
-        `🛡️ *우회 상태*: 깃허브 서버(IP 차단) 우회 성공!`;
+        `🛡️ *판단 근거*: 현재가($${signalPrice.toLocaleString()}) vs 직전(${currentSig === 'long' ? '저' : '고'}가: $${(currentSig === 'long' ? prevLow : prevHigh).toLocaleString()}) 중 최선책 선택`;
 
       await sendTelegram(message);
     } else {
       console.log("💤 No NEW signal on Bybit.");
       // 수동 실행 시 "정상 우회 연결 확인" 메시지 전송
       if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
-        await sendTelegram("✅ *[v5.0.0 Bybit 우회 성공]*\n\n바이빗 API를 통해 깃허브 서버 차단을 완벽하게 우회하였습니다! 🎉\n\n이제 정상적으로 매매 신호를 실시간 전송합니다.");
+        await sendTelegram("✅ *[v5.1.0 Bybit 우회 성공]*\n\n지능형 진입 기능(v5.1.0)이 탑재된 봇이 정상 가동 중입니다! 🎉");
       }
     }
   } catch (e) {
