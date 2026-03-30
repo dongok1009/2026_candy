@@ -23,16 +23,16 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   '5m': {
-    long: { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: true, stochCrossEnabled: true },
-    short: { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: true, stochCrossEnabled: true }
+    long: { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true },
+    short: { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true }
   },
   '1h': {
     long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true },
     short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true }
   },
   '1d': {
-    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 150 },
-    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 150 }
+    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 300 },
+    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, macdHistEnabled: true, macdHistValue: 300 }
   }
 };
 
@@ -192,7 +192,7 @@ const Dashboard = () => {
       <header className="dashboard-header">
         <div className="logo-section">
           <Activity color="#f3ba2f" size={32} />
-          <h1>Antigravity Markets</h1>
+          <h1>Antigravity Markets <span style={{ fontSize: '14px', verticalAlign: 'middle', background: '#f3ba2f', color: '#161a1e', padding: '2px 6px', borderRadius: '4px', marginLeft: '10px' }}>v3.4.0 Official</span></h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div className="connection-status" style={{ cursor: 'pointer', userSelect: 'none', border: isPastMode ? '1px solid #f3ba2f' : '1px solid transparent' }} onClick={() => setIsPastMode(!isPastMode)}>
@@ -282,6 +282,12 @@ const Dashboard = () => {
             value={`${high1d !== '-' ? `$${high1d}` : '-'} / ${low1d !== '-' ? `$${low1d}` : '-'}`} 
             icon={TrendingUp} 
             color="#26a69a" 
+          />
+          <StatCard 
+            title="v3.4.0 Target Entry (5m)" 
+            value={candle5m ? `$${formatPrice(candle5m.low)} (L) / $${formatPrice(candle5m.high)} (S)` : 'Loading...'} 
+            icon={BarChart2} 
+            color="#f3ba2f" 
           />
         </section>
 

@@ -88,11 +88,11 @@ const calculateStochRSI = (rsiValues, period = 14, k = 3, d = 3) => {
 // --- Config ---
 const SYMBOL = 'BTCUSDT';
 const START_TIME = new Date('2023-09-01T00:00:00Z').getTime();
-const ACTUAL_START_TIME = new Date('2025-07-26T00:00:00Z').getTime();
+const ACTUAL_START_TIME = new Date('2025-01-01T00:00:00+09:00').getTime();
 const END_TIME = Date.now();
 
 const LEVERAGE = 5;
-const TARGET_NET_ROI = 0.04; // 4% net profit
+const TARGET_NET_ROI = 0.03; // 3% net profit
 const TARGET_SL_ROI = 0.15; // 15%
 const INITIAL_BALANCE = 1000;
 const SLIPPAGE_RATE = 0;
@@ -222,26 +222,30 @@ async function runBacktest() {
     const res5m = getSignalWithData(RULES['5m'], indicators5m.macd.macdLine[i-1], indicators5m.macd.signalLine[i-1], indicators5m.stoch.kLine[i-1], indicators5m.stoch.dLine[i-1]);
     
     // Find the latest 1h candle that ended BEFORE 'time'
-    const idx1h = klines1h.findIndex(k => k.time >= time) - 1; 
+    const confirmedBoundary1h = time - 3600000;
+    const idx1h = klines1h.findIndex(k => k.time > confirmedBoundary1h) - 1;
     const realIdx1h = idx1h < 0 ? klines1h.length - 1 : idx1h;
     const res1h = getSignalWithData(RULES['1h'], indicators1h.macd.macdLine[realIdx1h], indicators1h.macd.signalLine[realIdx1h], indicators1h.stoch.kLine[realIdx1h], indicators1h.stoch.dLine[realIdx1h]);
     
     // Find the latest 1d candle that ended BEFORE 'time'
-    const idx1d = klines1d.findIndex(k => k.time >= time) - 1;
+    const confirmedBoundary1d = time - 86400000;
+    const idx1d = klines1d.findIndex(k => k.time > confirmedBoundary1d) - 1;
     const realIdx1d = idx1d < 0 ? klines1d.length - 1 : idx1d;
     const res1d = getSignalWithData(RULES['1d'], indicators1d.macd.macdLine[realIdx1d], indicators1d.macd.signalLine[realIdx1d], indicators1d.stoch.kLine[realIdx1d], indicators1d.stoch.dLine[realIdx1d]);
     
     // Extra Restriction: Daily StochRSI |K - D| > 2
-    const kdDiff1d = Math.abs((indicators1d.stoch.kLine[realIdx1d] || 0) - (indicators1d.stoch.dLine[realIdx1d] || 0));
-    if (kdDiff1d <= 2) {
-      res1d.signal = 'hold';
-    }
+    // const kdDiff1d = Math.abs((indicators1d.stoch.kLine[realIdx1d] || 0) - (indicators1d.stoch.dLine[realIdx1d] || 0));
+    // if (kdDiff1d <= 2) {
+    //   res1d.signal = 'hold';
+    // }
 
-    // Extra Restriction: Daily MACD Histogram Magnitude > 150
+    // Extra Restriction: Daily MACD Histogram Magnitude Guard (Disabled per user image)
+    /*
     const macdHist1d = Math.abs((indicators1d.macd.macdLine[realIdx1d] || 0) - (indicators1d.macd.signalLine[realIdx1d] || 0));
     if (macdHist1d <= 150) {
       res1d.signal = 'hold';
     }
+    */
 
     const globalSignal = (res5m.signal === 'long' && res1h.signal === 'long' && res1d.signal === 'long') ? 'long' :
                          (res5m.signal === 'short' && res1h.signal === 'short' && res1d.signal === 'short') ? 'short' : 'hold';

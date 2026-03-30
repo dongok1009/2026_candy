@@ -79,7 +79,9 @@ async function verifyTrade(timestampISO, type) {
     const { m, s } = calculateMACD(closes);
     const { k, d } = calculateStochRSI(closes);
     
-    const idx = data.findIndex(dVal => dVal.time > targetTime) - 1;
+    const intervalMs = (interval === '5m' ? 300000 : (interval === '1h' ? 3600000 : 86400000));
+    const confirmedBoundary = targetTime - intervalMs;
+    const idx = data.findIndex(dVal => dVal.time > confirmedBoundary) - 1;
     const finalIdx = idx < 0 ? data.length - 1 : idx;
     
     results[interval] = {

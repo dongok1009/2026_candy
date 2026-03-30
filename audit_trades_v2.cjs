@@ -63,7 +63,9 @@ async function checkAt(timestampISO, type) {
     // Stoch calculation omitted for brevity, checking MACD first as major trigger
     
     // Find exact candle covering targetTime
-    let idx = data.findIndex(d => d.time > targetTime) - 1;
+    const intervalMs = (inv === '5m' ? 300000 : (inv === '1h' ? 3600000 : 86400000));
+    const confirmedBoundary = targetTime - intervalMs;
+    let idx = data.findIndex(d => d.time > confirmedBoundary) - 1;
     if (idx < 0) idx = data.length - 1;
     
     const curM = m[idx]; const curS = s[idx];
