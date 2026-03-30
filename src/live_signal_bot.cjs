@@ -90,8 +90,22 @@ async function sendTelegram(message) {
 }
 
 async function fetchKlines(interval, limit = 200) {
-  const res = await axios.get(`https://fapi.binance.com/fapi/v1/klines`, { params: { symbol: SYMBOL, interval, limit } });
-  return res.data.map(d => ({ low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), time: d[0] }));
+  const endpoints = [
+    `https://api.binance.com/api/v3/klines`,        // 1. 현물(Spot) - 미국 IP에서 차단이 덜함
+    `https://fapi.binance.me/fapi/v1/klines`,      // 2. 선물 보조 도메인
+    `https://fapi.binance.com/fapi/v1/klines`      // 3. 선물 기본 도메인
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await axios.get(url, { params: { symbol: SYMBOL, interval, limit }, timeout: 5000 });
+      console.log(`✅ Data fetched from: ${new URL(url).hostname}`);
+      return res.data.map(d => ({ low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), time: d[0] }));
+    } catch (e) {
+      console.log(`⚠️ Failed to fetch from ${new URL(url).hostname}: ${e.message}`);
+    }
+  }
+  throw new Error("❌ All Binance endpoints are blocked (Error 451).");
 }
 
 async function runLiveCheck() {
