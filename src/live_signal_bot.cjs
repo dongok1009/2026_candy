@@ -141,6 +141,10 @@ async function runLiveCheck() {
       await sendTelegram(message);
     } else {
       console.log("💤 No NEW signal change detected.");
+      // 수동 실행(workflow_dispatch)일 경우 신호가 없어도 확인 메시지 전송
+      if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
+          await sendTelegram("✅ *[v3.4.2 연결 확인]*\n\n차트 분석 결과 현재 진입 신호는 없지만, 봇과 텔레그램 간의 연결이 완벽하게 확인되었습니다! 🎉\n\n이제 5분마다 시장을 감시하며 추세 발생 시 즉시 알려드립니다.");
+      }
     }
   } catch (e) { console.error('Error:', e.message); }
 }
