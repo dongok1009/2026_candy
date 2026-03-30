@@ -1,4 +1,4 @@
-name: Live Signal Bot (v3.4.2)
+name: LiveSignalBotV342
 
 on:
   schedule:
