@@ -1,4 +1,4 @@
-name: LiveSignalBotV500
+name: LiveSignalBotV600
 
 on:
   schedule:
@@ -15,8 +15,8 @@ jobs:
           node-version: '24'
       - name: Install axios
         run: npm install axios
-      - name: Run Bybit Monitoring Bot
+      - name: Run V600 Monitoring Bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: node src/v500_live_bot.cjs
+        run: node src/v600_live_bot.cjs
