@@ -133,7 +133,7 @@ const Dashboard = () => {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
         const d_kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
         const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth()+1).padStart(2,'0')}-${String(d_kst.getUTCDate()).padStart(2,'0')} ${String(d_kst.getUTCHours()).padStart(2,'0')}:${String(d_kst.getUTCMinutes()).padStart(2,'0')}:${String(d_kst.getUTCSeconds()).padStart(2,'0')}`;
-        const message = `🚨 <b>[v6.0.0] ${symbol} ${globalSignal} Signal!</b>\n\n` +
+        const message = `🚨 <b>[v7.0.0] ${symbol} ${globalSignal} Signal!</b>\n\n` +
                         `• Time (KST): ${kstTime}\n` +
                         `• 5m: ${signals['5m']}\n` +
                         `• 1h: ${signals['1h']}\n` +
@@ -322,7 +322,7 @@ const Dashboard = () => {
             color="#26a69a" 
           />
           <StatCard 
-            title="v6.0.0 Target Entry (5m)" 
+            title="v7.0.0 Target Entry (5m)" 
             value={candle5m ? `$${formatPrice(candle5m.low)} (L) / $${formatPrice(candle5m.high)} (S)` : 'Loading...'} 
             icon={BarChart2} 
             color="#f3ba2f" 
