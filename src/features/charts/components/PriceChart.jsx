@@ -93,7 +93,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
 
     const priceChart = createChart(priceChartContainerRef.current, {
       ...commonOptions,
-      height: isMobile ? 242 : 338,
+      height: isMobile ? 194 : 270,
       rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
@@ -114,7 +114,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     // 2. MACD Chart
     const macdChart = createChart(macdChartContainerRef.current, {
       ...commonOptions,
-      height: isMobile ? 97 : 145,
+      height: isMobile ? 57 : 85,
       rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
@@ -131,7 +131,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     // 3. StochRSI Chart
     const stochChart = createChart(stochChartContainerRef.current, {
       ...commonOptions,
-      height: isMobile ? 97 : 145,
+      height: isMobile ? 57 : 85,
       rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
@@ -154,7 +154,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     // 4. ADX Chart
     const adxChart = createChart(adxChartContainerRef.current, {
       ...commonOptions,
-      height: isMobile ? 80 : 120,
+      height: isMobile ? 47 : 69,
       rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
       leftPriceScale: { visible: false }
     });
