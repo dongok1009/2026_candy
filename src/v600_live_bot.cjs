@@ -111,67 +111,79 @@ async function fetchPriceData(interval, limit = 200) {
   throw new Error("❌ API Blocked.");
 }
 
-async function runLiveCheck() {
-  try {
-    console.log(`[v6.0.0 Global High-Frequency] (${new Date().toLocaleString()})`);
+let lastSignal = 'hold';
+const START_TIME = Date.now();
+const MAX_LIFE_MS = 5.8 * 60 * 60 * 1000; // 5.8 hours (GitHub limits to 6h)
 
-    const klines5m = await fetchPriceData('5m');
-    const klines1h = await fetchPriceData('1h');
-    const klines1d = await fetchPriceData('1d');
-
-    const ind5m = { stoch: calculateStochRSI(calculateRSI(klines5m.map(k => k.close))) };
-    const ind1h = { macd: calculateMACD(klines1h.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1h.map(k => k.close))) };
-    const ind1d = { macd: calculateMACD(klines1d.map(k => k.close)) }; 
-
-    const getSigAt = (i5, ih, id) => {
-      // 5m: StochRSI Cross
-      const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
-      // 1h: MACD Cross AND StochRSI Cross
-      const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih]) ? 'short' : 'hold';
-      // 1d: MACD Cross Only (v6.0.0 Optimized)
-      const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] ? 'short' : 'hold');
-      
-      if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
-      if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
-      return 'hold';
-    };
-
-    const cur5 = ind5m.stoch.k.length - 1;
-    const curH = ind1h.macd.m.length - 1;
-    const curD = ind1d.macd.m.length - 1;
-
-    const currentSig = getSigAt(cur5, curH, curD);
-    const prevSig = getSigAt(cur5 - 1, curH, curD);
-
-    console.log(`Current: ${currentSig}, Prev: ${prevSig}`);
-
-    if (currentSig !== 'hold' && prevSig === 'hold') {
-      const signalPrice = klines5m[klines5m.length - 1].close;
-      const prevLow = klines5m[klines5m.length - 1].low;
-      const prevHigh = klines5m[klines5m.length - 1].high;
-
-      // Better Price Entry Logic
-      const entryPrice = currentSig === 'long' ? Math.min(signalPrice, prevLow) : Math.max(signalPrice, prevHigh);
-      const feeOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
-      const grossTP = TARGET_NET_ROI + feeOnMargin;
-      const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
-      const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI / LEVERAGE) : entryPrice * (1 + SL_ROI / LEVERAGE);
-
-      const message = `🚀 <b>[v6.0.0 High-Frequency LIVE]</b>\n\n` +
-        `📌 <b>포지션</b>: ${currentSig.toUpperCase()} (지능형 Better Entry)\n` +
-        `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-        `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3% Net)\n` +
-        `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
-        `📡 <b>v6.0.0 분석</b>: 1d MACD 추세 확인 완료. 1h/5m 모멘텀 합치 발생.`;
-
-      await sendTelegram(message);
-    } else {
-      console.log("💤 v6.0.0 No NEW signal.");
-      if (process.env.GITHUB_EVENT_NAME === 'workflow_dispatch') {
-        await sendTelegram("✅ <b>[v6.0.0 Global Official]</b>\n\n고빈도 수익 최적화 엔진이 실시간 가동 중입니다! 🚀");
-      }
+async function runLiveCycle() {
+  while (true) {
+    if (Date.now() - START_TIME > MAX_LIFE_MS) {
+      console.log("⏰ Max life reached. Graceful exit for restart.");
+      process.exit(0);
     }
-  } catch (e) { console.error('v6.0.0 Error:', e.message); }
+
+    try {
+      console.log(`\n[v6.0.0 Persistent Monitor] (${new Date().toLocaleString()})`);
+      console.log(`Last Notified: ${lastSignal.toUpperCase()}`);
+
+      const klines5m = await fetchPriceData('5m');
+      const klines1h = await fetchPriceData('1h');
+      const klines1d = await fetchPriceData('1d');
+
+      const ind5m = { stoch: calculateStochRSI(calculateRSI(klines5m.map(k => k.close))) };
+      const ind1h = { macd: calculateMACD(klines1h.map(k => k.close)), stoch: calculateStochRSI(calculateRSI(klines1h.map(k => k.close))) };
+      const ind1d = { macd: calculateMACD(klines1d.map(k => k.close)) };
+
+      const getSigAt = (i5, ih, id) => {
+        const cond5m = (ind5m.stoch.k[i5] > ind5m.stoch.d[i5]) ? 'long' : (ind5m.stoch.k[i5] < ind5m.stoch.d[i5] ? 'short' : 'hold');
+        const cond1h = (ind1h.macd.m[ih] > ind1h.macd.s[ih] && ind1h.stoch.k[ih] > ind1h.stoch.d[ih]) ? 'long' : (ind1h.macd.m[ih] < ind1h.macd.s[ih] && ind1h.stoch.k[ih] < ind1h.stoch.d[ih]) ? 'short' : 'hold';
+        const cond1d = (ind1d.macd.m[id] > ind1d.macd.s[id]) ? 'long' : (ind1d.macd.m[id] < ind1d.macd.s[id] ? 'short' : 'hold');
+        if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
+        if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
+        return 'hold';
+      };
+
+      const cur5 = ind5m.stoch.k.length - 1;
+      const curH = ind1h.macd.m.length - 1;
+      const curD = ind1d.macd.m.length - 1;
+
+      const currentSig = getSigAt(cur5, curH, curD);
+      console.log(`Current Signal: ${currentSig.toUpperCase()}`);
+
+      // Persistent Signal Memory Logic (Alert Only on CHANGE)
+      if (currentSig !== lastSignal) {
+        if (currentSig !== 'hold') {
+          const signalPrice = klines5m[klines5m.length - 1].close;
+          const prevLow = klines5m[klines5m.length - 1].low;
+          const prevHigh = klines5m[klines5m.length - 1].high;
+
+          const entryPrice = currentSig === 'long' ? Math.min(signalPrice, prevLow) : Math.max(signalPrice, prevHigh);
+          const feeOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
+          const grossTP = TARGET_NET_ROI + feeOnMargin;
+          const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
+          const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI / LEVERAGE) : entryPrice * (1 + SL_ROI / LEVERAGE);
+
+          const message = `🚀 <b>[v6.0.0 Persistent LIVE]</b>\n\n` +
+            `📌 <b>포지션</b>: ${currentSig.toUpperCase()} (1분 실외 감시 중)\n` +
+            `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
+            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3% Net)\n` +
+            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
+            `📡 <b>v6.0.0 분석</b>: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)`;
+
+          await sendTelegram(message);
+        } else {
+          await sendTelegram(`💤 <b>[v6.0.0 Global]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`);
+        }
+        lastSignal = currentSig;
+      }
+    } catch (e) {
+      console.error('v6.0.0 Loop Error:', e.message);
+    }
+
+    // Wait 60 seconds
+    await new Promise(resolve => setTimeout(resolve, 60000));
+  }
 }
 
-runLiveCheck();
+runLiveCycle();
+

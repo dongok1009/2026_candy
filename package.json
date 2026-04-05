@@ -1,7 +1,7 @@
 {
   "name": "2026_candy",
   "private": true,
-  "version": "3.0.0",
+  "version": "7.0.0",
   "type": "module",
   "homepage": "https://dongok1009.github.io/2026_candy",
   "scripts": {
@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "axios": "^1.13.6",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.577.0",
     "react": "^19.2.4",
