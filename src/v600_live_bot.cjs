@@ -123,7 +123,7 @@ async function runLiveCycle() {
     }
 
     try {
-      console.log(`\n[v6.0.0 Persistent Monitor] (${new Date().toLocaleString()})`);
+      console.log(`\n[v7.0.0 Persistent Monitor] (${new Date().toLocaleString()})`);
       console.log(`Last Notified: ${lastSignal.toUpperCase()}`);
 
       const klines5m = await fetchPriceData('5m');
@@ -163,21 +163,21 @@ async function runLiveCycle() {
           const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
           const slPrice = currentSig === 'long' ? entryPrice * (1 - SL_ROI / LEVERAGE) : entryPrice * (1 + SL_ROI / LEVERAGE);
 
-          const message = `🚀 <b>[v6.0.0 Persistent LIVE]</b>\n\n` +
+          const message = `🚀 <b>[v7.0.0 Persistent LIVE]</b>\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()} (1분 실외 감시 중)\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
             `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3% Net)\n` +
             `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
-            `📡 <b>v6.0.0 분석</b>: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)`;
+            `📡 <b>v7.0.0 분석</b>: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)`;
 
           await sendTelegram(message);
         } else {
-          await sendTelegram(`💤 <b>[v6.0.0 Global]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`);
+          await sendTelegram(`💤 <b>[v7.0.0 Global]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`);
         }
         lastSignal = currentSig;
       }
     } catch (e) {
-      console.error('v6.0.0 Loop Error:', e.message);
+      console.error('v7.0.0 Loop Error:', e.message);
     }
 
     // Wait 60 seconds
