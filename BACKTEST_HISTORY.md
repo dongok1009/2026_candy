@@ -358,3 +358,58 @@ v6.0.0은 2020년부터 2026년까지 비트코인 역대 최악의 하락장(20
 - Note: This is the verified global stable version for the v7 series.
 ---
 
+
+### 📊 Official Record: Record.v7.0.0.4
+- ROI: 67.06% | 23W/1L
+- Params: BTCUSDT 5x | 1000 -> 1670.6409816686707
+---
+
+### 📊 Official Record: Record.v6.0.2.2
+- ROI: 1094.39% | 138W/12L
+- Params: BTCUSDT 5x | 1000 -> 11943.939740613614
+---
+
+### 📊 Official Record: Record.6.0.0.1
+- ROI: 3064.76% | 603W/126L
+- Params: BTCUSDT 5x | 1000 -> 31647.637732808187
+---
+
+### 📊 Official Record: Record.7.0.0.2
+- ROI: 67.06% | 23W/1L
+- Params: BTCUSDT 5x | 1000 -> 1670.6409816686707
+---
+
+### 📊 Official Record: Record.7.0.0.3
+- ROI: 30.48% | 9W/0L
+- Params: BTCUSDT 5x | 1000 -> 1304.7731838292445
+---
+
+### 📊 Official Record: Record.6.0.2.3
+- ROI: 183.37% | 44W/2L
+- Params: BTCUSDT 5x | 1000 -> 2833.698981613565
+---
+
+### 📊 Official Record: Record.6.0.0.2
+- ROI: 93.45% | 127W/22L
+- Params: BTCUSDT 5x | 1000 -> 1934.5253967168085
+---
+
+### 📊 Official Record: Record.7.0.0.4
+- ROI: 30.48% | 9W/0L
+- Params: BTCUSDT 5x | 1000 -> 1304.7731838292445
+---
+
+### 📊 Official Record: Record.7.0.0.5
+- ROI: 30.48% | 9W/0L
+- Params: BTCUSDT 5x | 1000 -> 1304.7731838292445
+---
+
+### 📊 Official Record: Record.7.0.0.6
+- ROI: 55.80% | 15W/0L
+- Params: BTCUSDT 5x | 1000 -> 1557.9674166007644
+---
+
+### 📊 Official Record: Record.7.0.0.7
+- ROI: 60.47% | 16W/0L
+- Params: BTCUSDT 5x | 1000 -> 1604.7064390987873
+---

@@ -85,7 +85,8 @@ try {
             roi: res.roi,
             finalBalance: res.finalBalance,
             trades: res.trades,
-            resultFilePath: res.detailFile
+            resultFilePath: res.detailFile,
+            validationFile: res.validationFile
         })}###JSON_RESULT###`);
     }).catch(err => {
         console.error(err);

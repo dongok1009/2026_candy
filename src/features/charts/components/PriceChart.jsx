@@ -168,8 +168,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       color: 'rgba(132,142,156,0.4)',
       lineWidth: 1,
       lineStyle: 2,
-      axisLabelVisible: true,
-      title: 'Threshold',
+      axisLabelVisible: false,
+      title: '',
     });
 
     inspectLineAdxRef.current = adxChart.addSeries(HistogramSeries, { 

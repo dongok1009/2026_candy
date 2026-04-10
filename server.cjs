@@ -7,7 +7,8 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const RECORDS_FILE = path.join(__dirname, 'records.json');
 const HISTORY_MD = path.join(__dirname, 'BACKTEST_HISTORY.md');
@@ -67,52 +68,59 @@ app.post('/api/backtest', (req, res) => {
 
 // 결과 기록 (JSON + MD 동시 저장)
 app.post('/api/save-history', (req, res) => {
-    const { baseVersion, config, rules, result } = req.body;
-    
-    let records = [];
-    if (fs.existsSync(RECORDS_FILE)) {
-        records = JSON.parse(fs.readFileSync(RECORDS_FILE, 'utf8'));
+    try {
+        const { baseVersion, config, rules, result } = req.body;
+        
+        if (!baseVersion || !result) {
+            return res.status(400).json({ success: false, error: "필수 데이터(baseVersion, result)가 누락되었습니다." });
+        }
+
+        let records = [];
+        if (fs.existsSync(RECORDS_FILE)) {
+            const fileData = fs.readFileSync(RECORDS_FILE, 'utf8');
+            if (fileData) records = JSON.parse(fileData);
+        }
+
+        // 버전 증량 로직: v7_0_0 또는 v7.0.0 모두 대응
+        // baseVersion: Logic.v7.0.0 -> "Logic.7.0.0"
+        const cleanBase = baseVersion.replace('Logic.', '').replace('v', '');
+        
+        const existingSameBase = records.filter(r => r.baseVersion === baseVersion);
+        const nextZ = existingSameBase.length + 1;
+        const newVersion = `Record.${cleanBase}.${nextZ}`;
+        
+        const newRecord = {
+            version: newVersion,
+            baseVersion,
+            timestamp: new Date().toLocaleString(),
+            config,
+            rules,
+            stats: {
+                roi: `${result.roi}%`,
+                winRate: `${((result.wins / (result.wins + result.losses || 1)) * 100).toFixed(1)}%`,
+                trades: result.wins + result.losses,
+                wins: result.wins,
+                losses: result.losses,
+                period: `${config.startDate.replace('T', ' ')} ~ ${config.endDate.replace('T', ' ')}`,
+                initialBalance: config.initialBalance,
+                finalBalance: result.finalBalance
+            },
+            tradesLog: result.trades || [],
+            detailFile: result.detailFile
+        };
+
+        records.push(newRecord);
+        fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
+
+        // Markdown 추가 기록
+        const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}\n---\n`;
+        fs.appendFileSync(HISTORY_MD, logEntry);
+
+        res.json({ success: true, newVersion, record: newRecord });
+    } catch (err) {
+        console.error("[SAVE-HISTORY ERROR]", err);
+        res.status(500).json({ success: false, error: err.message });
     }
-
-    // 버전 증량 로직: v7_0_0 또는 v7.0.0 모두 대응
-    const cleanVersion = baseVersion.replace('v', '');
-    const baseParts = cleanVersion.includes('_') ? cleanVersion.split('_') : cleanVersion.split('.');
-    const major = isNaN(Number(baseParts[0])) ? 7 : Number(baseParts[0]);
-    const minor = isNaN(Number(baseParts[1])) ? 0 : Number(baseParts[1]);
-    
-    const existingSameBase = records.filter(r => r.baseVersion === baseVersion);
-    const nextZ = existingSameBase.length + 1;
-    const cleanBase = baseVersion.replace('Logic.', '');
-    const newVersion = `Record.${cleanBase}.${nextZ}`;
-    
-    const newRecord = {
-        version: newVersion,
-        baseVersion,
-        timestamp: new Date().toISOString(),
-        config,
-        rules,
-        stats: {
-            roi: `${result.roi}%`,
-            winRate: `${((result.wins / (result.wins + result.losses || 1)) * 100).toFixed(1)}%`,
-            trades: result.wins + result.losses,
-            wins: result.wins,
-            losses: result.losses,
-            period: `${config.startDate.replace('T', ' ')} ~ ${config.endDate.replace('T', ' ')}`,
-            initialBalance: config.initialBalance,
-            finalBalance: result.finalBalance
-        },
-        tradesLog: result.trades || [],
-        detailFile: result.detailFile
-    };
-
-    records.push(newRecord);
-    fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
-
-    // Markdown 추가 기록
-    const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}\n---\n`;
-    fs.appendFileSync(HISTORY_MD, logEntry);
-
-    res.json({ success: true, newVersion, record: newRecord });
 });
 
 // 기록 삭제 API

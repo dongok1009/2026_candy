@@ -1,5 +1,15 @@
 # Changelog
- 
+
+## [7.0.0] - 2026-04-10
+### Added
+- **Finalized Trading Logic v7.0.0**: 5분봉, 1시간봉, 1일봉의 ADX 필터 및 StochRSI/MACD 최적화 조합 적용.
+- **Dashboard UX/UI 개선**: 차트 표시 최적화, 백테스트 서브미션 폼 필드 추가 및 유효성 검사 강화.
+- **History Archive 시스템**: 모든 백테스트 기록을 `records.json` 및 `BACKTEST_HISTORY.md`에 영구 보관하는 기능 완성.
+
+### Changed
+- **Backtest Server (v2.0)**: Node.js 서버의 데이터 처리 용량 확대 및 비동기 실행 안정성 확보.
+- **Engine Logic**: 진입/청산 대기 시간(`entryWaitMin`, `exitWaitMin`) 파라미터화 및 시뮬레이션 정밀도 향상.
+
 ## [Infrastructure Update] - 2026-04-04
 ### Added
 - **통합 백테스트 엔진(Unified Engine) 및 전략 버전 관리 시스템 도입**

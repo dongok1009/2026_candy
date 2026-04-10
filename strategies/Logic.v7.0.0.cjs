@@ -74,20 +74,18 @@ const strategy = {
 
 
     entry_logic: (sig, k1m, k5_prev, klines1m, currentIndex, config) => {
-        // v7.0.0 uses Retrace Entry: Signal Price * (1 +/- 1.5%)
-        const signalPrice = k1m.close;
-        const retraceP = 0.015;
-        const limitTargetPrice = sig === 'long' ? signalPrice * (1 - retraceP) : signalPrice * (1 + retraceP);
+        // v7.0.0 : 5분 확정봉(k5_prev)의 고가/저가 기준 0.15% 여유 진입
+        const limitTargetPrice = sig === 'long' ? k5_prev.low * 0.9985 : k5_prev.high * 1.0015; 
 
         let finalEntryPrice = 0;
         let executed = false;
         let entryTimeIdx = currentIndex;
-        let entryType = "RETRACE_LIMIT";
+        const entryType = sig === 'long' ? "low x 0.9985" : "high x 1.0015";
 
         // [ENTRY WAIT LIMIT] 설정된 대기 시간 초과 시 무시
         const waitLimit = (config && config.ENTRY_WAIT_MIN) || 180;
 
-        for (let j = currentIndex; j < klines1m.length; j++) {
+        for (let j = currentIndex + 1; j < klines1m.length; j++) {
             const ex = klines1m[j];
             if (sig === 'long' && ex.low <= limitTargetPrice) { 
                 finalEntryPrice = limitTargetPrice; executed = true; entryTimeIdx = j; break; 
@@ -98,7 +96,7 @@ const strategy = {
             if (j - currentIndex > waitLimit) break;
         }
 
-        return { executed, finalEntryPrice, entryType, entryTimeIdx };
+        return { executed, finalEntryPrice, entryBasis: entryType, entryTimeIdx };
     }
 };
 

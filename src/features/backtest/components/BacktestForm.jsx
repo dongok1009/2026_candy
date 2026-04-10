@@ -173,6 +173,16 @@ const BacktestForm = () => {
         } catch (err) { alert('Delete failed.'); }
     };
 
+    // [VALIDATION] 통합 검증 마스터 파일 다운로드
+    const handleDownloadValidation = () => {
+        if (!latestResult?.validationFile) {
+            alert("검증용 마스터 파일이 존재하지 않습니다.");
+            return;
+        }
+        const safeFile = encodeURIComponent(latestResult.validationFile);
+        window.location.href = `http://localhost:3001/api/download?file=${safeFile}`;
+    };
+
     const handleCopy = () => {
         const cmd = `node run_backtest.cjs ${config.version} --symbol=${config.symbol} --start=${config.startDate.split('T')[0]} --end=${config.endDate.split('T')[0]} --leverage=${config.leverage} --balance=${config.initialBalance}`;
         navigator.clipboard.writeText(cmd);
@@ -356,6 +366,11 @@ const BacktestForm = () => {
                         <button className="save-button" style={{ marginLeft: 'auto', opacity: latestResult ? 1 : 0.4 }} onClick={handleRecord} disabled={!latestResult}>
                             <Save size={18} /> Record Result
                         </button>
+                        {latestResult?.validationFile && (
+                            <button className="download-val-button" onClick={handleDownloadValidation} style={{ background: '#673ab7', color: 'white', padding: '10px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <FileCode size={18} /> Audit Report (1m)
+                            </button>
+                        )}
                     </div>
                 </section>
             </div>
@@ -576,7 +591,6 @@ const BacktestForm = () => {
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
                                     <input type="checkbox" checked={rules.long[iv].useAdx} onChange={e => handleRuleChange('long', iv, 'useAdx', e.target.checked)} />
-                                    <span style={{ color: '#eaebed' }}>ADX &gt;</span>
                                     <input type="number" className="cond-input-small" value={rules.long[iv].adxThreshold} onChange={e => handleRuleChange('long', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
@@ -614,7 +628,6 @@ const BacktestForm = () => {
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
                                     <input type="checkbox" checked={rules.short[iv].useAdx} onChange={e => handleRuleChange('short', iv, 'useAdx', e.target.checked)} />
-                                    <span style={{ color: '#eaebed' }}>ADX &gt;</span>
                                     <input type="number" className="cond-input-small" value={rules.short[iv].adxThreshold} onChange={e => handleRuleChange('short', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>

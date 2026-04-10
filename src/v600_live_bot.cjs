@@ -112,6 +112,7 @@ async function fetchPriceData(interval, limit = 200) {
 }
 
 let lastSignal = 'hold';
+let lastNotifiedPrice = 0; // 중복 알림 방지를 위한 가중치 필터
 const START_TIME = Date.now();
 const MAX_LIFE_MS = 5.8 * 60 * 60 * 1000; // 5.8 hours (GitHub limits to 6h)
 
@@ -150,7 +151,7 @@ async function runLiveCycle() {
       const currentSig = getSigAt(cur5, curH, curD);
       console.log(`Current Signal: ${currentSig.toUpperCase()}`);
 
-      // Persistent Signal Memory Logic (Alert Only on CHANGE)
+      // Persistent Signal Memory Logic (Enhanced Deduplication)
       if (currentSig !== lastSignal) {
         if (currentSig !== 'hold') {
           const signalPrice = klines5m[klines5m.length - 1].close;
@@ -158,6 +159,13 @@ async function runLiveCycle() {
           const prevHigh = klines5m[klines5m.length - 1].high;
 
           const entryPrice = currentSig === 'long' ? Math.min(signalPrice, prevLow) : Math.max(signalPrice, prevHigh);
+          
+          // [CRITICAL FIX] 방향과 가격이 모두 동일하면 이전 알림의 중복으로 판단하여 스킵
+          if (currentSig === lastSignal && entryPrice === lastNotifiedPrice) {
+            console.log(`♻️ Signal identical to last alert. Skipping notification.`);
+            return; 
+          }
+
           const feeOnMargin = (MAKER_FEE_RATE + EXIT_MAKER_FEE_RATE) * LEVERAGE;
           const grossTP = TARGET_NET_ROI + feeOnMargin;
           const tpPrice = currentSig === 'long' ? entryPrice * (1 + grossTP / LEVERAGE) : entryPrice * (1 - grossTP / LEVERAGE);
@@ -171,8 +179,10 @@ async function runLiveCycle() {
             `📡 <b>v7.0.0 분석</b>: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)`;
 
           await sendTelegram(message);
+          lastNotifiedPrice = entryPrice; // 전송된 가격 기억
         } else {
           await sendTelegram(`💤 <b>[v7.0.0 Global]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`);
+          lastNotifiedPrice = 0; // HOLD 시 가격 리셋
         }
         lastSignal = currentSig;
       }
