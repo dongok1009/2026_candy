@@ -150,7 +150,7 @@ const SignalSettings = ({
                       <input type="number" 
                         value={getRuleNum('global', null, 'entryWaitMin')} 
                         onChange={e => updateRule('global', null, 'entryWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '60px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                        style={{ width: '100%', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '18px', fontWeight: '800', outline: 'none', textAlign: 'center' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 진입 실패 처리</span>
                   </div>
@@ -161,7 +161,7 @@ const SignalSettings = ({
                       <input type="number" 
                         value={getRuleNum('global', null, 'exitWaitMin')} 
                         onChange={e => updateRule('global', null, 'exitWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '60px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                        style={{ width: '100%', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '18px', fontWeight: '800', outline: 'none', textAlign: 'center' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 시장가 청산 강제</span>
                   </div>
