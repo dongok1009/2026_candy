@@ -528,35 +528,99 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
   }, [dataLoaded, inspectTime, interval]);
 
   const evaluateSignal = (lastM, lastS, lastK, lastD, lastADX) => {
-    let isLong = true; let isShort = true;
-    if (lastM === null || lastS === null) { isLong = false; isShort = false; }
-    else {
-      // ADX Filter
-      const adxOk = (rule?.long?.adxEnabled || rule?.short?.adxEnabled)
-        ? (lastADX !== null && lastADX >= parseFloat(rule.long?.adxThreshold || rule.short?.adxThreshold || 30))
-        : true;
+    let isLong = true;
+    let isShort = true;
 
+    if (lastM === null || lastS === null) {
+      isLong = false;
+      isShort = false;
+    } else {
+      // 1. LONG SIGNAL CHECK
       if (rule?.long) {
         let activeLongCondCount = 0;
-        if (rule.long.macdValueEnabled) { activeLongCondCount++; if (!(lastM < parseFloat(rule.long.macdValue))) isLong = false; }
-        if (rule.long.macdCrossEnabled) { activeLongCondCount++; if (!(lastM > lastS)) isLong = false; }
-        if (rule.long.stochCrossEnabled) { activeLongCondCount++; if (!(lastD !== null && lastK !== null && lastD < lastK)) isLong = false; }
-        if (rule.long.macdHistEnabled) { activeLongCondCount++; if (!(Math.abs(lastM - lastS) > parseFloat(rule.long.macdHistValue))) isLong = false; }
-        if (rule.long.adxEnabled) { activeLongCondCount++; if (!adxOk) isLong = false; }
-        if (activeLongCondCount === 0) isLong = false;
-      } else isLong = false;
+        
+        // ADX
+        if (rule.long.adxEnabled) {
+          activeLongCondCount++;
+          const threshold = parseFloat(rule.long.adxThreshold || 30);
+          if (!(lastADX !== null && lastADX >= threshold)) isLong = false;
+        }
+        
+        // MACD Cross
+        if (rule.long.macdCrossEnabled) {
+          activeLongCondCount++;
+          if (!(lastM > lastS)) isLong = false;
+        }
+        
+        // Stoch Cross
+        if (rule.long.stochCrossEnabled) {
+          activeLongCondCount++;
+          if (!(lastD !== null && lastK !== null && lastD < lastK)) isLong = false;
+        }
+        
+        // MACD Sig Diff (|MACD-Sig| > X) - mainly for 1D
+        if (rule.long.macdHistEnabled) {
+          activeLongCondCount++;
+          const val = parseFloat(rule.long.macdHistValue || 0);
+          if (!(Math.abs(lastM - lastS) > val)) isLong = false;
+        }
 
+        // MACD Value (MACD < X) - mainly for 5m
+        if (rule.long.macdValueEnabled) {
+          activeLongCondCount++;
+          const val = parseFloat(rule.long.macdValue || 0);
+          if (!(lastM < val)) isLong = false;
+        }
+
+        if (activeLongCondCount === 0) isLong = false;
+      } else {
+        isLong = false;
+      }
+
+      // 2. SHORT SIGNAL CHECK
       if (rule?.short) {
         let activeShortCondCount = 0;
-        if (rule.short.macdValueEnabled) { activeShortCondCount++; if (!(lastM > parseFloat(rule.short.macdValue))) isShort = false; }
-        if (rule.short.macdCrossEnabled) { activeShortCondCount++; if (!(lastM < lastS)) isShort = false; }
-        if (rule.short.stochCrossEnabled) { activeShortCondCount++; if (!(lastD !== null && lastK !== null && lastD > lastK)) isShort = false; }
-        if (rule.short.macdHistEnabled) { activeShortCondCount++; if (!(Math.abs(lastM - lastS) > parseFloat(rule.short.macdHistValue))) isShort = false; }
-        if (rule.short.adxEnabled) { activeShortCondCount++; if (!adxOk) isShort = false; }
+        
+        // ADX
+        if (rule.short.adxEnabled) {
+          activeShortCondCount++;
+          const threshold = parseFloat(rule.short.adxThreshold || 30);
+          if (!(lastADX !== null && lastADX >= threshold)) isShort = false;
+        }
+        
+        // MACD Cross
+        if (rule.short.macdCrossEnabled) {
+          activeShortCondCount++;
+          if (!(lastM < lastS)) isShort = false;
+        }
+        
+        // Stoch Cross
+        if (rule.short.stochCrossEnabled) {
+          activeShortCondCount++;
+          if (!(lastD !== null && lastK !== null && lastD > lastK)) isShort = false;
+        }
+        
+        // MACD Sig Diff
+        if (rule.short.macdHistEnabled) {
+          activeShortCondCount++;
+          const val = parseFloat(rule.short.macdHistValue || 0);
+          if (!(Math.abs(lastM - lastS) > val)) isShort = false;
+        }
+
+        // MACD Value (MACD > X)
+        if (rule.short.macdValueEnabled) {
+          activeShortCondCount++;
+          const val = parseFloat(rule.short.macdValue || 0);
+          if (!(lastM > val)) isShort = false;
+        }
+
         if (activeShortCondCount === 0) isShort = false;
-      } else isShort = false;
+      } else {
+        isShort = false;
+      }
     }
 
+    // Final color and signal update
     const currentSignal = isLong ? 'long' : (isShort ? 'short' : 'hold');
     setBorderColor(isLong ? '#26a69a' : (isShort ? '#ef5350' : '#f3ba2f'));
     if (onSignalUpdate) onSignalUpdate(currentSignal);
