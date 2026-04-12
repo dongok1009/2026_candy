@@ -6,6 +6,7 @@ import './BacktestForm.css';
 import './BacktestHistoryArchive.css';
 
 const BacktestForm = () => {
+    const API_BASE = "http://localhost:3001";
     const [config, setConfig] = useState({
         symbol: 'BTCUSDT',
         startDate: '2026-01-01T00:00',
@@ -175,16 +176,31 @@ const BacktestForm = () => {
     };
 
     const handleDeleteRecord = async (version) => {
-        if (!window.confirm(`Are you sure you want to delete ${version}?`)) return;
+        if (!version) return;
+        console.log("-> handleDeleteRecord START:", version);
+        
         try {
-            const resp = await fetch(`http://localhost:3001/api/delete-history?version=${version}`, { method: 'DELETE' });
+            console.log("-> Fetching delete API...");
+            const resp = await fetch(`${API_BASE}/api/delete-history`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ version })
+            });
+            
             const data = await resp.json();
+            console.log("-> Server response:", data);
+            
             if (data.success) {
-                alert('Record deleted successfully.');
+                alert('삭제 완료되었습니다.');
                 await fetchRecords();
                 if (selectedRecordId === version) setSelectedRecordId('');
+            } else {
+                alert(`오류: ${data.error}`);
             }
-        } catch (err) { alert('Delete failed.'); }
+        } catch (err) { 
+            console.error("-> DELETE FATAL ERROR:", err);
+            alert(`시스템 오류: ${err.message}`); 
+        }
     };
 
     // [VALIDATION] 통합 검증 마스터 파일 다운로드
@@ -236,7 +252,6 @@ const BacktestForm = () => {
         return diff >= 0 ? `${diff}m` : '-';
     };
 
-    const API_BASE = "http://localhost:3001";
 
     // 백테스트 결과가 있거나 기록을 선택한 경우에는 비어있더라도 실제 결과를 보여주고, 초기 상태에서만 샘플을 보여줌
     const isShowingRealResult = latestResult !== null || selectedRecordId !== '';
@@ -701,7 +716,7 @@ const BacktestForm = () => {
             {/* 2. Entry & Exit Strategy 섹션 */}
             <section className="config-section" style={{ marginTop: '24px' }}>
                 <div style={{ position: 'fixed', bottom: '10px', right: '10px', fontSize: '0.7rem', color: '#444' }}>
-                    v7.0.1 Backtest Engine [Modularized System]
+                    v7.0.0.2 Backtest Engine [Modularized System]
                 </div>
                 <h3 style={{ color: '#eaebed', fontSize: '16px', fontWeight: '800', marginBottom: '24px' }}>
                     2. Entry & Exit Strategy (Order Execution)

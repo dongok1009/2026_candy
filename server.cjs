@@ -12,6 +12,27 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const RECORDS_FILE = path.join(__dirname, 'records.json');
 const HISTORY_MD = path.join(__dirname, 'BACKTEST_HISTORY.md');
+const LIVE_STATE_FILE = path.join(__dirname, 'live_state.json');
+const LIVE_RULES_FILE = path.join(__dirname, 'live_rules.json');
+
+// --- 실전 매매 (Live Trading) API ---
+app.get('/api/live-status', (req, res) => {
+    if (!fs.existsSync(LIVE_STATE_FILE)) return res.json({ status: 'OFFLINE' });
+    const data = JSON.parse(fs.readFileSync(LIVE_STATE_FILE, 'utf8'));
+    res.json(data);
+});
+
+app.post('/api/live-settings', (req, res) => {
+    const { rules } = req.body;
+    fs.writeFileSync(LIVE_RULES_FILE, JSON.stringify(rules, null, 2));
+    res.json({ success: true });
+});
+
+app.get('/api/live-rules', (req, res) => {
+    if (!fs.existsSync(LIVE_RULES_FILE)) return res.json({});
+    res.json(JSON.parse(fs.readFileSync(LIVE_RULES_FILE, 'utf8')));
+});
+// ----------------------------------
 
 // 기록 불러오기 API
 app.get('/api/list-history', (req, res) => {
@@ -126,22 +147,39 @@ app.post('/api/save-history', (req, res) => {
     }
 });
 
-// 기록 삭제 API
-app.delete('/api/delete-history', (req, res) => {
-    const { version } = req.query;
-    if (!fs.existsSync(RECORDS_FILE)) return res.status(404).json({ success: false, error: "기록 파일이 없습니다." });
-    
-    let records = JSON.parse(fs.readFileSync(RECORDS_FILE, 'utf8'));
-    const initialCount = records.length;
-    records = records.filter(r => r.version !== version);
-    
-    if (records.length === initialCount) {
-        return res.status(404).json({ success: false, error: "해당 버전을 찾을 수 없습니다." });
+// 기록 삭제 API (POST로 변경하여 호환성 극대화)
+app.post('/api/delete-history', (req, res) => {
+    try {
+        const { version } = req.body; // POST이므로 body에서 추출
+        console.log(`[API] Delete Request for version: "${version}"`);
+
+        if (!fs.existsSync(RECORDS_FILE)) {
+            return res.status(404).json({ success: false, error: "기록 파일(records.json)이 없습니다." });
+        }
+        
+        const fileContent = fs.readFileSync(RECORDS_FILE, 'utf8');
+        let records = JSON.parse(fileContent || '[]');
+        const initialCount = records.length;
+        
+        // 해당 버전 찾기
+        const targetRecord = records.find(r => r.version === version);
+        if (!targetRecord) {
+            console.warn(`[API] Version not found in records: ${version}`);
+            return res.status(404).json({ success: false, error: "해당 기록을 찾을 수 없습니다." });
+        }
+
+        // 목록에서 제거
+        records = records.filter(r => r.version !== version);
+        
+        // 파일 업데이트
+        fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
+        console.log(`[API] Successfully deleted "${version}" from records.json`);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error("[API DELETE ERROR]", err);
+        res.status(500).json({ success: false, error: err.message });
     }
-    
-    console.log(`[API] Deleting version: ${version}`);
-    fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
-    res.json({ success: true });
 });
 
 // 상세 파일 다운로드 API (CSV 등)

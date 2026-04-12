@@ -5,6 +5,7 @@ import SignalSettings from './SignalSettings';
 import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart2 } from 'lucide-react';
 import './Dashboard.css';
 import { sendTelegramMessage, getBotInfo } from '../../../shared/utils/telegramUtils';
+import LiveTradeMonitor from '../../live/components/LiveTradeMonitor';
 
 const StatCard = ({ title, value, change, icon: Icon, color }) => (
   <div className="stat-card">
@@ -224,7 +225,7 @@ const Dashboard = () => {
       <header className="dashboard-header">
         <div className="logo-section">
           <Activity color="#f3ba2f" size={32} />
-          <h1>Antigravity Markets <span style={{ fontSize: '14px', verticalAlign: 'middle', background: '#f3ba2f', color: '#161a1e', padding: '2px 6px', borderRadius: '4px', marginLeft: '10px' }}>v7.0.2 Global Official</span></h1>
+          <h1>Antigravity Markets <span style={{ fontSize: '14px', verticalAlign: 'middle', background: '#f3ba2f', color: '#161a1e', padding: '2px 6px', borderRadius: '4px', marginLeft: '10px' }}>v7.0.0.2 Global Official</span></h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div className="connection-status" style={{ cursor: 'pointer', userSelect: 'none', border: isPastMode ? '1px solid #f3ba2f' : '1px solid transparent' }} onClick={() => setIsPastMode(!isPastMode)}>
@@ -411,6 +412,8 @@ const Dashboard = () => {
             />
           </div>
         </section>
+
+        <LiveTradeMonitor currentRules={rules} />
 
         <SignalSettings 
           rules={rules}

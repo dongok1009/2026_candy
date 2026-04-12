@@ -80,8 +80,18 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                         <Download size={14} />
                                     </a>
                                 )}
-                                <button className="action-btn delete" onClick={() => onDelete(record.version)} title="Delete Record">
-                                    <Trash2 size={14} />
+                                <button 
+                                    className="action-btn delete" 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log("!!! DELETE CLICK DETECTED !!!", record.version);
+                                        onDelete(record.version);
+                                    }} 
+                                    title="Delete Record"
+                                    style={{ cursor: 'pointer', zIndex: 100 }}
+                                >
+                                    <Trash2 size={14} style={{ pointerEvents: 'none' }} />
                                 </button>
                             </div>
                         </div>

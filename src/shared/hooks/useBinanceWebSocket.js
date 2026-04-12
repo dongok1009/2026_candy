@@ -29,7 +29,6 @@ export const useBinanceWebSocket = (symbol = 'BTCUSDT', interval = '1m') => {
 
       ws.current.onopen = () => {
         if (isMounted) {
-          console.log(`WebSocket Connected: ${streamName}`);
           setIsConnected(true);
         }
       };
@@ -65,8 +64,10 @@ export const useBinanceWebSocket = (symbol = 'BTCUSDT', interval = '1m') => {
       };
 
       ws.current.onerror = (err) => {
-        console.error('WS Error:', err);
-        if (ws.current) ws.current.close();
+        if (isMounted) {
+          console.warn('WebSocket Temporary Interruption (Normal during refresh/tabs):', streamName);
+          if (ws.current) ws.current.close();
+        }
       };
     };
 
