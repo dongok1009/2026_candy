@@ -145,23 +145,23 @@ const SignalSettings = ({
       <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div className="input-group">
-                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px' }}>Entry Wait Limit (min)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '10px 15px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
                         value={getRuleNum('global', null, 'entryWaitMin')} 
                         onChange={e => updateRule('global', null, 'entryWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '100%', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '18px', fontWeight: '800', outline: 'none', textAlign: 'center' }} 
+                        style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 진입 실패 처리</span>
                   </div>
               </div>
               <div className="input-group">
-                  <label style={{ display: 'block', color: '#ff4d4d', fontSize: '12px', marginBottom: '8px' }}>Exit Wait Limit (min)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '10px 15px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                  <label style={{ display: 'block', color: '#ff4d4d', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
                         value={getRuleNum('global', null, 'exitWaitMin')} 
                         onChange={e => updateRule('global', null, 'exitWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '100%', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '18px', fontWeight: '800', outline: 'none', textAlign: 'center' }} 
+                        style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 시장가 청산 강제</span>
                   </div>
