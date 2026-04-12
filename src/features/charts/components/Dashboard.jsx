@@ -34,6 +34,10 @@ const DEFAULT_RULES = {
   '1d': {
     long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 },
     short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
+  },
+  global: {
+    entryWaitMin: 180,
+    exitWaitMin: 2000
   }
 };
 
@@ -147,7 +151,18 @@ const Dashboard = () => {
   }, [globalSignal, isPastMode, telegramToken, telegramChatId, symbol, signals]);
 
   const updateRule = (interval, direction, field, value) => {
-    setRules(prev => ({ ...prev, [interval]: { ...prev[interval], [direction]: { ...prev[interval][direction], [field]: value } } }));
+    setRules(prev => {
+      if (interval === 'global') {
+        return { ...prev, global: { ...prev.global, [field]: value } };
+      }
+      return { 
+        ...prev, 
+        [interval]: { 
+          ...prev[interval], 
+          [direction]: { ...prev[interval][direction], [field]: value } 
+        } 
+      };
+    });
   };
 
   const res5m = useBinanceWebSocket(symbol, '5m');
