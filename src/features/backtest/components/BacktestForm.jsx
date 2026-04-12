@@ -8,8 +8,8 @@ import './BacktestHistoryArchive.css';
 const BacktestForm = () => {
     const [config, setConfig] = useState({
         symbol: 'BTCUSDT',
-        startDate: '2025-01-01T00:00',
-        endDate: '2025-03-01T00:00',
+        startDate: '2026-01-01T00:00',
+        endDate: '2026-03-01T00:00',
         leverage: 5,
         initialBalance: 1000,
         makerFee: 0.0002,
@@ -18,7 +18,7 @@ const BacktestForm = () => {
         fundingFee: 0.0001,
         targetRoi: 0.03,
         slRoi: 0.15,
-        version: 'Logic.v7.0.0',
+        version: OFFICIAL_STRATEGIES[0].version,
         macdFast: 12,
         macdSlow: 26,
         macdSignal: 9,
@@ -28,7 +28,7 @@ const BacktestForm = () => {
         adxPeriod: 14,
         entryType: 'hybrid',
         entryWaitMin: 180,
-        exitWaitMin: 3000
+        exitWaitMin: 2000
     });
 
     const [rules, setRules] = useState(OFFICIAL_STRATEGIES[0].rules);
@@ -42,6 +42,7 @@ const BacktestForm = () => {
     const [latestResult, setLatestResult] = useState(null);
     const [resultsTrades, setResultsTrades] = useState([]);
     const [showIndicators, setShowIndicators] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     useEffect(() => {
         const savedHistory = localStorage.getItem('backtest_history');
@@ -136,6 +137,19 @@ const BacktestForm = () => {
             }
         } catch (error) { alert("서버 실패"); }
         finally { setIsRunning(false); }
+    };
+
+    const handleVerify = async () => {
+        setIsVerifying(true);
+        try {
+            const resp = await fetch('http://localhost:3001/api/verify', { method: 'POST' });
+            const data = await resp.json();
+            alert("--- LOGIC VERIFICATION RESULT ---\n\n" + data.output);
+        } catch (err) {
+            alert("검증 요청 중 오류가 발생했습니다: " + err.message);
+        } finally {
+            setIsVerifying(false);
+        }
     };
 
     const handleRecord = async () => {
@@ -309,7 +323,7 @@ const BacktestForm = () => {
                 <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <h2 style={{ margin: 0 }}><Layers /> Backtest Dashboard</h2>
-                        <span style={{ fontSize: '11px', color: '#f3ba2f', opacity: 0.8, marginLeft: '32px' }}>System Version: UI.v7.0.0</span>
+                        <span style={{ fontSize: '11px', color: '#f3ba2f', opacity: 0.8, marginLeft: '32px' }}>System Version: UI.v7.0.2</span>
                     </div>
                     <select name="version" value={config.version} onChange={handleChange} className="header-select" style={{ minWidth: '220px', background: '#1e2329', color: '#f3ba2f', borderColor: '#f3ba2f' }}>
                         {OFFICIAL_STRATEGIES.map(s => <option key={s.version} value={s.version}>{s.name}</option>)}
@@ -358,6 +372,27 @@ const BacktestForm = () => {
                         <button className={`run-button ${isRunning ? 'running' : ''}`} onClick={handleRun} disabled={isRunning}>
                             {isRunning ? <RefreshCcw size={18} className="spin" /> : <Play size={18} />}
                             {isRunning ? 'Executing...' : 'Run Backtest'}
+                        </button>
+                        <button 
+                            className="verify-button" 
+                            onClick={handleVerify} 
+                            disabled={isVerifying}
+                            style={{ 
+                                background: '#673ab7', 
+                                color: 'white', 
+                                padding: '10px 16px', 
+                                borderRadius: '8px', 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                fontWeight: 'bold', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                opacity: isVerifying ? 0.6 : 1
+                            }}
+                        >
+                            {isVerifying ? <RefreshCcw size={18} className="spin" /> : <FileCode size={18} />}
+                            {isVerifying ? 'Verifying...' : 'Verify Rules'}
                         </button>
                         <button className="copy-button" onClick={handleCopy}>
                             {copySuccess ? <CheckCircle2 size={18} /> : <Copy size={18} />}
@@ -590,7 +625,8 @@ const BacktestForm = () => {
                             <div key={iv} className="interval-row" style={{ marginBottom: iv !== '1d' ? '20px' : '0' }}>
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.long[iv].useAdx} onChange={e => handleRuleChange('long', iv, 'useAdx', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.long[iv].useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
+                                    <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>ADX &gt;</span>
                                     <input type="number" className="cond-input-small" value={rules.long[iv].adxThreshold} onChange={e => handleRuleChange('long', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
@@ -627,7 +663,8 @@ const BacktestForm = () => {
                             <div key={iv} className="interval-row" style={{ marginBottom: iv !== '1d' ? '20px' : '0' }}>
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.short[iv].useAdx} onChange={e => handleRuleChange('short', iv, 'useAdx', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.short[iv].useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
+                                    <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>ADX &gt;</span>
                                     <input type="number" className="cond-input-small" value={rules.short[iv].adxThreshold} onChange={e => handleRuleChange('short', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
@@ -663,6 +700,9 @@ const BacktestForm = () => {
 
             {/* 2. Entry & Exit Strategy 섹션 */}
             <section className="config-section" style={{ marginTop: '24px' }}>
+                <div style={{ position: 'fixed', bottom: '10px', right: '10px', fontSize: '0.7rem', color: '#444' }}>
+                    v7.0.1 Backtest Engine [Modularized System]
+                </div>
                 <h3 style={{ color: '#eaebed', fontSize: '16px', fontWeight: '800', marginBottom: '24px' }}>
                     2. Entry & Exit Strategy (Order Execution)
                 </h3>

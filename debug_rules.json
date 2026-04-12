@@ -1,0 +1,5 @@
+{
+  "long": {
+    "1h": { "useADX": true, "adxThreshold": 30 }
+  }
+}

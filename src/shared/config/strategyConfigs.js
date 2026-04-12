@@ -4,6 +4,64 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
+    version: 'Logic.v7.0.2',
+    name: 'Logic.v7.0.2 (Ultimate Sync)',
+    description: 'UI 설정 실시간 동기화 완벽 보정 및 지표 데이터 180일 예열이 적용된 최종 완성 버전',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'Verified'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 2000,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
+      }
+    }
+  },
+  {
+    version: 'Logic.v7.0.1',
+    name: 'Logic.v7.0.1 (Stable & Conservative)',
+    description: 'T-1 확정봉 시그널 및 T 시점 즉시 진입 원칙이 적용된 최신 보수적 모델 (선행 편향 차단)',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'Testing...'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 3000,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
+      }
+    }
+  },
+  {
     version: 'Logic.v7.0.0',
     name: 'Logic.v7.0.0 (Optimized Stable)',
     description: '지표 출력, 누적 ROI, 잔액 추적 기능이 통합된 7.0.0 통합 안정화 버전',
@@ -21,14 +79,14 @@ export const OFFICIAL_STRATEGIES = [
       entryWaitMin: 180,
       exitWaitMin: 3000,
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: true, adxThreshold: 30 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: true, adxThreshold: 30 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 15 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: true, adxThreshold: 30 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: true, adxThreshold: 30 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 15 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       }
     }
   },
@@ -48,14 +106,14 @@ export const OFFICIAL_STRATEGIES = [
     },
     rules: {
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 0 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 0 }
       }
     }
   },
@@ -75,14 +133,14 @@ export const OFFICIAL_STRATEGIES = [
     },
     rules: {
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 0 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 0 }
       }
     }
   },
@@ -102,14 +160,14 @@ export const OFFICIAL_STRATEGIES = [
     },
     rules: {
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 }
       }
     }
   },
@@ -129,14 +187,14 @@ export const OFFICIAL_STRATEGIES = [
     },
     rules: {
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: true, useMacdSigDiff: true, macdSigDiff: 300, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: true, useMacdSigDiff: true, macdSigDiff: 300, useADX: false, adxThreshold: 0 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useAdx: false, adxThreshold: 0 },
-        '1d': { useMacdBeyondSig: true, useStochCross: true, useMacdSigDiff: true, macdSigDiff: 300, useAdx: false, adxThreshold: 0 }
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 0 },
+        '1d': { useMacdBeyondSig: true, useStochCross: true, useMacdSigDiff: true, macdSigDiff: 300, useADX: false, adxThreshold: 0 }
       }
     }
   }

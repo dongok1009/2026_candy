@@ -1,4 +1,4 @@
-const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI } = require('../lib/indicators.cjs');
+const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
 const strategy = {
     name: 'v6_0_2_Retrace_Optimized',
@@ -27,29 +27,82 @@ const strategy = {
 
     indicators_logic: (klines) => {
         return {
-            m5: { stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))) },
+            m5: { 
+                stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
+                adx: calculateADX(klines.m5)
+            },
             h1: { 
                 macd: calculateMACD(klines.h1.map(k => k.close)), 
-                stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))) 
+                stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))),
+                adx: calculateADX(klines.h1)
             },
-            d1: { macd: calculateMACD(klines.d1.map(k => k.close)) }
+            d1: { 
+                macd: calculateMACD(klines.d1.map(k => k.close)),
+                adx: calculateADX(klines.d1)
+            }
         };
     },
 
-    signal_logic: (indicators, indices) => {
+    signal_logic: (indicators, indices, overrideRules) => {
         const { idx5m, r1h, r1d } = indices;
-        
-        const k5 = indicators.m5.stoch.k[idx5m], d5 = indicators.m5.stoch.d[idx5m];
-        const m1h = indicators.h1.macd.m[r1h], s1h = indicators.h1.macd.s[r1h], 
-              kh = indicators.h1.stoch.k[r1h], dh = indicators.h1.stoch.d[r1h];
-        const m1d = indicators.d1.macd.m[r1d], s1d = indicators.d1.macd.s[r1d];
 
-        const cond5m = (k5 > d5) ? 'long' : (k5 < d5 ? 'short' : 'hold');
-        const cond1h = (m1h > s1h && kh > dh) ? 'long' : (m1h < s1h && kh < dh ? 'short' : 'hold');
-        const cond1d = (m1d > s1d) ? 'long' : (m1d < s1d ? 'short' : 'hold');
+        const checkCondition = (side, interval, idx, indicatorsObj) => {
+            const rules = overrideRules && overrideRules[side] && overrideRules[side][interval];
+            const data = indicatorsObj[interval];
+            if (!data) return true;
 
-        if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long') return 'long';
-        if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short') return 'short';
+            const chk = (key) => {
+                const v = rules ? (rules[key] ?? rules[key.toLowerCase()] ?? rules[key.toUpperCase()]) : undefined;
+                return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
+            };
+
+            let match = true;
+
+            // ADX 필터
+            if (chk('useADX')) {
+                if (data.adx[idx] < (rules.adxThreshold || 30)) match = false;
+            }
+
+            // MACD 및 Stoch 조건
+            if (side === 'long') {
+                const m = data.macd?.m?.[idx], s = data.macd?.s?.[idx];
+                const k = data.stoch?.k?.[idx], d = data.stoch?.d?.[idx];
+                
+                if (interval === 'm5') {
+                    if (k < d) match = false;
+                } else if (interval === 'h1') {
+                    if (m < s || k < d) match = false;
+                } else if (interval === 'd1') {
+                    if (m < s) match = false;
+                }
+            } else {
+                const m = data.macd?.m?.[idx], s = data.macd?.s?.[idx];
+                const k = data.stoch?.k?.[idx], d = data.stoch?.d?.[idx];
+
+                if (interval === 'm5') {
+                    if (k > d) match = false;
+                } else if (interval === 'h1') {
+                    if (m > s || k > d) match = false;
+                } else if (interval === 'd1') {
+                    if (m > s) match = false;
+                }
+            }
+
+            return match;
+        };
+
+        const longMatch = ['m5', 'h1', 'd1'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+            return checkCondition('long', iv, idx, indicators);
+        });
+
+        const shortMatch = ['m5', 'h1', 'd1'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+            return checkCondition('short', iv, idx, indicators);
+        });
+
+        if (longMatch) return 'long';
+        if (shortMatch) return 'short';
         
         return 'hold';
     },

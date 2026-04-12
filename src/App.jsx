@@ -34,7 +34,7 @@ function App() {
         {view === 'live' ? <Dashboard /> : <BacktestForm />}
       </main>
 
-      <div className="version-badge">v7.0.0 Backtest Engine [Modularized]</div>
+      <div className="version-badge">v7.0.2 Backtest Engine [Modularized]</div>
     </div>
   );
 }

@@ -47,7 +47,8 @@ try {
     if (params.symbol) strategy.config.SYMBOL = params.symbol;
     if (params.start) {
         strategy.config.ACTUAL_START_TIME = new Date(`${params.start}T00:00:00+09:00`).getTime();
-        strategy.config.FETCH_START_TIME = strategy.config.ACTUAL_START_TIME - (30 * 24 * 60 * 60 * 1000); // 30 days buffer for indicators
+        // [MAX WARMUP] 180일 전부터 데이터 수집 (1D/1H 지표 완벽 숙성)
+        strategy.config.FETCH_START_TIME = strategy.config.ACTUAL_START_TIME - (180 * 24 * 60 * 60 * 1000); 
     }
     if (params.end) strategy.config.END_TIME = new Date(`${params.end}T23:59:59+09:00`).getTime();
     if (params.leverage) strategy.config.LEVERAGE = parseFloat(params.leverage);
@@ -59,15 +60,10 @@ try {
     if (params.rulesFile && fs.existsSync(params.rulesFile)) {
         try {
             const overrides = JSON.parse(fs.readFileSync(params.rulesFile, 'utf8'));
-            for (const side in overrides) {
-                for (const interval in overrides[side]) {
-                    strategy.rules[side][interval] = {
-                        ...strategy.rules[side][interval],
-                        ...overrides[side][interval]
-                    };
-                }
-            }
-            console.log(`✅ [INFO] Strategy Rules Overridden from Temp File!`);
+            // [FIX] 엔진이 읽을 수 있도록 strategy.config.overrideRules에 직접 주입
+            // v7.0.1 이후 버전은 이 위치의 데이터를 가장 우선적으로 참조합니다.
+            strategy.config.overrideRules = overrides;
+            console.log(`✅ [INFO] Strategy Rules Overridden & Injected to Engine!`);
         } catch (rErr) {
             console.error(`❌ [ERROR] Failed to load override rules file:`, rErr.message);
         }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.0.1] - 2026-04-11
+### Added
+- **STRATEGY_RULES.md** 생성을 통한 매매 원칙 문서화
+- **Logic.v7.0.1** 전략 생성: 과거 확정봉 기반 시그널 및 T+1 진입 원칙 적용
+### Changed
+- **engine.cjs**: 선행 편향(Look-ahead Bias) 방지를 위해 시그널 판단 시점을 T-1 확정봉으로 소급 적용
+- **engine.cjs**: 진입 시작 시점을 T+1 분봉으로 조정하여 현실적인 매매 지연 시뮬레이션 구현
+
 ## [7.0.0] - 2026-04-10
 ### Added
 - **Finalized Trading Logic v7.0.0**: 5분봉, 1시간봉, 1일봉의 ADX 필터 및 StochRSI/MACD 최적화 조합 적용.

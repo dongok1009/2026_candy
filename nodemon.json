@@ -1,0 +1,15 @@
+{
+  "watch": ["server.cjs", "lib/", "strategies/", "src/"],
+  "ext": "js,cjs,mjs,json",
+  "ignore": [
+    "results/*",
+    "history/*",
+    "logs/*",
+    "*.csv",
+    "temp_*.json",
+    "BACKTEST_HISTORY.md",
+    "CHANGELOG.md",
+    "STRATEGY_RULES.md"
+  ],
+  "delay": "1000"
+}

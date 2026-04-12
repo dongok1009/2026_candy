@@ -1,0 +1,52 @@
+{
+  "entryWaitMin": 180,
+  "exitWaitMin": 3000,
+  "long": {
+    "5m": {
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useAdx": true,
+      "adxThreshold": 30
+    },
+    "1h": {
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useAdx": true,
+      "adxThreshold": 30
+    },
+    "1d": {
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useMacdSigDiff": false,
+      "macdSigDiff": 0,
+      "useAdx": false,
+      "adxThreshold": 15
+    }
+  },
+  "short": {
+    "5m": {
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useAdx": true,
+      "adxThreshold": 30
+    },
+    "1h": {
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useAdx": true,
+      "adxThreshold": 30
+    },
+    "1d": {
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useMacdSigDiff": false,
+      "macdSigDiff": 0,
+      "useAdx": false,
+      "adxThreshold": 15
+    }
+  }
+}

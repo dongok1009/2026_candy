@@ -1,10 +1,10 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v7.0.1.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v7.0.2.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
-    name: 'Logic.v7.0.1',
-    description: 'v7.0.1 (과거 확정봉 T-1 시그널 및 T 시점 전수 조건 즉시 진입)',
+    name: 'Logic.v7.0.2',
+    description: 'v7.0.2 (UI 동기화 완벽 보정 & 180일 지표 예열 최적화)',
     header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX",
     
     config: {

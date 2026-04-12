@@ -22,7 +22,10 @@ app.get('/api/list-history', (req, res) => {
 
 // 백테스트 실행 API
 app.post('/api/backtest', (req, res) => {
-    const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitMin, entryWaitMin } = req.body;
+    const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin } = req.body;
+    // UI 우선순위: exitWaitLimit > exitWaitMin > 0
+    const finalExitWait = exitWaitLimit || exitWaitMin || 0;
+    const finalEntryWait = entryWaitLimit || entryWaitMin || 60;
     const startStr = startDate.split('T')[0];
     const endStr = endDate.split('T')[0];
 
@@ -35,7 +38,7 @@ app.post('/api/backtest', (req, res) => {
         rulesFileArg = `--rulesFile="${tempRulesPath}"`;
     }
 
-    const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${exitWaitMin || 0} --entryWaitMin=${entryWaitMin || 60} ${rulesFileArg}`;
+    const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${rulesFileArg}`;
     
     console.log(`[API] Executing: ${cmd}`);
     
@@ -160,6 +163,14 @@ app.get('/api/download', (req, res) => {
         console.error(`[404] File not found: ${filePath}`);
         res.status(404).send("파일을 찾을 수 없습니다.");
     }
+});
+
+app.post('/api/verify', (req, res) => {
+    console.log('[API] Running logic verification...');
+    exec('node scripts/verify_logic.cjs', (error, stdout, stderr) => {
+        const output = stdout + (stderr ? '\n' + stderr : '');
+        res.json({ success: !error, output });
+    });
 });
 
 app.listen(PORT, () => console.log(`🚀 Enhanced Backtest Server at http://localhost:${PORT}`));

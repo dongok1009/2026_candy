@@ -7,7 +7,7 @@ const strategy = {
     
     config: {
         SYMBOL: 'BTCUSDT',
-        FETCH_START_TIME: new Date('2024-12-01T00:00:00+09:00').getTime(),
+        FETCH_START_TIME: new Date('2024-10-01T00:00:00+09:00').getTime(),
         ACTUAL_START_TIME: new Date('2025-01-01T00:00:00+09:00').getTime(),
         END_TIME: new Date('2025-12-31T23:59:59+09:00').getTime(),
         
@@ -43,31 +43,70 @@ const strategy = {
         };
     },
 
-    signal_logic: (indicators, indices) => {
+    signal_logic: (indicators, indices, overrideRules) => {
         const { idx5m, r1h, r1d } = indices;
-        
-        // 5m conditions
-        const k5 = indicators.m5.stoch.k[idx5m], d5 = indicators.m5.stoch.d[idx5m];
-        const adx5 = indicators.m5.adx[idx5m];
-        const cond5m = (k5 > d5) ? 'long' : (k5 < d5 ? 'short' : 'hold');
-        
-        // 1h conditions
-        const m1h = indicators.h1.macd.m[r1h], s1h = indicators.h1.macd.s[r1h], 
-              kh = indicators.h1.stoch.k[r1h], dh = indicators.h1.stoch.d[r1h];
-        const adxH = indicators.h1.adx[r1h];
-        const cond1h = (m1h > s1h && kh > dh) ? 'long' : (m1h < s1h && kh < dh ? 'short' : 'hold');
 
-        // 1d conditions
-        const m1d = indicators.d1.macd.m[r1d], s1d = indicators.d1.macd.s[r1d];
-        const adxD = indicators.d1.adx[r1d];
-        const cond1d = (m1d > s1d) ? 'long' : (m1d < s1d ? 'short' : 'hold');
-        
-        // ADX Condition: All timeframes must have ADX >= Threshold
-        const threshold = strategy.config.ADX_THRESHOLD;
-        const adxCond = (adx5 >= threshold && adxH >= threshold && adxD >= threshold);
+        const checkCondition = (side, interval, idx, indicatorsObj) => {
+            const rules = overrideRules && overrideRules[side] && overrideRules[side][interval];
+            const data = indicatorsObj[interval];
+            if (!data) return true;
 
-        if (cond5m === 'long' && cond1h === 'long' && cond1d === 'long' && adxCond) return 'long';
-        if (cond5m === 'short' && cond1h === 'short' && cond1d === 'short' && adxCond) return 'short';
+            let match = true;
+
+            // [CASE-INSENSITIVE CHECK] useADX, useAdx 모두 허용
+            const chk = (key) => {
+                const v = rules ? (rules[key] ?? rules[key.toLowerCase()] ?? rules[key.toUpperCase()]) : undefined;
+                return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
+            };
+
+            // ADX 필터
+            if (!rules) {
+                // 기본값 (v7.0.0 하드코딩 기준 준수)
+                if (data.adx[idx] < 30) match = false;
+            } else if (chk('useADX')) {
+                if (data.adx[idx] < (rules.adxThreshold || 30)) match = false;
+            }
+
+            // MACD 및 Stoch 조건
+            if (side === 'long') {
+                const m = data.macd?.m?.[idx], s = data.macd?.s?.[idx];
+                const k = data.stoch?.k?.[idx], d = data.stoch?.d?.[idx];
+                
+                if (interval === 'm5') {
+                    if (k < d) match = false;
+                } else if (interval === 'h1') {
+                    if (m < s || k < d) match = false;
+                } else if (interval === 'd1') {
+                    if (m < s) match = false;
+                }
+            } else {
+                const m = data.macd?.m?.[idx], s = data.macd?.s?.[idx];
+                const k = data.stoch?.k?.[idx], d = data.stoch?.d?.[idx];
+
+                if (interval === 'm5') {
+                    if (k > d) match = false;
+                } else if (interval === 'h1') {
+                    if (m > s || k > d) match = false;
+                } else if (interval === 'd1') {
+                    if (m > s) match = false;
+                }
+            }
+
+            return match;
+        };
+
+        const longMatch = ['m5', 'h1', 'd1'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+            return checkCondition('long', iv, idx, indicators);
+        });
+
+        const shortMatch = ['m5', 'h1', 'd1'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+            return checkCondition('short', iv, idx, indicators);
+        });
+
+        if (longMatch) return 'long';
+        if (shortMatch) return 'short';
         
         return 'hold';
     },

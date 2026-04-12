@@ -9,6 +9,7 @@
 
 | 버전 | 특징 | TP / SL | 승률 | 최종 수익률 | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **v7.0.1** | **확정봉(T-1) 시그널 & T+1 진입 원칙** | 3% / 15% | - | **대기 중** | **최신 로직** |
 | **v7.0.0** | **ADX 에너지 필터 (1h & 5m ADX >= 30)** | 3% / 15% | - | **+17.7%** | 테스트 완료 |
 | **v6.0.2** | **리트레이스 최적화 (1.5% Retrace)** | 3% / 15% | 91.9% | **+134.3%** | 실전 후보 |
 | **v6.0.0** | **고빈도 최적화 (1d StochRSI OFF)** | 3% / 15% | 87.5% | **🚀 +2910.3%** | **🏆 통합 챔피언** |
@@ -23,6 +24,17 @@
 ## 📘 2. 버전별 상세 지표 조건 및 실행 결과 (Detailed Version Logs)
 
 모든 신호는 **확정봉(Wait-on-Close)** 기준으로 판정합니다.
+
+### **[v7.0.1] 확정봉 기반 안정성 강화 모델 (Stability)**
+- **핵심 원칙 (STRADEGY_RULES.md 준수)**:
+    - **시그널 판단**: `T-1` 분봉까지의 확정된 데이터를 기준으로 지표 계산.
+    - **진입 시점**: 시그널 발생(`T`) 후 **`T+1`** 분봉부터 진입 시도.
+    - **상위 봉 참조**: 5m/1h/1d 모두 `T` 시점에 **이미 마감된 확정봉**의 지표값만 사용.
+- **진입 조건 상세**:
+    - **5분봉(5m)**: StochRSI Cross AND **ADX >= 30**
+    - **1시간봉(1h)**: MACD Cross AND StochRSI Cross AND **ADX >= 30**
+    - **1일봉(1d)**: MACD Cross Only
+- **상태**: 로직 수정 완료 및 백테스트 대기 중.
 
 ### **[v7.0.0] ADX 추세 강화 모델 (Entry Filter)**
 - **진입 조건 상세 (Timeframe Signals)**:
@@ -412,4 +424,94 @@ v6.0.0은 2020년부터 2026년까지 비트코인 역대 최악의 하락장(20
 ### 📊 Official Record: Record.7.0.0.7
 - ROI: 60.47% | 16W/0L
 - Params: BTCUSDT 5x | 1000 -> 1604.7064390987873
+---
+
+### 📊 Official Record: Record.7.0.0.8
+- ROI: 176.60% | 56W/6L
+- Params: BTCUSDT 5x | 1000 -> 2765.9545735662214
+---
+
+### 📊 Official Record: Record.7.0.1.1
+- ROI: 28.04% | 14W/1L
+- Params: BTCUSDT 5x | 1000 -> 1280.4072020898516
+---
+
+### 📊 Official Record: Record.7.0.1.2
+- ROI: 28.04% | 14W/1L
+- Params: BTCUSDT 5x | 1000 -> 1280.4072020898516
+---
+
+### 📊 Official Record: Record.7.0.1.3
+- ROI: 28.04% | 14W/1L
+- Params: BTCUSDT 5x | 1000 -> 1280.4072020898516
+---
+
+### 📊 Official Record: Record.7.0.1.4
+- ROI: 81.94% | 101W/21L
+- Params: BTCUSDT 5x | 1000 -> 1819.3658194515565
+---
+
+### 📊 Official Record: Record.7.0.1.5
+- ROI: 81.94% | 101W/21L
+- Params: BTCUSDT 5x | 1000 -> 1819.3658194515565
+---
+
+### 📊 Official Record: Record.7.0.1.6
+- ROI: 81.94% | 101W/21L
+- Params: BTCUSDT 5x | 1000 -> 1819.3658194515565
+---
+
+### 📊 Official Record: Record.7.0.1.7
+- ROI: 81.94% | 101W/21L
+- Params: BTCUSDT 5x | 1000 -> 1819.3658194515565
+---
+
+### 📊 Official Record: Record.7.0.1.8
+- ROI: 88.49% | 103W/22L
+- Params: BTCUSDT 5x | 1000 -> 1884.9292581964114
+---
+
+### 📊 Official Record: Record.7.0.1.9
+- ROI: 216.10% | 110W/19L
+- Params: BTCUSDT 5x | 1000 -> 3160.9522282241255
+---
+
+### 📊 Official Record: Record.7.0.1.10
+- ROI: 216.10% | 110W/19L
+- Params: BTCUSDT 5x | 1000 -> 3160.9522282241255
+---
+
+### 📊 Official Record: Record.7.0.1.11
+- ROI: -4.34% | 33W/11L
+- Params: BTCUSDT 5x | 1000 -> 956.5921440291239
+---
+
+### 📊 Official Record: Record.7.0.1.12
+- ROI: 216.10% | 110W/19L
+- Params: BTCUSDT 5x | 1000 -> 3160.9522282241255
+---
+
+### 📊 Official Record: Record.7.0.1.13
+- ROI: 36.38% | 31W/4L
+- Params: BTCUSDT 5x | 1000 -> 1363.7833997553246
+---
+
+### 📊 Official Record: Record.7.0.1.14
+- ROI: 36.38% | 31W/4L
+- Params: BTCUSDT 5x | 1000 -> 1363.7833997553246
+---
+
+### 📊 Official Record: Record.7.0.1.15
+- ROI: 36.38% | 31W/4L
+- Params: BTCUSDT 5x | 1000 -> 1363.7833997553246
+---
+
+### 📊 Official Record: Record.7.0.1.16
+- ROI: 304.29% | 98W/9L
+- Params: BTCUSDT 5x | 1000 -> 4042.8784382466083
+---
+
+### 📊 Official Record: Record.7.0.1.17
+- ROI: 383.90% | 93W/9L
+- Params: BTCUSDT 5x | 1000 -> 4838.999592181792
 ---
