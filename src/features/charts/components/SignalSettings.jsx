@@ -20,6 +20,9 @@ const SignalSettings = ({
   };
 
   const getRuleNum = (iv, side, field) => {
+      if (iv === 'global' || !side) {
+          return rules[iv] ? rules[iv][field] : 0;
+      }
       const v = rules[iv] && rules[iv][side] ? rules[iv][side][field] : 0;
       return v || 0;
   };
