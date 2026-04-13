@@ -29,21 +29,37 @@ async function sendTelegram(message) {
 }
 
 async function fetchOHLCV(interval, limit = 500) {
-  const url = `https://fapi.binance.com/fapi/v1/klines?symbol=${SYMBOL}&interval=${interval}&limit=${limit}`;
-  try {
-    const res = await axios.get(url, { timeout: 5000 });
-    return res.data.map(d => ({ 
-      time: d[0], 
-      open: parseFloat(d[1]), 
-      high: parseFloat(d[2]), 
-      low: parseFloat(d[3]), 
-      close: parseFloat(d[4]), 
-      volume: parseFloat(d[5]) 
-    }));
-  } catch (e) {
-    console.error(`❌ API Blocked for ${interval}: ${e.message}`);
-    throw e;
+  const symbol = SYMBOL.toUpperCase();
+  const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
+  
+  const urls = [
+    // 1순위: 바이낸스 공식 (지연 최소)
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    // 2순위: 바이낸스 비전 (규제 우회용)
+    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    // 3순위: 바이비트 (바이낸스 차단 시 강력한 대안)
+    `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=${bybitInterval}&limit=${limit}`,
+    // 4순위: MEXC (백업용)
+    `https://api.mexc.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await axios.get(url, { timeout: 4000 });
+      if (url.includes('bybit')) {
+        return res.data.result.list.map(d => ({
+          time: parseInt(d[0]), low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+        })).reverse();
+      }
+      return res.data.map(d => ({
+        time: d[0], open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]), volume: parseFloat(d[5])
+      }));
+    } catch (e) {
+      console.log(`⚠️ URL 실패 (${new URL(url).hostname}): ${e.message}`);
+      continue; // 다음 주소로 시도
+    }
   }
+  throw new Error("❌ 모든 API 통로가 차단되었습니다.");
 }
 
 let lastSignal = 'hold';
