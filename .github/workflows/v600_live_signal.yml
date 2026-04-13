@@ -16,8 +16,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install axios
-        run: npm install axios
+      - name: Install dependencies
+        run: |
+          npm install axios dotenv ccxt
       - name: Run V600 Monitoring Bot (Persistent)
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
