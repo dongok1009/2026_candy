@@ -13,8 +13,26 @@ const config = {
     secret: process.env.BINANCE_API_SECRET,
     symbol: process.env.SYMBOL || 'BTCUSDT',
     leverage: parseInt(process.env.LEVERAGE || '5'),
-    useTestnet: process.env.USE_TESTNET === 'true'
+    useTestnet: process.env.USE_TESTNET === 'true',
+    telegramToken: process.env.TELEGRAM_TOKEN,
+    telegramChatId: process.env.TELEGRAM_CHAT_ID
 };
+
+async function sendTelegram(message) {
+    if (!config.telegramToken || !config.telegramChatId) return;
+    try {
+        const url = `https://api.telegram.org/bot${config.telegramToken}/sendMessage`;
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: config.telegramChatId,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+    } catch (e) { console.error("Telegram send error:", e.message); }
+}
 
 // 실시간 상태 저장용
 const STATE_FILE = path.join(__dirname, 'live_state.json');
@@ -24,6 +42,7 @@ let liveState = {
     entryTime: null,
     status: 'IDLE', // 'IDLE', 'ENTRY_WAIT', 'IN_POSITION'
     lastUpdate: null,
+    lastSignal: 'hold', // 중복 알림 방지용 신호 저장
     pnl: 0
 };
 
@@ -62,6 +81,8 @@ async function init() {
         console.log(`[INIT] Connecting to Binance Futures... (${config.symbol})`);
         await exchange.setLeverage(config.leverage, config.symbol);
         console.log(`[INIT] Leverage set to ${config.leverage}x`);
+        
+        await sendTelegram(`🤖 <b>[Antigravity v7.0.2] 24H 감시 시작</b>\n• 종목: ${config.symbol}\n• 상태: 현재 신호 대기 중...`);
         
         // 메인 루프 실행
         runLoop();
@@ -120,6 +141,30 @@ async function checkMarkets() {
 
     // 3. 신호 판단
     const signal = strategy.signal_logic(indicators, indices, liveRules);
+    
+    // 신호가 바뀌었을 때만 처리 (중복 알림 방지)
+    if (signal !== liveState.lastSignal) {
+        if (signal === 'long' || signal === 'short') {
+            const lastM5 = m5[m5.length - 1];
+            const targetEntry = signal === 'long' ? lastM5.low : lastM5.high;
+            const tp = targetEntry * (signal === 'long' ? 1.03 : 0.97);
+            const sl = targetEntry * (signal === 'long' ? 0.85 : 1.15);
+
+            const message = `🚀 <b>[v7.0.2 Persistent LIVE]</b>\n\n` +
+                            `📌 <b>포지션: ${signal.toUpperCase()}</b> (실시간 감시 중)\n` +
+                            `💵 <b>진입 희망가:</b> $${targetEntry.toLocaleString()}\n` +
+                            `✅ <b>익절가(TP):</b> $${tp.toLocaleString()} (+3% Net)\n` +
+                            `❌ <b>손절가(SL):</b> $${sl.toLocaleString()} (-15%)\n\n` +
+                            `📡 <b>v7.0.2 분석: 트리플 컨플루언스 발생! (실시간 정밀 추적 중)</b>`;
+            
+            await sendTelegram(message);
+        } else if (signal === 'hold' && liveState.lastSignal !== 'hold') {
+            await sendTelegram(`ℹ️ <b>[신호종료] ${config.symbol}</b>\n신호가 종료되었습니다. (현재 포지션: HOLD)`);
+        }
+        liveState.lastSignal = signal;
+        saveState();
+    }
+
     console.log(`[SIGNAL] Current signal: ${signal.toUpperCase()}`);
 
     // 4. 매매 판단 로직
@@ -156,6 +201,7 @@ async function handleEntry(signal, lastM5) {
         liveState.entryPrice = targetPrice; // 또는 체결가
         liveState.entryTime = Date.now();
         console.log(`✅ [TRADE] Order Placed & Position Tracked: ${liveState.position} @ ${targetPrice}`);
+        await sendTelegram(`🚀 <b>[ENTRY] ${config.symbol} ${liveState.position}</b>\n• Price: ${targetPrice}\n• Leverage: ${config.leverage}x\n• Status: Monitoring...`);
         saveState();
     } catch (err) {
         console.error("[ENTRY ERROR]", err.message);
@@ -192,6 +238,7 @@ async function monitorPosition(currentPrice) {
             liveState.position = null;
             saveState();
             console.log("🏁 [TRADE] Position Closed Successfully.");
+            await sendTelegram(`🏁 <b>[EXIT] ${config.symbol} ${liveState.position}</b>\n• Reason: ${exitReason}\n• Price: ${currentPrice}\n• ROE: <b>${(roe * 100).toFixed(2)}%</b>\n• Duration: ${duration}min`);
         } catch (err) {
             console.error("[EXIT ERROR]", err.message);
         }

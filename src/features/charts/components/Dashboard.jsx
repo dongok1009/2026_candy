@@ -138,12 +138,20 @@ const Dashboard = () => {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
         const d_kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
         const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth()+1).padStart(2,'0')}-${String(d_kst.getUTCDate()).padStart(2,'0')} ${String(d_kst.getUTCHours()).padStart(2,'0')}:${String(d_kst.getUTCMinutes()).padStart(2,'0')}:${String(d_kst.getUTCSeconds()).padStart(2,'0')}`;
-        const message = `🚨 <b>[v7.0.2] ${symbol} ${globalSignal} Signal!</b>\n\n` +
-                        `• Time (KST): ${kstTime}\n` +
-                        `• 5m: ${signals['5m']}\n` +
-                        `• 1h: ${signals['1h']}\n` +
-                        `• 1d: ${signals['1d']}\n\n` +
-                        `📡 <b>High-Frequency Optimized</b>`;
+        
+        // v7.0.2: 5분봉 기준 진입가 및 목표가 계산 (알림용 시뮬레이션)
+        const targetEntry = globalSignal === 'LONG' ? (candle5m?.low || 0) : (candle5m?.high || 0);
+        const tp = targetEntry * (globalSignal === 'LONG' ? 1.03 : 0.97);
+        const sl = targetEntry * (globalSignal === 'LONG' ? 0.85 : 1.15);
+
+        const message = `🚀 <b>[v7.0.2 Persistent LIVE]</b>\n\n` +
+                        `📌 <b>포지션: ${globalSignal}</b> (실시간 감시 중)\n` +
+                        `💵 <b>진입 희망가:</b> $${targetEntry.toLocaleString()}\n` +
+                        `✅ <b>익절가(TP):</b> $${tp.toLocaleString()} (+3% Net)\n` +
+                        `❌ <b>손절가(SL):</b> $${sl.toLocaleString()} (-15%)\n\n` +
+                        `📡 <b>v7.0.2 분석: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)</b>\n` +
+                        `⏰ <b>알림 시각(KST):</b> ${kstTime}`;
+        
         sendTelegramMessage(telegramToken, telegramChatId, message);
       }
       prevSignalRef.current = globalSignal;

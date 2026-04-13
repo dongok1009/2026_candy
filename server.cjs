@@ -53,19 +53,19 @@ app.post('/api/backtest', (req, res) => {
     // [New] 윈도우 따옴표 이슈 방지: 규칙을 임시 JSON 파일로 저장
     let rulesFileArg = '';
     const tempRulesPath = path.join(__dirname, `temp_rules_${Date.now()}.json`);
-    
+
     if (overrideRules) {
         fs.writeFileSync(tempRulesPath, JSON.stringify(overrideRules, null, 2));
         rulesFileArg = `--rulesFile="${tempRulesPath}"`;
     }
 
     const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${rulesFileArg}`;
-    
+
     console.log(`[API] Executing: ${cmd}`);
-    
+
     exec(cmd, { cwd: __dirname, maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
         const output = stdout.toString();
-        
+
         // 임시 파일 삭제
         if (fs.existsSync(tempRulesPath)) fs.unlinkSync(tempRulesPath);
 
@@ -73,13 +73,13 @@ app.post('/api/backtest', (req, res) => {
             console.error("[SERVER ERROR]", stderr);
             return res.status(500).json({ success: false, error: error.message, output });
         }
-        
+
         const jsonMatch = output.match(/###JSON_RESULT###(.*?)###JSON_RESULT###/s);
-        
+
         if (jsonMatch) {
             try {
                 const rawRes = JSON.parse(jsonMatch[1].trim());
-                
+
                 res.json({ ...rawRes, detailFile: rawRes.resultFilePath, trades: rawRes.trades || [] });
             } catch (pErr) {
                 res.status(500).json({ success: false, error: "파이널 결과 파싱 실패", output });
@@ -94,7 +94,7 @@ app.post('/api/backtest', (req, res) => {
 app.post('/api/save-history', (req, res) => {
     try {
         const { baseVersion, config, rules, result } = req.body;
-        
+
         if (!baseVersion || !result) {
             return res.status(400).json({ success: false, error: "필수 데이터(baseVersion, result)가 누락되었습니다." });
         }
@@ -108,11 +108,11 @@ app.post('/api/save-history', (req, res) => {
         // 버전 증량 로직: v7_0_0 또는 v7.0.0 모두 대응
         // baseVersion: Logic.v7.0.0 -> "Logic.7.0.0"
         const cleanBase = baseVersion.replace('Logic.', '').replace('v', '');
-        
+
         const existingSameBase = records.filter(r => r.baseVersion === baseVersion);
         const nextZ = existingSameBase.length + 1;
         const newVersion = `Record.${cleanBase}.${nextZ}`;
-        
+
         const newRecord = {
             version: newVersion,
             baseVersion,
@@ -156,11 +156,11 @@ app.post('/api/delete-history', (req, res) => {
         if (!fs.existsSync(RECORDS_FILE)) {
             return res.status(404).json({ success: false, error: "기록 파일(records.json)이 없습니다." });
         }
-        
+
         const fileContent = fs.readFileSync(RECORDS_FILE, 'utf8');
         let records = JSON.parse(fileContent || '[]');
         const initialCount = records.length;
-        
+
         // 해당 버전 찾기
         const targetRecord = records.find(r => r.version === version);
         if (!targetRecord) {
@@ -170,11 +170,11 @@ app.post('/api/delete-history', (req, res) => {
 
         // 목록에서 제거
         records = records.filter(r => r.version !== version);
-        
+
         // 파일 업데이트
         fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
         console.log(`[API] Successfully deleted "${version}" from records.json`);
-        
+
         res.json({ success: true });
     } catch (err) {
         console.error("[API DELETE ERROR]", err);
@@ -186,10 +186,10 @@ app.post('/api/delete-history', (req, res) => {
 app.get('/api/download', (req, res) => {
     let filePath = req.query.file;
     if (!filePath) return res.status(400).send("파일 경로가 없습니다.");
-    
+
     // 파일 경로가 백슬래시 등으로 꼬여있을 수 있어 정규화
     filePath = path.normalize(filePath);
-    
+
     if (fs.existsSync(filePath)) {
         res.download(filePath, path.basename(filePath), (err) => {
             if (err) {
