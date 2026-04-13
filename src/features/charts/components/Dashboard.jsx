@@ -78,15 +78,15 @@ const Dashboard = () => {
     const params = new URLSearchParams(window.location.search);
     const timeParam = params.get('inspectTime');
     const symbolParam = params.get('symbol');
-    
+
     if (symbolParam) setSymbol(symbolParam);
     if (timeParam) {
       const t = parseInt(timeParam);
       // URL 파라미터는 ms 단위일 수 있으므로 초 단위로 변환 지원
-      const secTime = t > 10**11 ? Math.floor(t / 1000) : t;
+      const secTime = t > 10 ** 11 ? Math.floor(t / 1000) : t;
       setInspectTime(secTime);
       setIsPastMode(true);
-      
+
       // 입력창에도 시간 표시
       const date = new Date(secTime * 1000);
       const offset = date.getTimezoneOffset() * 60000;
@@ -104,7 +104,7 @@ const Dashboard = () => {
       window.history.replaceState({}, '', url);
     }
   }, [isPastMode]);
-  
+
   const [signals, setSignals] = useState({});
   const [indicatorData, setIndicatorData] = useState({ '5m': {}, '1h': {}, '1d': {} });
   const [history1h, setHistory1h] = useState([]);
@@ -128,7 +128,7 @@ const Dashboard = () => {
   }, [symbol]);
 
   const globalSignal = (signals['5m'] === 'long' && signals['1h'] === 'long' && signals['1d'] === 'long') ? 'LONG' :
-                       (signals['5m'] === 'short' && signals['1h'] === 'short' && signals['1d'] === 'short') ? 'SHORT' : 'HOLDING';
+    (signals['5m'] === 'short' && signals['1h'] === 'short' && signals['1d'] === 'short') ? 'SHORT' : 'HOLDING';
 
   React.useEffect(() => {
     if (isPastMode) return; // No alerts in past mode
@@ -137,21 +137,13 @@ const Dashboard = () => {
     if (prevSignalRef.current !== globalSignal) {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
         const d_kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-        const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth()+1).padStart(2,'0')}-${String(d_kst.getUTCDate()).padStart(2,'0')} ${String(d_kst.getUTCHours()).padStart(2,'0')}:${String(d_kst.getUTCMinutes()).padStart(2,'0')}:${String(d_kst.getUTCSeconds()).padStart(2,'0')}`;
-        
-        // v7.0.2: 5분봉 기준 진입가 및 목표가 계산 (알림용 시뮬레이션)
-        const targetEntry = globalSignal === 'LONG' ? (candle5m?.low || 0) : (candle5m?.high || 0);
-        const tp = targetEntry * (globalSignal === 'LONG' ? 1.03 : 0.97);
-        const sl = targetEntry * (globalSignal === 'LONG' ? 0.85 : 1.15);
-
-        const message = `🚀 <b>[v7.0.2 Persistent LIVE]</b>\n\n` +
-                        `📌 <b>포지션: ${globalSignal}</b> (실시간 감시 중)\n` +
-                        `💵 <b>진입 희망가:</b> $${targetEntry.toLocaleString()}\n` +
-                        `✅ <b>익절가(TP):</b> $${tp.toLocaleString()} (+3% Net)\n` +
-                        `❌ <b>손절가(SL):</b> $${sl.toLocaleString()} (-15%)\n\n` +
-                        `📡 <b>v7.0.2 분석: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)</b>\n` +
-                        `⏰ <b>알림 시각(KST):</b> ${kstTime}`;
-        
+        const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth() + 1).padStart(2, '0')}-${String(d_kst.getUTCDate()).padStart(2, '0')} ${String(d_kst.getUTCHours()).padStart(2, '0')}:${String(d_kst.getUTCMinutes()).padStart(2, '0')}:${String(d_kst.getUTCSeconds()).padStart(2, '0')}`;
+        const message = `🚨 <b>[v7.0.2] ${symbol} ${globalSignal} Signal!</b>\n\n` +
+          `• Time (KST): ${kstTime}\n` +
+          `• 5m: ${signals['5m']}\n` +
+          `• 1h: ${signals['1h']}\n` +
+          `• 1d: ${signals['1d']}\n\n` +
+          `📡 <b>High-Frequency Optimized</b>`;
         sendTelegramMessage(telegramToken, telegramChatId, message);
       }
       prevSignalRef.current = globalSignal;
@@ -159,18 +151,7 @@ const Dashboard = () => {
   }, [globalSignal, isPastMode, telegramToken, telegramChatId, symbol, signals]);
 
   const updateRule = (interval, direction, field, value) => {
-    setRules(prev => {
-      if (interval === 'global') {
-        return { ...prev, global: { ...prev.global, [field]: value } };
-      }
-      return { 
-        ...prev, 
-        [interval]: { 
-          ...prev[interval], 
-          [direction]: { ...prev[interval][direction], [field]: value } 
-        } 
-      };
-    });
+    setRules(prev => ({ ...prev, [interval]: { ...prev[interval], [direction]: { ...prev[interval][direction], [field]: value } } }));
   };
 
   const res5m = useBinanceWebSocket(symbol, '5m');
@@ -221,21 +202,21 @@ const Dashboard = () => {
 
   // Price Calculations
   const currentPrice = candle5m ? formatPrice(candle5m.close) : 'Loading...';
-  
+
   // 1d (24h Rolling) High/Low using 24 hourly candles
   const recent24h = candle1h ? [...history1h.slice(-24, -1), candle1h] : history1h.slice(-24);
   const high1d = recent24h.length > 0 ? formatPrice(Math.max(...recent24h.map(c => c.high))) : '-';
   const low1d = recent24h.length > 0 ? formatPrice(Math.min(...recent24h.map(c => c.low))) : '-';
-  
+
   // 3h High/Low (Last 3 hours including current)
   const recent3h = candle1h ? [...history1h.slice(-3, -1), candle1h] : history1h.slice(-3);
   const high3h = recent3h.length > 0 ? formatPrice(Math.max(...recent3h.map(c => c.high))) : '-';
   const low3h = recent3h.length > 0 ? formatPrice(Math.min(...recent3h.map(c => c.low))) : '-';
-  
+
   // 1h High/Low (Current Hourly Candle)
   const high1h = candle1h ? formatPrice(candle1h.high) : '-';
   const low1h = candle1h ? formatPrice(candle1h.low) : '-';
-  
+
   const volume5m = candle5m ? Math.round(candle5m.volume).toLocaleString() : '-';
 
   // Global Signal Logic (Single Column)
@@ -255,12 +236,12 @@ const Dashboard = () => {
             <div className={`status-dot ${!isPastMode && res5m.isConnected ? 'online' : 'offline'}`} style={{ backgroundColor: isPastMode ? '#f3ba2f' : undefined }}></div>
             {isPastMode ? 'PAST MODE' : (res5m.isConnected ? 'LIVE' : 'RECONNECTING...')}
           </div>
-          
+
           {isPastMode && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '13px', color: '#f3ba2f', fontWeight: 'bold' }}>Target Past Date:</span>
-              <input 
-                type="datetime-local" 
+              <input
+                type="datetime-local"
                 step="1"
                 value={pastDateInput}
                 onChange={(e) => setPastDateInput(e.target.value)}
@@ -271,7 +252,7 @@ const Dashboard = () => {
                   if (pastDateInput) {
                     const sec = Math.floor(new Date(pastDateInput).getTime() / 1000);
                     setInspectTime(sec);
-                    
+
                     // URL 업데이트 (공유 가능하게)
                     const url = new URL(window.location);
                     url.searchParams.set('inspectTime', (sec * 1000).toString());
@@ -295,8 +276,8 @@ const Dashboard = () => {
         <div className="dashboard-controls" style={{ display: 'flex', gap: '20px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="symbol-selector" style={{ marginBottom: 0, flexWrap: 'wrap', gap: '8px' }}>
             {['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT'].map(s => (
-              <button 
-                key={s} 
+              <button
+                key={s}
                 className={`symbol-btn ${symbol === s ? 'active' : ''}`}
                 onClick={() => setSymbol(s)}
                 style={{ padding: '6px 12px', fontSize: '13px' }}
@@ -305,11 +286,11 @@ const Dashboard = () => {
               </button>
             ))}
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#848e9c' }}>History:</span>
-            <select 
-              value={limit} 
+            <select
+              value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
               style={{ background: '#1e2329', border: '1px solid #242a2e', color: '#d1d4dc', padding: '6px 10px', borderRadius: '6px', outline: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
             >
@@ -321,35 +302,35 @@ const Dashboard = () => {
           </div>
         </div>
         <section className="stats-grid">
-          <StatCard 
-            title="Price / Volume (5m)" 
-            value={`$${currentPrice} / ${volume5m}`} 
-            icon={DollarSign} 
-            color="#f3ba2f" 
+          <StatCard
+            title="Price / Volume (5m)"
+            value={`$${currentPrice} / ${volume5m}`}
+            icon={DollarSign}
+            color="#f3ba2f"
           />
-          <StatCard 
-            title="1h High / Low" 
-            value={`${high1h !== '-' ? `$${high1h}` : '-'} / ${low1h !== '-' ? `$${low1h}` : '-'}`} 
-            icon={TrendingUp} 
-            color="#26a69a" 
+          <StatCard
+            title="1h High / Low"
+            value={`${high1h !== '-' ? `$${high1h}` : '-'} / ${low1h !== '-' ? `$${low1h}` : '-'}`}
+            icon={TrendingUp}
+            color="#26a69a"
           />
-          <StatCard 
-            title="3h High / Low" 
-            value={`${high3h !== '-' ? `$${high3h}` : '-'} / ${low3h !== '-' ? `$${low1h}` : '-'}`} 
-            icon={TrendingUp} 
-            color="#26a69a" 
+          <StatCard
+            title="3h High / Low"
+            value={`${high3h !== '-' ? `$${high3h}` : '-'} / ${low3h !== '-' ? `$${low1h}` : '-'}`}
+            icon={TrendingUp}
+            color="#26a69a"
           />
-          <StatCard 
-            title="1d High / Low" 
-            value={`${high1d !== '-' ? `$${high1d}` : '-'} / ${low1d !== '-' ? `$${low1d}` : '-'}`} 
-            icon={TrendingUp} 
-            color="#26a69a" 
+          <StatCard
+            title="1d High / Low"
+            value={`${high1d !== '-' ? `$${high1d}` : '-'} / ${low1d !== '-' ? `$${low1d}` : '-'}`}
+            icon={TrendingUp}
+            color="#26a69a"
           />
-          <StatCard 
-            title="v7.0.1 Target Entry (5m)" 
-            value={candle5m ? `$${formatPrice(candle5m.low)} (L) / $${formatPrice(candle5m.high)} (S)` : 'Loading...'} 
-            icon={BarChart2} 
-            color="#f3ba2f" 
+          <StatCard
+            title="v7.0.1 Target Entry (5m)"
+            value={candle5m ? `$${formatPrice(candle5m.low)} (L) / $${formatPrice(candle5m.high)} (S)` : 'Loading...'}
+            icon={BarChart2}
+            color="#f3ba2f"
           />
         </section>
 
@@ -369,7 +350,7 @@ const Dashboard = () => {
                 검증 시점(KST): {inspectTime ? new Date(inspectTime * 1000 + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19) : '입력 대기 중...'}
               </span>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
               {['5m', '1h', '1d'].map(itv => (
                 <div key={itv} style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', borderLeft: `4px solid ${signals[itv] === 'long' ? '#26a69a' : (signals[itv] === 'short' ? '#ef5350' : '#848e9c')}` }}>
@@ -403,7 +384,7 @@ const Dashboard = () => {
                 <span className="indicator-tag">Unified Signals</span>
               </div>
             </div>
-            <PriceChart 
+            <PriceChart
               symbol={symbol} interval="5m" lastCandle={candle5m} limit={limit} rule={rules['5m']}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('5m', state)}
@@ -415,7 +396,7 @@ const Dashboard = () => {
             <div className="chart-header">
               <h3>{symbol} Real-Time Chart (1h)</h3>
             </div>
-            <PriceChart 
+            <PriceChart
               symbol={symbol} interval="1h" lastCandle={candle1h} limit={limit} rule={rules['1h']}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1h', state)}
@@ -427,7 +408,7 @@ const Dashboard = () => {
             <div className="chart-header">
               <h3>{symbol} Real-Time Chart (1d)</h3>
             </div>
-            <PriceChart 
+            <PriceChart
               symbol={symbol} interval="1d" lastCandle={candle1d} limit={limit} rule={rules['1d']}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1d', state)}
@@ -438,7 +419,7 @@ const Dashboard = () => {
 
         <LiveTradeMonitor currentRules={rules} />
 
-        <SignalSettings 
+        <SignalSettings
           rules={rules}
           updateRule={updateRule}
           telegramToken={telegramToken}
@@ -451,22 +432,22 @@ const Dashboard = () => {
           onTestTelegram={async () => {
             console.log('Test button clicked');
             setDebugLogs([]); // Clear previous logs
-            
+
             if (!telegramToken || !telegramChatId) {
               setDebugLogs(['⚠️ 오류: 토큰(Token) 또는 챗 아이디(Chat ID)가 비어있습니다.']);
               return;
             }
-            
+
             setIsTesting(true);
             try {
               setDebugLogs(['⏳ 테스트 메시지 전송 시도 중...']);
               const res = await sendTelegramMessage(telegramToken, telegramChatId, '🔔 <b>Telegram Alert Test</b>\nConnection successful! Your dashboard is now linked to this chat.');
-              
+
               if (res.success) {
                 setDebugLogs(['✅ 전송 성공! 텔레그램 앱을 확인해 주세요.']);
               } else {
                 let logs = [`❌ 전송 실패: ${res.error}`];
-                
+
                 // 원인 분석
                 if (res.error.includes('chat not found')) {
                   logs.push('💡 [원인 분석] 입력하신 Chat ID를 찾을 수 없습니다.');
@@ -476,13 +457,13 @@ const Dashboard = () => {
                   logs.push('💡 [원인 분석] 봇 토큰이 유효하지 않습니다.');
                   logs.push('👉 해결 방법: @BotFather가 발급해 준 토큰을 정확히(공백 없이) 붙여넣었는지 확인하세요.');
                 }
-                
+
                 if (res.debugInfo) {
                   logs.push(`\n--- 전송 데이터 기초 확인 ---`);
                   logs.push(`• 토큰 유무: ${res.debugInfo.tokenGiven ? 'O' : 'X'}`);
                   logs.push(`• 발송 시도한 Chat ID: "${res.debugInfo.chatIdSent}"`);
                 }
-                
+
                 setDebugLogs(logs);
               }
             } catch (err) {
