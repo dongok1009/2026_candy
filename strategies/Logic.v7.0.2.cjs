@@ -6,23 +6,23 @@ const strategy = {
     name: 'Logic.v7.0.2',
     description: 'v7.0.2 (UI 동기화 완벽 보정 & 180일 지표 예열 최적화)',
     header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX",
-    
+
     config: {
         SYMBOL: 'BTCUSDT',
         FETCH_START_TIME: new Date('2024-01-01T00:00:00+09:00').getTime(),
         ACTUAL_START_TIME: new Date('2025-01-01T00:00:00+09:00').getTime(),
         END_TIME: new Date('2026-12-31T23:59:59+09:00').getTime(),
-        
+
         LEVERAGE: 5,
         INITIAL_BALANCE: 1000,
         MAKER_FEE_RATE: 0.0002,
         TAKER_FEE_RATE: 0.0005,
         EXIT_MAKER_FEE_RATE: 0.0002,
         FUNDING_FEE_RATE: 0.0001,
-        
+
         TARGET_NET_ROI: 0.03,
         SL_ROI: 0.15,
-        
+
         ADX_THRESHOLD: 30, // Default fallback
         ENTRY_WAIT_MIN: 180,
         EXIT_WAIT_MIN: 2000
@@ -30,16 +30,16 @@ const strategy = {
 
     indicators_logic: (klines) => {
         return {
-            m5: { 
+            m5: {
                 stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
                 adx: calculateADX(klines.m5)
             },
-            h1: { 
-                macd: calculateMACD(klines.h1.map(k => k.close)), 
+            h1: {
+                macd: calculateMACD(klines.h1.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))),
                 adx: calculateADX(klines.h1)
             },
-            d1: { 
+            d1: {
                 macd: calculateMACD(klines.d1.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.d1.map(k => k.close))),
                 adx: calculateADX(klines.d1)
@@ -134,7 +134,7 @@ const strategy = {
 
         if (longMatch) return 'long';
         if (shortMatch) return 'short';
-        
+
         return 'hold';
     },
 
@@ -149,12 +149,17 @@ const strategy = {
 
         const waitLimit = (config && config.ENTRY_WAIT_MIN) || 180;
 
-        // Better Price Logic
+        // [Latest Logic] Better Price Hybrid Entry
         if (sig === 'long' && signalPrice <= targetPrice) {
-            finalEntryPrice = signalPrice; executed = true; entryType = "MARKET(Better)";
+            finalEntryPrice = signalPrice; 
+            executed = true; 
+            entryType = "MARKET(Better)";
         } else if (sig === 'short' && signalPrice >= targetPrice) {
-            finalEntryPrice = signalPrice; executed = true; entryType = "MARKET(Better)";
+            finalEntryPrice = signalPrice; 
+            executed = true; 
+            entryType = "MARKET(Better)";
         } else {
+            // Signal price is not hit target yet, start waiting
             for (let j = currentIndex; j < klines1m.length; j++) {
                 const ex = klines1m[j];
                 if (sig === 'long' && ex.low <= targetPrice) { 
