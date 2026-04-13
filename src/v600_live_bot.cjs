@@ -12,20 +12,29 @@ dotenv.config();
 // __dirname 대응 (ESM/CJS 혼용 시)
 const _dirname = path.resolve();
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const CHAT_ID = process.env.TELEGRAM_CHAT_ID || process.env.CHAT_ID;
-const SYMBOL = process.env.SYMBOL || 'BTCUSDT';
+const TELEGRAM_TOKEN = (process.env.TELEGRAM_TOKEN || "").trim();
+const CHAT_ID = (process.env.TELEGRAM_CHAT_ID || process.env.CHAT_ID || "").trim();
+const SYMBOL = (process.env.SYMBOL || 'BTCUSDT').toUpperCase();
 
 const RULES_FILE = path.join(_dirname, 'live_rules.json');
 let liveRules = {};
 
 async function sendTelegram(message) {
-  if (!TELEGRAM_TOKEN || !CHAT_ID) return console.log("⚠️ No Telegram Secrets in .env");
+  if (!TELEGRAM_TOKEN || !CHAT_ID) {
+    return console.log(`⚠️ Secrets Missing: Token(${TELEGRAM_TOKEN.length}), ID(${CHAT_ID.length})`);
+  }
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
-    await axios.post(url, { chat_id: CHAT_ID, text: message, parse_mode: 'HTML' });
-    console.log("✉️ Alert Sent!");
-  } catch (e) { console.error('Telegram failed:', e.message); }
+    await axios.post(url, { 
+      chat_id: CHAT_ID, 
+      text: message, 
+      parse_mode: 'HTML',
+      disable_web_page_preview: true
+    });
+    console.log("✉️ Alert Sent successfully!");
+  } catch (e) { 
+    console.error('Telegram failed:', e.response ? JSON.stringify(e.response.data) : e.message); 
+  }
 }
 
 async function fetchOHLCV(interval, limit = 500) {
