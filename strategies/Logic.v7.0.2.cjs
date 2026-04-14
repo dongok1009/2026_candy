@@ -139,7 +139,7 @@ const strategy = {
     },
 
     entry_logic: (sig, k1m, k5_prev, klines1m, currentIndex, config) => {
-        const signalPrice = k1m.close;
+        const signalPrice = k1m.open;
         const targetPrice = sig === 'long' ? k5_prev.low : k5_prev.high;
 
         let finalEntryPrice = 0;
