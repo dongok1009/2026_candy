@@ -54,12 +54,9 @@ const strategy = {
             const data = indicatorsObj[interval];
             if (!data) return true;
 
-            // Mapping: strategy 'm5' -> UI '5m'
             const timeframeMap = { 'm5': '5m', 'h1': '1h', 'd1': '1d' };
             const uiInterval = timeframeMap[interval] || interval;
             
-            // live_rules.json 구조는 { "5m": { "long": { ... } } } 식임.
-            // 기존 코드는 overrideRules[side][interval]로 거꾸로 찾고 있었음.
             const intervalRules = overrideRules && (overrideRules[uiInterval] || overrideRules[interval]);
             const rules = intervalRules && intervalRules[side];
 
@@ -72,19 +69,20 @@ const strategy = {
                 ];
                 for (const k of variations) {
                     if (rules[k] !== undefined) {
-                        const v = rules[k];
-                        return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
+                      const v = rules[k];
+                      return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
                     }
                 }
                 return false;
             };
 
             let match = true;
+            let logDetail = `[${interval.toUpperCase()}] `;
 
-            // 1. If NO rules provided (Fallback) - rules가 아예 없을 때만 동작
+            // 1. If NO rules provided (Fallback)
             if (!rules) {
                 const adxVal = data.adx[idx];
-                if (adxVal < 30) return false;
+                if (adxVal < 20) return false; // Default ADX relaxed to 20
 
                 if (side === 'long') {
                     if (interval === 'm5') return data.stoch.k[idx] > data.stoch.d[idx];
@@ -98,31 +96,29 @@ const strategy = {
                 return true;
             }
 
-            // 2. If rules provided (Interactive Mode)
+            // 2. If rules provided
             if (chk('adxEnabled') || chk('useADX')) {
-                const threshold = rules.adxThreshold || 30;
-                if (data.adx[idx] < threshold) match = false;
+                const threshold = rules.adxThreshold || 20; // Relaxed to 20
+                const val = data.adx[idx];
+                logDetail += `ADX:${val.toFixed(1)}>${threshold} `;
+                if (val < threshold) match = false;
             }
 
             if (chk('macdCrossEnabled') || chk('useMacdBeyondSig')) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
+                logDetail += `MACD:${side==='long'?(m>s?'OK':'NO'):(m<s?'OK':'NO')} `;
                 if (side === 'long' && m <= s) match = false;
                 if (side === 'short' && m >= s) match = false;
             }
 
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
+                logDetail += `Stoch:${side==='long'?(k>d?'OK':'NO'):(k<d?'OK':'NO')} `;
                 if (side === 'long' && k <= d) match = false;
                 if (side === 'short' && k >= d) match = false;
             }
 
-            if (chk('macdValueEnabled') || chk('useMacdVal')) {
-                const m = data.macd.m[idx];
-                const threshold = rules.macdValue || rules.macdVal;
-                if (side === 'long' && m >= threshold) match = false;
-                if (side === 'short' && m <= threshold) match = false;
-            }
-
+            if (match) console.log(`${side.toUpperCase()} ${logDetail} -> PASS`);
             return match;
         };
 
