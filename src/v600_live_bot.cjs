@@ -121,7 +121,10 @@ async function runLiveCycle() {
 
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
         const lastM5 = m5[m5.length - 1];
+        const currentPrice = lastM5.close; // 실시간 현재가
         const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
+        const checkTime = new Date().toLocaleString('ko-KR', { hour12: true }); // 현재 시간
+
         const tpPrice = entryPrice * (currentSig === 'long' ? 1.03 : 0.97);
         const slPrice = entryPrice * (currentSig === 'long' ? 0.85 : 1.15);
 
@@ -129,6 +132,8 @@ async function runLiveCycle() {
         if (currentSig !== 'hold') {
           // 진입 신호 발생 시
           message = `🚀 <b>[v7.0.2 Persistent LIVE] 신호 발생!</b>\n\n` +
+            `⌚ <b>체크 시간</b>: ${checkTime}\n` +
+            `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
             `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3%)\n` +
@@ -136,7 +141,7 @@ async function runLiveCycle() {
             `📡 1분 주기로 정밀 추적 중입니다.`;
         } else if (lastSignal !== 'hold') {
           // 기존 포지션이 종료되어 HOLD로 바뀐 경우
-          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`;
+          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)\n⌚ <b>체크 시간</b>: ${checkTime}\n💰 <b>마지막 가격</b>: $${currentPrice.toLocaleString()}`;
         }
 
         if (message) {
