@@ -12,16 +12,25 @@ dotenv.config();
 // __dirname 대응 (ESM/CJS 혼용 시)
 const _dirname = path.resolve();
 
-const TELEGRAM_TOKEN = (process.env.TELEGRAM_TOKEN || "").trim();
-const CHAT_ID = (process.env.TELEGRAM_CHAT_ID || process.env.CHAT_ID || "").trim();
+// 환경 변수 로드 및 개선된 토큰 검증
+const getRawEnv = (key) => (process.env[key] || "").trim();
+const isPlaceholder = (val) => !val || val.includes("your_") || val.length < 5;
+
+let TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN');
+let CHAT_ID = getRawEnv('TELEGRAM_CHAT_ID') || getRawEnv('CHAT_ID');
+
+// 시스템 환경 변수(GitHub Secrets 등)가 플레이스홀더를 덮어쓰도록 보정
+if (isPlaceholder(TELEGRAM_TOKEN)) TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN'); 
+if (isPlaceholder(CHAT_ID)) CHAT_ID = getRawEnv('CHAT_ID') || getRawEnv('TELEGRAM_CHAT_ID');
+
 const SYMBOL = (process.env.SYMBOL || 'BTCUSDT').toUpperCase();
 
 const RULES_FILE = path.join(_dirname, 'live_rules.json');
 let liveRules = {};
 
 async function sendTelegram(message) {
-  if (!TELEGRAM_TOKEN || !CHAT_ID) {
-    return console.log(`⚠️ Secrets Missing: Token(${TELEGRAM_TOKEN.length}), ID(${CHAT_ID.length})`);
+  if (isPlaceholder(TELEGRAM_TOKEN) || isPlaceholder(CHAT_ID)) {
+    return console.log(`⚠️ Telegram Secrets Missing or Invalid (Placeholder detected)`);
   }
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
@@ -31,9 +40,10 @@ async function sendTelegram(message) {
       parse_mode: 'HTML',
       disable_web_page_preview: true
     });
-    console.log("✉️ Alert Sent successfully!");
+    console.log("✉️ Telegram Alert Sent!");
   } catch (e) { 
-    console.error('Telegram failed:', e.response ? JSON.stringify(e.response.data) : e.message); 
+    const errorMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+    console.error('❌ Telegram Send Failed:', errorMsg); 
   }
 }
 
@@ -76,7 +86,12 @@ let lastNotifiedPrice = 0;
 
 async function runLiveCycle() {
   console.log(`[v7.0.2 Persistent Monitor] Starting...`);
+  
+  // 시스템 기동 즉시 알림 (API 대기 전)
+  await sendTelegram(`✅ <b>[v7.0.2 Persistent LIVE] System Online</b>\n\n📡 <b>상태</b>: 시장 감시 시작 (1분 주기)\n⚙️ <b>심볼</b>: ${SYMBOL}`);
+
   let isFirstScan = true;
+  let errorSent = false;
 
   while (true) {
     try {
@@ -99,12 +114,12 @@ async function runLiveCycle() {
       const currentSig = strategy.signal_logic(indicators, indices, liveRules);
 
       console.log(`Current Signal: ${currentSig.toUpperCase()}`);
+      errorSent = false; // 성공 시 에러 상태 초기화
 
-      // 신호가 바뀌었거나, 첫 스캔인데 진입 신호(LONG/SHORT)인 경우에만 발송
-      const isNewTradeSignal = (isFirstScan && currentSig !== 'hold');
+      // 신호가 바뀌었을 때만 알림 발송 (첫 스캔은 이미 Online 알림 보냄)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
 
-      if (isNewTradeSignal || isSignalChanged) {
+      if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
         const lastM5 = m5[m5.length - 1];
         const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
         const tpPrice = entryPrice * (currentSig === 'long' ? 1.03 : 0.97);
@@ -112,16 +127,16 @@ async function runLiveCycle() {
 
         let message = '';
         if (currentSig !== 'hold') {
-          // 진입 시 상세 리포트
-          message = `🚀 <b>[v7.0.2 Persistent LIVE]</b>\n\n` +
-            `📌 <b>포지션</b>: ${currentSig.toUpperCase()} (1분 실외 감시 중)\n` +
+          // 진입 신호 발생 시
+          message = `🚀 <b>[v7.0.2 Persistent LIVE] 신호 발생!</b>\n\n` +
+            `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3% Net)\n` +
+            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3%)\n` +
             `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
-            `📡 <b>v7.0.2 분석</b>: 트리플 컨플루언스 발생! (1분 주기로 정밀 추적 중)`;
-        } else if (!isFirstScan) {
-          // 기존 포지션이 종료되어 HOLD로 바뀐 경우에만 알림
-          message = `💤 <b>[v7.0.2 Global]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`;
+            `📡 1분 주기로 정밀 추적 중입니다.`;
+        } else if (lastSignal !== 'hold') {
+          // 기존 포지션이 종료되어 HOLD로 바뀐 경우
+          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)`;
         }
 
         if (message) {
@@ -132,9 +147,13 @@ async function runLiveCycle() {
         lastNotifiedPrice = entryPrice;
       }
       
-      isFirstScan = false; // 첫 스캔 상태 해제
+      isFirstScan = false;
     } catch (e) {
       console.error('v7.0.2 Loop Error:', e.message);
+      if (!errorSent) {
+        await sendTelegram(`⚠️ <b>[v7.0.2 LIVE Error]</b>\n시장 데이터 수집 실패: ${e.message}\n(IP 차단 또는 네트워크 문제를 확인하세요)`);
+        errorSent = true; // 스팸 방지
+      }
     }
 
     // 1분 대기

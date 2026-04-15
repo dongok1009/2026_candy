@@ -57,7 +57,11 @@ const strategy = {
             // Mapping: strategy 'm5' -> UI '5m'
             const timeframeMap = { 'm5': '5m', 'h1': '1h', 'd1': '1d' };
             const uiInterval = timeframeMap[interval] || interval;
-            const rules = overrideRules && overrideRules[side] && (overrideRules[side][uiInterval] || overrideRules[side][interval]);
+            
+            // live_rules.json 구조는 { "5m": { "long": { ... } } } 식임.
+            // 기존 코드는 overrideRules[side][interval]로 거꾸로 찾고 있었음.
+            const intervalRules = overrideRules && (overrideRules[uiInterval] || overrideRules[interval]);
+            const rules = intervalRules && intervalRules[side];
 
             const chk = (key) => {
                 if (!rules) return false;
@@ -77,7 +81,7 @@ const strategy = {
 
             let match = true;
 
-            // 1. If NO rules provided (Fallback)
+            // 1. If NO rules provided (Fallback) - rules가 아예 없을 때만 동작
             if (!rules) {
                 const adxVal = data.adx[idx];
                 if (adxVal < 30) return false;
@@ -95,28 +99,28 @@ const strategy = {
             }
 
             // 2. If rules provided (Interactive Mode)
-            if (chk('useADX')) {
+            if (chk('adxEnabled') || chk('useADX')) {
                 const threshold = rules.adxThreshold || 30;
                 if (data.adx[idx] < threshold) match = false;
             }
 
-            if (chk('useMacdBeyondSig')) {
+            if (chk('macdCrossEnabled') || chk('useMacdBeyondSig')) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
                 if (side === 'long' && m <= s) match = false;
                 if (side === 'short' && m >= s) match = false;
             }
 
-            if (chk('useStochCross')) {
+            if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
                 if (side === 'long' && k <= d) match = false;
                 if (side === 'short' && k >= d) match = false;
             }
 
-            // [Extra Filters]
-            if (chk('useMacdVal')) {
+            if (chk('macdValueEnabled') || chk('useMacdVal')) {
                 const m = data.macd.m[idx];
-                if (side === 'long' && m >= rules.macdVal) match = false;
-                if (side === 'short' && m <= rules.macdVal) match = false;
+                const threshold = rules.macdValue || rules.macdVal;
+                if (side === 'long' && m >= threshold) match = false;
+                if (side === 'short' && m <= threshold) match = false;
             }
 
             return match;
