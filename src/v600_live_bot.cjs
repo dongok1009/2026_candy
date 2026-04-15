@@ -113,7 +113,7 @@ async function runLiveCycle() {
       }
 
       const indicators = strategy.indicators_logic({ m5, h1, d1 });
-      const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
+      const indices = { idx5m: m5.length - 1, r1h: h1.length - 1, r1d: d1.length - 1 };
       const currentSig = strategy.signal_logic(indicators, indices, liveRules);
 
       console.log(`Current Signal: ${currentSig.toUpperCase()}`);

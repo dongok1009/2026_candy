@@ -82,7 +82,7 @@ const strategy = {
             // 1. If NO rules provided (Fallback)
             if (!rules) {
                 const adxVal = data.adx[idx];
-                if (adxVal < 20) return false; // Default ADX relaxed to 20
+                if (adxVal < 30) return false;
 
                 if (side === 'long') {
                     if (interval === 'm5') return data.stoch.k[idx] > data.stoch.d[idx];
@@ -98,7 +98,7 @@ const strategy = {
 
             // 2. If rules provided
             if (chk('adxEnabled') || chk('useADX')) {
-                const threshold = rules.adxThreshold || 20; // Relaxed to 20
+                const threshold = rules.adxThreshold || 30;
                 const val = data.adx[idx];
                 logDetail += `ADX:${val.toFixed(1)}>${threshold} `;
                 if (val < threshold) match = false;
@@ -116,6 +116,13 @@ const strategy = {
                 logDetail += `Stoch:${side==='long'?(k>d?'OK':'NO'):(k<d?'OK':'NO')} `;
                 if (side === 'long' && k <= d) match = false;
                 if (side === 'short' && k >= d) match = false;
+            }
+
+            if (chk('macdValueEnabled') || chk('useMacdVal')) {
+                const m = data.macd.m[idx];
+                const threshold = rules.macdValue || rules.macdVal;
+                if (side === 'long' && m >= threshold) match = false;
+                if (side === 'short' && m <= threshold) match = false;
             }
 
             if (match) console.log(`${side.toUpperCase()} ${logDetail} -> PASS`);
@@ -151,24 +158,24 @@ const strategy = {
 
         // [Latest Logic] Better Price Hybrid Entry
         if (sig === 'long' && signalPrice <= targetPrice) {
-            finalEntryPrice = signalPrice; 
-            executed = true; 
+            finalEntryPrice = signalPrice;
+            executed = true;
             entryType = "MARKET(Better)";
         } else if (sig === 'short' && signalPrice >= targetPrice) {
-            finalEntryPrice = signalPrice; 
-            executed = true; 
+            finalEntryPrice = signalPrice;
+            executed = true;
             entryType = "MARKET(Better)";
         } else {
             // Signal price is not hit target yet, start waiting
             for (let j = currentIndex; j < klines1m.length; j++) {
                 const ex = klines1m[j];
-                if (sig === 'long' && ex.low <= targetPrice) { 
+                if (sig === 'long' && ex.low <= targetPrice) {
                     finalEntryPrice = ex.open <= targetPrice ? ex.open : targetPrice;
-                    executed = true; entryTimeIdx = j; entryType = "LIMIT"; break; 
+                    executed = true; entryTimeIdx = j; entryType = "LIMIT"; break;
                 }
-                if (sig === 'short' && ex.high >= targetPrice) { 
+                if (sig === 'short' && ex.high >= targetPrice) {
                     finalEntryPrice = ex.open >= targetPrice ? ex.open : targetPrice;
-                    executed = true; entryTimeIdx = j; entryType = "LIMIT"; break; 
+                    executed = true; entryTimeIdx = j; entryType = "LIMIT"; break;
                 }
                 if (j - currentIndex > waitLimit) break;
             }
