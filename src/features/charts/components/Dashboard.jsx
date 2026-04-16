@@ -54,7 +54,32 @@ const Dashboard = () => {
 
   const [rules, setRules] = useState(() => {
     const saved = localStorage.getItem('trading_rules_v6');
-    return saved ? JSON.parse(saved) : DEFAULT_RULES;
+    if (!saved) return DEFAULT_RULES;
+    
+    try {
+      const parsed = JSON.parse(saved);
+      // [MIGRATION LOGIC] Check if it's the old structure (has '5m' at top level)
+      if (parsed['5m'] && !parsed.long) {
+        console.log('[DASHBOARD] Migrating old rules structure to new side-first pattern...');
+        return {
+          long: {
+            '5m': parsed['5m']?.long || DEFAULT_RULES.long['5m'],
+            '1h': parsed['1h']?.long || DEFAULT_RULES.long['1h'],
+            '1d': parsed['1d']?.long || DEFAULT_RULES.long['1d']
+          },
+          short: {
+            '5m': parsed['5m']?.short || DEFAULT_RULES.short['5m'],
+            '1h': parsed['1h']?.short || DEFAULT_RULES.short['1h'],
+            '1d': parsed['1d']?.short || DEFAULT_RULES.short['1d']
+          },
+          global: parsed.global || DEFAULT_RULES.global
+        };
+      }
+      return parsed;
+    } catch (e) {
+      console.error('[DASHBOARD] Failed to parse saved rules, resetting to default.');
+      return DEFAULT_RULES;
+    }
   });
 
   const [isTesting, setIsTesting] = useState(false);
@@ -125,8 +150,8 @@ const Dashboard = () => {
     fetch1hHistory();
   }, [symbol]);
 
-  const globalSignal = (signals['5m'] === 'long' && signals['1h'] === 'long' && signals['1d'] === 'long') ? 'LONG' :
-    (signals['5m'] === 'short' && signals['1h'] === 'short' && signals['1d'] === 'short') ? 'SHORT' : 'HOLDING';
+  const globalSignal = (signals?.['5m'] === 'long' && signals?.['1h'] === 'long' && signals?.['1d'] === 'long') ? 'LONG' :
+    (signals?.['5m'] === 'short' && signals?.['1h'] === 'short' && signals?.['1d'] === 'short') ? 'SHORT' : 'HOLDING';
 
   React.useEffect(() => {
     if (isPastMode) return; // No alerts in past mode
@@ -138,9 +163,9 @@ const Dashboard = () => {
         const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth() + 1).padStart(2, '0')}-${String(d_kst.getUTCDate()).padStart(2, '0')} ${String(d_kst.getUTCHours()).padStart(2, '0')}:${String(d_kst.getUTCMinutes()).padStart(2, '0')}:${String(d_kst.getUTCSeconds()).padStart(2, '0')}`;
         const message = `🚨 <b>[v7.0.2] ${symbol} ${globalSignal} Signal!</b>\n\n` +
           `• Time (KST): ${kstTime}\n` +
-          `• 5m: ${signals['5m']}\n` +
-          `• 1h: ${signals['1h']}\n` +
-          `• 1d: ${signals['1d']}\n\n` +
+          `• 5m: ${signals?.['5m'] || 'hold'}\n` +
+          `• 1h: ${signals?.['1h'] || 'hold'}\n` +
+          `• 1d: ${signals?.['1d'] || 'hold'}\n\n` +
           `📡 <b>High-Frequency Optimized</b>`;
         sendTelegramMessage(telegramToken, telegramChatId, message);
       }
@@ -160,15 +185,18 @@ const Dashboard = () => {
   const res1h = useBinanceWebSocket(symbol, '1h');
   const res1d = useBinanceWebSocket(symbol, '1d');
 
-  const handleSignalUpdate = React.useCallback((interval, state) => {
+  const handleSignalUpdate = React.useCallback((iv, state) => {
     setSignals(prev => {
-      if (prev[interval] === state) return prev;
-      return { ...prev, [interval]: state };
+      if (prev?.[iv] === state) return prev;
+      return { ...prev, [iv]: state };
     });
   }, []);
 
-  const handleIndicatorUpdate = (interval, data) => {
-    setIndicatorData(prev => ({ ...prev, [interval]: data }));
+  const handleIndicatorUpdate = (iv, data) => {
+    setIndicatorData(prev => ({
+      ...prev,
+      [iv]: { ...prev?.[iv], ...data }
+    }));
   };
 
   const [prevSymbol, setPrevSymbol] = useState(symbol);
@@ -222,8 +250,8 @@ const Dashboard = () => {
   const volume5m = candle5m ? Math.round(candle5m.volume).toLocaleString() : '-';
 
   // Global Signal Logic (Single Column)
-  const isAllLong = signals['5m'] === 'long' && signals['1h'] === 'long' && signals['1d'] === 'long';
-  const isAllShort = signals['5m'] === 'short' && signals['1h'] === 'short' && signals['1d'] === 'short';
+  const isAllLong = signals?.['5m'] === 'long' && signals?.['1h'] === 'long' && signals?.['1d'] === 'long';
+  const isAllShort = signals?.['5m'] === 'short' && signals?.['1h'] === 'short' && signals?.['1d'] === 'short';
   const status = isAllLong ? 'LONG' : (isAllShort ? 'SHORT' : 'HOLDING');
 
   return (
