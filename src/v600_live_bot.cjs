@@ -65,7 +65,10 @@ async function fetchOHLCV(interval, limit = 500) {
 
   for (const url of urls) {
     try {
-      const res = await axios.get(url, { timeout: 4000 });
+      const res = await axios.get(url, { 
+        timeout: 7000, 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+      });
       if (url.includes('bybit')) {
         return res.data.result.list.map(d => ({
           time: parseInt(d[0]), low: parseFloat(d[3]), high: parseFloat(d[2]), close: parseFloat(d[4]), volume: parseFloat(d[5])
@@ -79,7 +82,7 @@ async function fetchOHLCV(interval, limit = 500) {
       continue; // 다음 주소로 시도
     }
   }
-  throw new Error("❌ 모든 API 통로가 차단되었습니다.");
+  throw new Error("❌ 모든 데이터 서버가 차단되었습니다. (네트워크 지연 또는 IP 차단 가능성)");
 }
 
 let lastSignal = 'hold';
