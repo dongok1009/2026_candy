@@ -79,24 +79,21 @@ const strategy = {
             let match = true;
             let logDetail = `[${interval.toUpperCase()}] `;
 
-            // 1. If NO rules provided (Fallback)
+            // 1. If NO rules provided (Fallback) - Match screenshot EXACTLY
             if (!rules) {
-                const adxVal = data.adx[idx];
-                if (adxVal < 30) return false;
-
                 if (side === 'long') {
-                    if (interval === 'm5') return data.stoch.k[idx] > data.stoch.d[idx];
+                    if (interval === 'm5') return data.adx[idx] >= 30 && data.stoch.k[idx] > data.stoch.d[idx];
                     if (interval === 'h1') return data.macd.m[idx] > data.macd.s[idx] && data.stoch.k[idx] > data.stoch.d[idx];
                     if (interval === 'd1') return data.macd.m[idx] > data.macd.s[idx];
                 } else {
-                    if (interval === 'm5') return data.stoch.k[idx] < data.stoch.d[idx];
+                    if (interval === 'm5') return data.adx[idx] >= 30 && data.stoch.k[idx] < data.stoch.d[idx];
                     if (interval === 'h1') return data.macd.m[idx] < data.macd.s[idx] && data.stoch.k[idx] < data.stoch.d[idx];
                     if (interval === 'd1') return data.macd.m[idx] < data.macd.s[idx];
                 }
                 return true;
             }
 
-            // 2. If rules provided
+            // 2. If rules provided (Interactive Mode from UI)
             if (chk('adxEnabled') || chk('useADX')) {
                 const threshold = rules.adxThreshold || 30;
                 const val = data.adx[idx];
