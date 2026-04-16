@@ -585,3 +585,13 @@ v6.0.0은 2020년부터 2026년까지 비트코인 역대 최악의 하락장(20
 - ROI: 57.57% | 36W/4L
 - Params: BTCUSDT 5x | 1000 -> 1575.7191133666847
 ---
+
+### 📊 Official Record: Record.7.0.2.10
+- ROI: 0.00% | 0W/0L
+- Params: BTCUSDT 5x | 1000 -> 1000
+---
+
+### 📊 Official Record: Record.7.0.2.11
+- ROI: 383.90% | 93W/9L
+- Params: BTCUSDT 5x | 1000 -> 4838.999592181792
+---

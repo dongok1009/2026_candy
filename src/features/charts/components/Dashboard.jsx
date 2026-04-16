@@ -23,17 +23,15 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 );
 
 const DEFAULT_RULES = {
-  '5m': {
-    long: { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    short: { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 }
+  long: {
+    '5m': { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 80 },
+    '1h': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
+    '1d': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
   },
-  '1h': {
-    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 }
-  },
-  '1d': {
-    long: { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 },
-    short: { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
+  short: {
+    '5m': { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 80 },
+    '1h': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
+    '1d': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
   },
   global: {
     entryWaitMin: 180,
@@ -389,7 +387,8 @@ const Dashboard = () => {
               </div>
             </div>
             <PriceChart
-              symbol={symbol} interval="5m" lastCandle={candle5m} limit={limit} rule={rules['5m']}
+              symbol={symbol} interval="5m" lastCandle={candle5m} limit={limit} 
+              rule={{ long: rules.long?.['5m'], short: rules.short?.['5m'] }}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('5m', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('5m', data)}
@@ -401,7 +400,8 @@ const Dashboard = () => {
               <h3>{symbol} Real-Time Chart (1h)</h3>
             </div>
             <PriceChart
-              symbol={symbol} interval="1h" lastCandle={candle1h} limit={limit} rule={rules['1h']}
+              symbol={symbol} interval="1h" lastCandle={candle1h} limit={limit} 
+              rule={{ long: rules.long?.['1h'], short: rules.short?.['1h'] }}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1h', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('1h', data)}
@@ -413,7 +413,8 @@ const Dashboard = () => {
               <h3>{symbol} Real-Time Chart (1d)</h3>
             </div>
             <PriceChart
-              symbol={symbol} interval="1d" lastCandle={candle1d} limit={limit} rule={rules['1d']}
+              symbol={symbol} interval="1d" lastCandle={candle1d} limit={limit} 
+              rule={{ long: rules.long?.['1d'], short: rules.short?.['1d'] }}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1d', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('1d', data)}
