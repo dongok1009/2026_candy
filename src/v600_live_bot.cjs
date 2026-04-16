@@ -92,7 +92,7 @@ async function runLiveCycle() {
   console.log(`[v7.0.2 Persistent Monitor] Starting...`);
   
   // 기동 시 짧은 생존 알림 (매시간 기동되는 깃허브 특성상 생존 확인이 필요함)
-  await sendTelegram(`📡 <b>[v7.0.2] 감시 중...</b> ($${SYMBOL})`);
+
 
   let isFirstScan = true;
   let errorSent = false;
@@ -123,6 +123,11 @@ async function runLiveCycle() {
       const lastM5 = m5[m5.length - 1];
       const currentPrice = lastM5.close;
       const checkTime = new Date().toLocaleString('ko-KR', { hour12: true });
+
+      // [신규] 첫 스캔 성공 시 감시 시작 알림 (현재가/시간 포함)
+      if (isFirstScan) {
+        await sendTelegram(`📡 <b>[v7.0.2] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
+      }
 
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
