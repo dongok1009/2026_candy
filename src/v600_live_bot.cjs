@@ -88,14 +88,12 @@ let lastNotifiedPrice = 0;
 async function runLiveCycle() {
   console.log(`[v7.0.2 Persistent Monitor] Starting...`);
   
-  // 수동 실행 시에만 시작 알림 (매시간 자동 재시작 시 도배 방지)
-  if (IS_MANUAL) {
-    await sendTelegram(`✅ <b>[v7.0.2 Persistent LIVE] System Online</b>\n\n📡 <b>상태</b>: 시장 감시 시작 (1분 주기)\n⚙️ <b>심볼</b>: ${SYMBOL}`);
-  }
+  // 기동 시 짧은 생존 알림 (매시간 기동되는 깃허브 특성상 생존 확인이 필요함)
+  await sendTelegram(`📡 <b>[v7.0.2] 감시 중...</b> ($${SYMBOL})`);
 
   let isFirstScan = true;
   let errorSent = false;
-  let nextHeartbeat = Date.now() + (6 * 60 * 60 * 1000); // 6시간 후 첫 하트비트
+  let nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000); // 상세 하트비트는 12시간마다
 
   while (true) {
     try {
@@ -123,7 +121,7 @@ async function runLiveCycle() {
       const currentPrice = lastM5.close;
       const checkTime = new Date().toLocaleString('ko-KR', { hour12: true });
 
-      // 1. 신호 변화 알림
+      // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
         const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
@@ -139,27 +137,26 @@ async function runLiveCycle() {
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
             `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3%)\n` +
             `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
-            `📡 1분 주기로 정밀 추적 중입니다.`;
+            `📡 실시간 추적 중입니다.`;
         } else if (lastSignal !== 'hold') {
-          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (현재 포지션: HOLD)\n⌚ <b>체크 시간</b>: ${checkTime}\n💰 <b>마지막 가격</b>: $${currentPrice.toLocaleString()}`;
+          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
         }
 
         if (message) await sendTelegram(message);
         lastSignal = currentSig;
-        lastNotifiedPrice = entryPrice;
       }
 
-      // 2. 6시간 마다 하트비트 (정상 작동 확인용)
+      // 2. 12시간 상세 하트비트 (길게 실행될 경우 대비)
       if (Date.now() > nextHeartbeat) {
-        await sendTelegram(`📡 <b>[v7.0.2 Heartbeat]</b>\n시스템이 정상 감시 중입니다.\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}\n• 시간: ${checkTime}`);
-        nextHeartbeat = Date.now() + (6 * 60 * 60 * 1000);
+        await sendTelegram(`📡 <b>[v7.0.2 Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
+        nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000);
       }
       
       isFirstScan = false;
     } catch (e) {
       console.error('v7.0.2 Loop Error:', e.message);
       if (!errorSent) {
-        await sendTelegram(`⚠️ <b>[v7.0.2 LIVE Error]</b>\n시장 데이터 수집 실패: ${e.message}\n(IP 차단 또는 네트워크 문제를 확인하세요)`);
+        await sendTelegram(`⚠️ <b>[v7.0.2 LIVE Error]</b>\n오류 발생: ${e.message}`);
         errorSent = true;
       }
     }
