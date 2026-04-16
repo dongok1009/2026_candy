@@ -16,14 +16,15 @@ const SignalSettings = ({
 
   // Helper to bridge data structure differences
   const getRuleValue = (iv, side, field) => {
-    return rules[iv] && rules[iv][side] ? rules[iv][side][field] : false;
+    // [UNIFIED] rules[side][iv] pattern
+    return rules[side] && rules[side][iv] ? rules[side][iv][field] : false;
   };
 
   const getRuleNum = (iv, side, field) => {
       if (iv === 'global' || !side) {
           return rules[iv] ? rules[iv][field] : 0;
       }
-      const v = rules[iv] && rules[iv][side] ? rules[iv][side][field] : 0;
+      const v = rules[side] && rules[side][iv] ? rules[side][iv][field] : 0;
       return v || 0;
   };
 

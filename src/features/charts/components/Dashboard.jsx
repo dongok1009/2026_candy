@@ -151,7 +151,11 @@ const Dashboard = () => {
   }, [globalSignal, isPastMode, telegramToken, telegramChatId, symbol, signals]);
 
   const updateRule = (interval, direction, field, value) => {
-    setRules(prev => ({ ...prev, [interval]: { ...prev[interval], [direction]: { ...prev[interval][direction], [field]: value } } }));
+    if (interval === 'global') {
+        setRules(prev => ({ ...prev, [interval]: { ...prev[interval], [field]: value } }));
+    } else {
+        setRules(prev => ({ ...prev, [direction]: { ...prev[direction], [interval]: { ...prev[direction][interval], [field]: value } } }));
+    }
   };
 
   const res5m = useBinanceWebSocket(symbol, '5m');

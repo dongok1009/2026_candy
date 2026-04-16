@@ -57,8 +57,15 @@ const strategy = {
             const timeframeMap = { 'm5': '5m', 'h1': '1h', 'd1': '1d' };
             const uiInterval = timeframeMap[interval] || interval;
             
-            const intervalRules = overrideRules && (overrideRules[uiInterval] || overrideRules[interval]);
-            const rules = intervalRules && intervalRules[side];
+            // [SIDE-FIRST NESTING] Unified structure: rules[side][interval]
+            let rules = null;
+            if (overrideRules) {
+                if (overrideRules[side] && overrideRules[side][uiInterval]) {
+                    rules = overrideRules[side][uiInterval];
+                } else if (overrideRules[uiInterval] && overrideRules[uiInterval][side]) {
+                    rules = overrideRules[uiInterval][side];
+                }
+            }
 
             const chk = (key) => {
                 if (!rules) return false;

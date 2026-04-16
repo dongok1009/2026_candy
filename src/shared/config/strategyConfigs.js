@@ -20,17 +20,15 @@ export const OFFICIAL_STRATEGIES = [
     rules: {
       entryWaitMin: 180,
       exitWaitMin: 2000,
-      '5m': {
-        long: { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
-        short: { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 }
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       },
-      '1h': {
-        long: { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
-        short: { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 }
-      },
-      '1d': {
-        long: { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 },
-        short: { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       }
     }
   },
