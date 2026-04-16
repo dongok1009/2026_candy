@@ -100,7 +100,7 @@ async function runLiveCycle() {
 
   while (true) {
     try {
-      console.log(`\n--- SCANNING MARKET (${new Date().toLocaleString()}) ---`);
+      console.log(`\n--- SCANNING MARKET (${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}) ---`);
       
       const [m5, h1, d1] = await Promise.all([
         fetchOHLCV('5m'),
@@ -122,7 +122,7 @@ async function runLiveCycle() {
 
       const lastM5 = m5[m5.length - 1];
       const currentPrice = lastM5.close;
-      const checkTime = new Date().toLocaleString('ko-KR', { hour12: true });
+      const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
 
       // [신규] 첫 스캔 성공 시 감시 시작 알림 (현재가/시간 포함)
       if (isFirstScan) {
