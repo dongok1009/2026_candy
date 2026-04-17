@@ -70,14 +70,29 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       localization: {
         dateFormat: 'yyyy-MM-dd',
         timeFormatter: (time) => {
+          if (!time) return '';
           const d = new Date(time * 1000);
-          return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+          return d.toLocaleString('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+          }).replace(/\. /g, '-').replace('.', '');
         }
       },
       timeScale: {
         borderColor: 'rgba(197, 203, 206, 0.1)',
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: (time) => {
+          const d = new Date(time * 1000);
+          return d.toLocaleTimeString('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        },
         fixRightEdge: false,
         fixLeftEdge: false
       },
@@ -648,8 +663,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
             boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
           }}>
             {(() => {
+              if (!inspectTime) return '';
               const d = new Date(inspectTime * 1000);
-              return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+              return d.toLocaleString('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+                hour12: false
+              }).replace(/\. /g, '-').replace('.', '');
             })()}
           </div>
         </div>

@@ -39,7 +39,12 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                     {(() => {
                                         try {
                                             const d = new Date(record.timestamp);
-                                            return isNaN(d.getTime()) ? record.timestamp.split(' ').slice(0, 3).join(' ') : d.toLocaleDateString();
+                                            return isNaN(d.getTime()) ? record.timestamp : d.toLocaleString('ko-KR', {
+                                                timeZone: 'Asia/Seoul',
+                                                year: 'numeric', month: '2-digit', day: '2-digit',
+                                                hour: '2-digit', minute: '2-digit',
+                                                hour12: false
+                                            }).replace(/\. /g, '-').replace('.', '');
                                         } catch(e) { return record.timestamp; }
                                     })()}
                                 </div>

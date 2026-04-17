@@ -4,8 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { fileURLToPath } = require('url');
 
-// v7.0.2 전략 모듈 로드
-const strategy = require('../strategies/Logic.v7.0.2.cjs');
+// v7.0.3 전략 모듈 로드
+const strategy = require('../strategies/Logic.v7.0.3.cjs');
 
 dotenv.config();
 
@@ -89,11 +89,8 @@ let lastSignal = 'hold';
 let lastNotifiedPrice = 0;
 
 async function runLiveCycle() {
-  console.log(`[v7.0.2 Persistent Monitor] Starting...`);
+  console.log(`[v7.0.3 Persistent Monitor] Starting...`);
   
-  // 기동 시 짧은 생존 알림 (매시간 기동되는 깃허브 특성상 생존 확인이 필요함)
-
-
   let isFirstScan = true;
   let errorSent = false;
   let nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000); // 상세 하트비트는 12시간마다
@@ -126,45 +123,51 @@ async function runLiveCycle() {
 
       // [신규] 첫 스캔 성공 시 감시 시작 알림 (현재가/시간 포함)
       if (isFirstScan) {
-        await sendTelegram(`📡 <b>[v7.0.2] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
+        await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
       }
 
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
         const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
-        const tpPrice = entryPrice * (currentSig === 'long' ? 1.03 : 0.97);
-        const slPrice = entryPrice * (currentSig === 'long' ? 0.85 : 1.15);
+        
+        // [DYNAMIC] Leverage-aware TP/SL calculation (UI First)
+        const lev = liveRules?.global?.leverage || strategy.config.LEVERAGE || 5;
+        const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
+        const slRoi = strategy.config.SL_ROI || 0.15;
+        
+        const tpPrice = entryPrice * (currentSig === 'long' ? (1 + targetRoi / lev) : (1 - targetRoi / lev));
+        const slPrice = entryPrice * (currentSig === 'long' ? (1 - slRoi / lev) : (1 + slRoi / lev));
 
         let message = '';
         if (currentSig !== 'hold') {
-          message = `🚀 <b>[v7.0.2 Persistent LIVE] 신호 발생!</b>\n\n` +
+          message = `🚀 <b>[v7.0.3 LIVE] 신호 발생!</b>\n\n` +
             `⌚ <b>체크 시간</b>: ${checkTime}\n` +
             `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (+3%)\n` +
-            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (-15%)\n\n` +
-            `📡 실시간 추적 중입니다.`;
+            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${targetRoi*100}%)\n` +
+            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${slRoi*100}%)\n\n` +
+            `📡 레버리지 ${lev}배 기준 계산됨`;
         } else if (lastSignal !== 'hold') {
-          message = `💤 <b>[v7.0.2 Persistent LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
+          message = `💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
         }
 
         if (message) await sendTelegram(message);
         lastSignal = currentSig;
       }
 
-      // 2. 12시간 상세 하트비트 (길게 실행될 경우 대비)
+      // 2. 12시간 상세 하트비트
       if (Date.now() > nextHeartbeat) {
-        await sendTelegram(`📡 <b>[v7.0.2 Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
+        await sendTelegram(`📡 <b>[v7.0.3 Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
         nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000);
       }
       
       isFirstScan = false;
     } catch (e) {
-      console.error('v7.0.2 Loop Error:', e.message);
+      console.error('v7.0.3 Loop Error:', e.message);
       if (!errorSent) {
-        await sendTelegram(`⚠️ <b>[v7.0.2 LIVE Error]</b>\n오류 발생: ${e.message}`);
+        await sendTelegram(`⚠️ <b>[v7.0.3 LIVE Error]</b>\n오류 발생: ${e.message}`);
         errorSent = true;
       }
     }

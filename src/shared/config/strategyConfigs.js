@@ -21,12 +21,12 @@ export const OFFICIAL_STRATEGIES = [
       entryWaitMin: 180,
       exitWaitMin: 2000,
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
         '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
         '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       }
@@ -50,12 +50,12 @@ export const OFFICIAL_STRATEGIES = [
       entryWaitMin: 180,
       exitWaitMin: 2000,
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
         '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 80 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
         '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       }

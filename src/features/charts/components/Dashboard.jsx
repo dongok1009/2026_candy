@@ -24,18 +24,19 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 80 },
+    '5m': { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
     '1h': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
     '1d': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 80 },
+    '5m': { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
     '1h': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
     '1d': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
   },
   global: {
     entryWaitMin: 180,
-    exitWaitMin: 2000
+    exitWaitMin: 2000,
+    leverage: 5
   }
 };
 
@@ -53,7 +54,7 @@ const Dashboard = () => {
   const prevSignalRef = useRef(null);
 
   const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules_v6');
+    const saved = localStorage.getItem('trading_rules_v7');
     if (!saved) return DEFAULT_RULES;
     
     try {
@@ -85,7 +86,7 @@ const Dashboard = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules_v6', JSON.stringify(rules));
+    localStorage.setItem('trading_rules_v7', JSON.stringify(rules));
   }, [rules]);
 
   React.useEffect(() => {
@@ -159,14 +160,26 @@ const Dashboard = () => {
 
     if (prevSignalRef.current !== globalSignal) {
       if (globalSignal === 'LONG' || globalSignal === 'SHORT') {
-        const d_kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-        const kstTime = `${d_kst.getUTCFullYear()}-${String(d_kst.getUTCMonth() + 1).padStart(2, '0')}-${String(d_kst.getUTCDate()).padStart(2, '0')} ${String(d_kst.getUTCHours()).padStart(2, '0')}:${String(d_kst.getUTCMinutes()).padStart(2, '0')}:${String(d_kst.getUTCSeconds()).padStart(2, '0')}`;
-        const message = `🚨 <b>[v7.0.2] ${symbol} ${globalSignal} Signal!</b>\n\n` +
+        const kstTime = new Date().toLocaleString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        }).replace(/\. /g, '-').replace('.', '');
+        
+        // [DYNAMIC] Calculate TP/SL for Dashboard Alert using UI Leverage
+        const lev = rules?.global?.leverage || 5;
+        const entryPrice = globalSignal === 'LONG' ? (candle5m?.low || 0) : (candle5m?.high || 0);
+        const tpPrice = globalSignal === 'LONG' ? (entryPrice * (1 + 0.03 / lev)) : (entryPrice * (1 - 0.03 / lev));
+        const slPrice = globalSignal === 'LONG' ? (entryPrice * (1 - 0.15 / lev)) : (entryPrice * (1 + 0.15 / lev));
+
+        const message = `🚨 <b>[v7.0.3 UI] ${symbol} ${globalSignal} Signal!</b>\n\n` +
           `• Time (KST): ${kstTime}\n` +
-          `• 5m: ${signals?.['5m'] || 'hold'}\n` +
-          `• 1h: ${signals?.['1h'] || 'hold'}\n` +
-          `• 1d: ${signals?.['1d'] || 'hold'}\n\n` +
-          `📡 <b>High-Frequency Optimized</b>`;
+          `• Price: $${(candle5m?.close || 0).toLocaleString()}\n` +
+          `• Entry : $${entryPrice.toLocaleString()}\n` +
+          `• TP(3%) : $${tpPrice.toLocaleString()}\n` +
+          `• SL(15%) : $${slPrice.toLocaleString()}\n\n` +
+          `📡 <b>Leverage ${lev}x Applied from UI</b>`;
         sendTelegramMessage(telegramToken, telegramChatId, message);
       }
       prevSignalRef.current = globalSignal;
@@ -377,7 +390,12 @@ const Dashboard = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #2b3139', paddingBottom: '10px' }}>
               <h3 style={{ margin: 0, color: '#f3ba2f', fontSize: '16px' }}>📊 Backtest Verification Data</h3>
               <span style={{ fontSize: '14px', color: '#d1d4dc', fontWeight: 'bold' }}>
-                검증 시점(KST): {inspectTime ? new Date(inspectTime * 1000 + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(0, 19) : '입력 대기 중...'}
+                검증 시점(KST): {inspectTime ? new Date(inspectTime * 1000).toLocaleString('ko-KR', {
+                  timeZone: 'Asia/Seoul',
+                  year: 'numeric', month: '2-digit', day: '2-digit',
+                  hour: '2-digit', minute: '2-digit', second: '2-digit',
+                  hour12: false
+                }).replace(/\. /g, '-').replace('.', '') : '입력 대기 중...'}
               </span>
             </div>
 
