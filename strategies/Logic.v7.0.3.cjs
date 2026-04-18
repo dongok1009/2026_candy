@@ -1,6 +1,6 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v7.0.2.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v7.0.3.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
     name: 'Logic.v7.0.3',
