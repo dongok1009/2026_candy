@@ -20,7 +20,7 @@ let TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN');
 let CHAT_ID = getRawEnv('TELEGRAM_CHAT_ID') || getRawEnv('CHAT_ID');
 
 // 시스템 환경 변수(GitHub Secrets 등)가 플레이스홀더를 덮어쓰도록 보정
-if (isPlaceholder(TELEGRAM_TOKEN)) TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN');
+if (isPlaceholder(TELEGRAM_TOKEN)) TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN'); 
 if (isPlaceholder(CHAT_ID)) CHAT_ID = getRawEnv('CHAT_ID') || getRawEnv('TELEGRAM_CHAT_ID');
 
 const SYMBOL = (process.env.SYMBOL || 'BTCUSDT').toUpperCase();
@@ -35,23 +35,23 @@ async function sendTelegram(message) {
   }
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
-    await axios.post(url, {
-      chat_id: CHAT_ID,
-      text: message,
+    await axios.post(url, { 
+      chat_id: CHAT_ID, 
+      text: message, 
       parse_mode: 'HTML',
       disable_web_page_preview: true
     });
     console.log("✉️ Telegram Alert Sent!");
-  } catch (e) {
+  } catch (e) { 
     const errorMsg = e.response ? JSON.stringify(e.response.data) : e.message;
-    console.error('❌ Telegram Send Failed:', errorMsg);
+    console.error('❌ Telegram Send Failed:', errorMsg); 
   }
 }
 
 async function fetchOHLCV(interval, limit = 500) {
   const symbol = SYMBOL.toUpperCase();
   const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
-
+  
   const urls = [
     // 1순위: 바이낸스 공식 (지연 최소)
     `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
@@ -65,8 +65,8 @@ async function fetchOHLCV(interval, limit = 500) {
 
   for (const url of urls) {
     try {
-      const res = await axios.get(url, {
-        timeout: 7000,
+      const res = await axios.get(url, { 
+        timeout: 7000, 
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
       });
       if (url.includes('bybit')) {
@@ -90,7 +90,7 @@ let lastNotifiedPrice = 0;
 
 async function runLiveCycle() {
   console.log(`[v7.0.3 Persistent Monitor] Starting...`);
-
+  
   let isFirstScan = true;
   let errorSent = false;
   let nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000); // 상세 하트비트는 12시간마다
@@ -98,7 +98,7 @@ async function runLiveCycle() {
   while (true) {
     try {
       console.log(`\n--- SCANNING MARKET (${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}) ---`);
-
+      
       const [m5, h1, d1] = await Promise.all([
         fetchOHLCV('5m'),
         fetchOHLCV('1h'),
@@ -121,21 +121,37 @@ async function runLiveCycle() {
       const currentPrice = lastM5.close;
       const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
 
-      // [신규] 첫 스캔 성공 시 감시 시작 알림 (현재가/시간 포함)
+      // [OPTIMIZED] GitHub Actions 환경에서 매시간 재시작되는 경우 '감시 시작' 도배 방지
       if (isFirstScan) {
-        await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
+        const isScheduled = process.env.GITHUB_EVENT_NAME === 'schedule';
+        const isPush = process.env.GITHUB_EVENT_NAME === 'push';
+        
+        // 수동 실행(workflow_dispatch)이거나 로컬 실행일 때만 시작 알림 전송
+        if (!isScheduled && !isPush) {
+          await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
+        } else {
+          console.log(`[INFO] Scheduled run detected. Skipping 'Monitoring Started' telegram alert to avoid spam.`);
+        }
       }
 
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
         const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
-
+        
         // [DYNAMIC] Leverage-aware TP/SL calculation (UI First)
-        const lev = liveRules?.global?.leverage || strategy.config.LEVERAGE || 5;
+        let lev = 10; // Default fallback
+        if (liveRules?.global?.leverage) {
+          lev = liveRules.global.leverage;
+        } else if (liveRules?.long?.['5m']?.leverage) { // Support legacy or mixed structures
+          lev = liveRules.long['5m'].leverage;
+        } else {
+          lev = strategy.config.LEVERAGE || 10;
+        }
+
         const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
         const slRoi = strategy.config.SL_ROI || 0.15;
-
+        
         const tpPrice = entryPrice * (currentSig === 'long' ? (1 + targetRoi / lev) : (1 - targetRoi / lev));
         const slPrice = entryPrice * (currentSig === 'long' ? (1 - slRoi / lev) : (1 + slRoi / lev));
 
@@ -146,8 +162,8 @@ async function runLiveCycle() {
             `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${targetRoi * 100}%)\n` +
-            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${slRoi * 100}%)\n\n` +
+            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${targetRoi*100}%)\n` +
+            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${slRoi*100}%)\n\n` +
             `📡 레버리지 ${lev}배 기준 계산됨`;
         } else if (lastSignal !== 'hold') {
           message = `💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
@@ -162,7 +178,7 @@ async function runLiveCycle() {
         await sendTelegram(`📡 <b>[v7.0.3 Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
         nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000);
       }
-
+      
       isFirstScan = false;
     } catch (e) {
       console.error('v7.0.3 Loop Error:', e.message);
