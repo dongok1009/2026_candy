@@ -111,14 +111,14 @@ async function runLiveCycle() {
       }
 
       const indicators = strategy.indicators_logic({ m5, h1, d1 });
-      const indices = { idx5m: m5.length - 1, r1h: h1.length - 1, r1d: d1.length - 1 };
+      const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
       const currentSig = strategy.signal_logic(indicators, indices, liveRules);
 
       console.log(`Current Signal: ${currentSig.toUpperCase()}`);
       errorSent = false;
 
-      const lastM5 = m5[m5.length - 1];
-      const currentPrice = lastM5.close;
+      const completedM5 = m5[m5.length - 2];
+      const currentPrice = m5[m5.length - 1].close;
       const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
 
       // [OPTIMIZED] GitHub Actions 환경에서 매시간 재시작되는 경우 '감시 시작' 도배 방지
@@ -137,7 +137,7 @@ async function runLiveCycle() {
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
-        const entryPrice = currentSig === 'long' ? lastM5.low : (currentSig === 'short' ? lastM5.high : lastM5.close);
+        const entryPrice = currentSig === 'long' ? completedM5.low : (currentSig === 'short' ? completedM5.high : completedM5.close);
         
         // [DYNAMIC] Leverage-aware TP/SL calculation (UI First)
         let lev = 10; // Default fallback
