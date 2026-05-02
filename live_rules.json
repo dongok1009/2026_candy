@@ -39,7 +39,7 @@
     "long": {
       "macdValueEnabled": false,
       "macdValue": -100,
-      "macdCrossEnabled": false,
+      "macdCrossEnabled": true,
       "stochCrossEnabled": false,
       "macdHistEnabled": false,
       "macdHistValue": 0,
@@ -49,7 +49,7 @@
     "short": {
       "macdValueEnabled": false,
       "macdValue": 100,
-      "macdCrossEnabled": false,
+      "macdCrossEnabled": true,
       "stochCrossEnabled": false,
       "macdHistEnabled": false,
       "macdHistValue": 0,
