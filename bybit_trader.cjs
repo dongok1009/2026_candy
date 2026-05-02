@@ -94,7 +94,7 @@ async function init() {
     }
 }
 
-async function fetchOHLCV(interval, limit = 500) {
+async function fetchOHLCV(interval, limit = 1000) {
     const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
     const candles = await exchange.fetchOHLCV(config.symbol, bybitInterval, undefined, limit);
     return candles.map(c => ({
@@ -122,9 +122,9 @@ async function checkMarkets() {
     console.log(`\n[${now.toLocaleTimeString()}] --- BYBIT SCANNING ---`);
 
     const [m5, h1, d1] = await Promise.all([
-        fetchOHLCV('5m', 500),
-        fetchOHLCV('1h', 500),
-        fetchOHLCV('1d', 500)
+        fetchOHLCV('5m', 1000),
+        fetchOHLCV('1h', 1000),
+        fetchOHLCV('1d', 1000)
     ]);
 
     if (fs.existsSync(RULES_FILE)) {

@@ -14,14 +14,14 @@ const _dirname = path.resolve();
 
 // 환경 변수 로드 및 개선된 토큰 검증
 const getRawEnv = (key) => (process.env[key] || "").trim();
-const isPlaceholder = (val) => !val || val.includes("your_") || val.length < 5;
 
+// 텔레그램 토큰에서 'bot' 접두사 중복 방지 및 정규화
 let TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN');
+if (TELEGRAM_TOKEN.startsWith('bot')) TELEGRAM_TOKEN = TELEGRAM_TOKEN.replace(/^bot/, '');
+
 let CHAT_ID = getRawEnv('TELEGRAM_CHAT_ID') || getRawEnv('CHAT_ID');
 
-// 시스템 환경 변수(GitHub Secrets 등)가 플레이스홀더를 덮어쓰도록 보정
-if (isPlaceholder(TELEGRAM_TOKEN)) TELEGRAM_TOKEN = getRawEnv('TELEGRAM_TOKEN'); 
-if (isPlaceholder(CHAT_ID)) CHAT_ID = getRawEnv('CHAT_ID') || getRawEnv('TELEGRAM_CHAT_ID');
+const isPlaceholder = (val) => !val || val.includes("your_") || val.length < 5;
 
 const SYMBOL = (process.env.SYMBOL || 'BTCUSDT').toUpperCase();
 const IS_MANUAL = process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'; // 수동 실행 여부 확인
@@ -31,7 +31,8 @@ let liveRules = {};
 
 async function sendTelegram(message) {
   if (isPlaceholder(TELEGRAM_TOKEN) || isPlaceholder(CHAT_ID)) {
-    return console.log(`⚠️ Telegram Secrets Missing or Invalid (Placeholder detected)`);
+    console.log(`⚠️ Telegram Secrets Missing or Invalid (Placeholder detected)`);
+    return;
   }
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
   try {
@@ -48,7 +49,7 @@ async function sendTelegram(message) {
   }
 }
 
-async function fetchOHLCV(interval, limit = 500) {
+async function fetchOHLCV(interval, limit = 1000) {
   const symbol = SYMBOL.toUpperCase();
   const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
   
@@ -121,17 +122,9 @@ async function runLiveCycle() {
       const currentPrice = m5[m5.length - 1].close;
       const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
 
-      // [OPTIMIZED] GitHub Actions 환경에서 매시간 재시작되는 경우 '감시 시작' 도배 방지
+      // [UPDATE] GitHub Actions 스케줄 실행 시에도 최초 1회는 알림을 보내어 작동 확인 가능하게 변경
       if (isFirstScan) {
-        const isScheduled = process.env.GITHUB_EVENT_NAME === 'schedule';
-        const isPush = process.env.GITHUB_EVENT_NAME === 'push';
-        
-        // 수동 실행(workflow_dispatch)이거나 로컬 실행일 때만 시작 알림 전송
-        if (!isScheduled && !isPush) {
-          await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
-        } else {
-          console.log(`[INFO] Scheduled run detected. Skipping 'Monitoring Started' telegram alert to avoid spam.`);
-        }
+        await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
       }
 
       // 1. 신호 변화 알림 (진입/종료)
@@ -162,8 +155,8 @@ async function runLiveCycle() {
             `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
             `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${targetRoi*100}%)\n` +
-            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${slRoi*100}%)\n\n` +
+            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${(targetRoi*100).toFixed(1)}%)\n` +
+            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
             `📡 레버리지 ${lev}배 기준 계산됨`;
         } else if (lastSignal !== 'hold') {
           message = `💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
@@ -188,7 +181,11 @@ async function runLiveCycle() {
       }
     }
 
-    await new Promise(resolve => setTimeout(resolve, 60000));
+    const now = Date.now();
+    const nextMinute = Math.ceil(now / 60000) * 60000;
+    const delay = nextMinute - now;
+    // 다음 분(00초) 정각에서 2초 뒤에 실행되도록 동기화 (시간 밀림 방지)
+    await new Promise(resolve => setTimeout(resolve, delay + 2000));
   }
 }
 
