@@ -1,0 +1,247 @@
+const ccxt = require('ccxt');
+const axios = require('axios');
+const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
+
+// v7.0.3 로직 모듈 로드
+const strategy = require('./strategies/Logic.v7.0.3.cjs');
+
+dotenv.config();
+
+const config = {
+    apiKey: process.env.BYBIT_API_KEY,
+    secret: process.env.BYBIT_API_SECRET,
+    symbol: (process.env.SYMBOL || 'BTCUSDT').toUpperCase(),
+    useTestnet: process.env.USE_TESTNET === 'true',
+    telegramToken: process.env.TELEGRAM_TOKEN,
+    telegramChatId: process.env.TELEGRAM_CHAT_ID
+};
+
+async function sendTelegram(message) {
+    let token = config.telegramToken || "";
+    let chatId = config.telegramChatId || "";
+
+    if (token.startsWith('bot')) token = token.replace(/^bot/, '');
+    
+    if (!token || !chatId || token.length < 5) return;
+
+    try {
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        await axios.post(url, {
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
+        });
+    } catch (e) { 
+        console.error("Telegram send error:", e.message); 
+    }
+}
+
+// 실시간 상태 저장 (포지션 추적용)
+const STATE_FILE = path.join(__dirname, 'bybit_live_state.json');
+let liveState = {
+    position: null, // 'LONG', 'SHORT', null
+    entryPrice: 0,
+    entryTime: null,
+    status: 'IDLE', // 'IDLE', 'IN_POSITION'
+    lastUpdate: null,
+    lastSignal: 'hold'
+};
+
+if (fs.existsSync(STATE_FILE)) {
+    try {
+        liveState = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+    } catch (e) {}
+}
+
+const RULES_FILE = path.join(__dirname, 'live_rules.json');
+let liveRules = {};
+
+const saveState = () => {
+    liveState.lastUpdate = new Date().toLocaleString();
+    fs.writeFileSync(STATE_FILE, JSON.stringify(liveState, null, 2));
+};
+
+// 바이비트 거래소 설정 (선물 - Linear)
+const exchange = new ccxt.bybit({
+    apiKey: config.apiKey,
+    secret: config.secret,
+    options: { defaultType: 'linear' }
+});
+
+if (config.useTestnet) {
+    exchange.setSandboxMode(true);
+    console.log("⚠️ [BYBIT LIVE] TESTNET MODE ACTIVE - 가짜 돈으로 매매됩니다 ⚠️");
+}
+
+async function init() {
+    try {
+        console.log(`[INIT] Connecting to Bybit Futures... (${config.symbol})`);
+        
+        // 포지션 모드 확인 (단방향 모드 강제)
+        try {
+            await exchange.setPositionMode(false, config.symbol); 
+        } catch (e) {
+            // 이미 단방향이거나 설정 불가능할 경우 무시
+        }
+
+        await sendTelegram(`🤖 <b>[Antigravity v7.0.3] 바이비트 실전 매매 봇 가동</b>\n• 종목: ${config.symbol}\n• 상태: 시장 감시 시작...`);
+        runLoop();
+    } catch (err) {
+        console.error("[INIT ERROR]", err.message);
+    }
+}
+
+async function fetchOHLCV(interval, limit = 500) {
+    const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
+    const candles = await exchange.fetchOHLCV(config.symbol, bybitInterval, undefined, limit);
+    return candles.map(c => ({
+        time: c[0], open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5]
+    }));
+}
+
+async function runLoop() {
+    while (true) {
+        try {
+            await checkMarkets();
+        } catch (err) {
+            console.error("[LOOP ERROR]", err.message);
+        }
+        
+        // 정각 동기화 대기 (1분마다 체크)
+        const now = Date.now();
+        const nextMinute = Math.ceil(now / 60000) * 60000;
+        await new Promise(r => setTimeout(r, nextMinute - now + 2000));
+    }
+}
+
+async function checkMarkets() {
+    const now = new Date();
+    console.log(`\n[${now.toLocaleTimeString()}] --- BYBIT SCANNING ---`);
+
+    const [m5, h1, d1] = await Promise.all([
+        fetchOHLCV('5m', 500),
+        fetchOHLCV('1h', 500),
+        fetchOHLCV('1d', 500)
+    ]);
+
+    if (fs.existsSync(RULES_FILE)) {
+        liveRules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+    }
+
+    const indicators = strategy.indicators_logic({ m5, h1, d1 });
+    const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
+    const signal = strategy.signal_logic(indicators, indices, liveRules);
+    
+    let lev = liveRules?.global?.leverage || 5;
+
+    // 포지션 진입 로직
+    if (liveState.status === 'IDLE' && signal !== 'hold' && signal !== liveState.lastSignal) {
+        const lastM5 = m5[m5.length - 1];
+        await handleEntry(signal, lastM5, lev);
+    } 
+    // 진행 중인 포지션 감시 및 청산 로직
+    else if (liveState.status === 'IN_POSITION') {
+        const currentPrice = m5[m5.length - 1].close;
+        await monitorPosition(currentPrice, lev);
+    }
+
+    liveState.lastSignal = signal;
+    saveState();
+}
+
+async function handleEntry(signal, lastM5, leverage) {
+    console.log(`🔥 [ENTRY] Signal Detect: ${signal.toUpperCase()}`);
+    
+    // 바이비트 레버리지 설정 (매번 진입 전 확인)
+    try {
+        await exchange.setLeverage(leverage, config.symbol);
+    } catch(e) {}
+
+    // 진입가는 5분봉의 꼬리(그림자) 노림
+    const targetPrice = signal === 'long' ? lastM5.low : lastM5.high;
+    const currentPrice = lastM5.close;
+
+    // 수량 계산 (테스트용: 100달러 증거금 기준)
+    const margin = 100; // 추후 환경변수로 분리 추천
+    let quantity = (margin * leverage) / currentPrice;
+    
+    // 바이비트 최소 수량 소수점 맞춤 (BTCUSDT 기준 보통 0.001)
+    quantity = parseFloat(quantity.toFixed(3)); 
+
+    console.log(`[TRADE] Placing ${signal.toUpperCase()} Limit Order @ ${targetPrice} (Qty: ${quantity})`);
+
+    try {
+        // [실전 매매 API 호출]
+        const order = await exchange.createOrder(
+            config.symbol, 
+            'limit', 
+            signal === 'long' ? 'buy' : 'sell', 
+            quantity, 
+            targetPrice
+        );
+        
+        liveState.status = 'IN_POSITION';
+        liveState.position = signal.toUpperCase();
+        liveState.entryPrice = targetPrice;
+        liveState.entryTime = Date.now();
+        saveState();
+
+        await sendTelegram(`🚀 <b>[BYBIT ENTRY] ${config.symbol} ${liveState.position}</b>\n• Price: $${targetPrice}\n• Qty: ${quantity}\n• Leverage: ${leverage}x`);
+    } catch (err) {
+        console.error("[BYBIT ENTRY ERROR]", err.message);
+        await sendTelegram(`⚠️ <b>[진입 에러]</b>\n${err.message}`);
+    }
+}
+
+async function monitorPosition(currentPrice, leverage) {
+    const entry = liveState.entryPrice;
+    const side = liveState.position === 'LONG' ? 1 : -1;
+    const roe = ((currentPrice / entry - 1) * side) * leverage;
+    const durationMin = Math.floor((Date.now() - liveState.entryTime) / (1000 * 60));
+
+    const tp = strategy.config.TARGET_NET_ROI || 0.03;
+    const sl = strategy.config.SL_ROI || 0.15;
+    const waitLimit = strategy.config.EXIT_WAIT_MIN || 2000;
+
+    process.stdout.write(`\r[MONITOR] ${liveState.position} | ROE: ${(roe * 100).toFixed(2)}% | Time: ${durationMin}m `);
+
+    let exitReason = null;
+    if (roe >= tp) exitReason = 'TAKE_PROFIT';
+    else if (roe <= -sl) exitReason = 'STOP_LOSS';
+    else if (durationMin >= waitLimit) exitReason = 'TIMEOUT';
+
+    if (exitReason) {
+        console.log(`\n🏁 [EXIT] ${exitReason} Triggered! Closing Position...`);
+        try {
+            // [실전 청산 API 호출] (보유 수량 100% 시장가 종료)
+            // Bybit에서 포지션을 닫기 위해 reduceOnly 주문 사용
+            const positions = await exchange.fetchPositions([config.symbol]);
+            const pos = positions.find(p => p.symbol === config.symbol && p.contracts > 0);
+            
+            if (pos) {
+                await exchange.createOrder(
+                    config.symbol,
+                    'market',
+                    liveState.position === 'LONG' ? 'sell' : 'buy',
+                    pos.contracts,
+                    undefined,
+                    { reduceOnly: true }
+                );
+            }
+
+            const finalRoe = (roe * 100).toFixed(2);
+            await sendTelegram(`🏁 <b>[BYBIT EXIT] ${config.symbol} ${liveState.position}</b>\n• Reason: ${exitReason}\n• Price: $${currentPrice}\n• Final ROE: <b>${finalRoe}%</b>\n• Duration: ${durationMin}m`);
+            
+            liveState.status = 'IDLE';
+            liveState.position = null;
+            saveState();
+        } catch (err) {
+            console.error("[BYBIT EXIT ERROR]", err.message);
+        }
+    }
+}
+
+init();
