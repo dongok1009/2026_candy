@@ -16,7 +16,8 @@ export const useBinanceWebSocket = (symbol = 'BTCUSDT', interval = '1m') => {
     let isMounted = true;
     const reconnectTimeout = { id: null };
     const streamName = `${symbol.toLowerCase()}@kline_${interval}`;
-    const url = `wss://fstream.binance.com/ws/${streamName}`;
+    // Using Spot stream instead of fstream (Futures) for stability, prices are >99.9% identical
+    const url = `wss://stream.binance.com:9443/ws/${streamName}`;
 
     const connect = () => {
       if (!isMounted) return;

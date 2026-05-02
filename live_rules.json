@@ -22,31 +22,42 @@
       "macdValueEnabled": false,
       "macdValue": -100,
       "macdCrossEnabled": true,
-      "stochCrossEnabled": true
+      "stochCrossEnabled": true,
+      "adxEnabled": false,
+      "adxThreshold": 30
     },
     "short": {
       "macdValueEnabled": false,
       "macdValue": 100,
       "macdCrossEnabled": true,
-      "stochCrossEnabled": true
+      "stochCrossEnabled": true,
+      "adxEnabled": false,
+      "adxThreshold": 30
     }
   },
   "1d": {
     "long": {
       "macdValueEnabled": false,
       "macdValue": -100,
-      "macdCrossEnabled": true,
+      "macdCrossEnabled": false,
       "stochCrossEnabled": false,
       "macdHistEnabled": false,
-      "macdHistValue": 0
+      "macdHistValue": 0,
+      "adxEnabled": false,
+      "adxThreshold": 30
     },
     "short": {
       "macdValueEnabled": false,
       "macdValue": 100,
-      "macdCrossEnabled": true,
+      "macdCrossEnabled": false,
       "stochCrossEnabled": false,
       "macdHistEnabled": false,
-      "macdHistValue": 0
+      "macdHistValue": 0,
+      "adxEnabled": false,
+      "adxThreshold": 30
     }
+  },
+  "global": {
+    "leverage": 5
   }
 }
