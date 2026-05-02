@@ -122,10 +122,8 @@ async function runLiveCycle() {
       const currentPrice = m5[m5.length - 1].close;
       const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
 
-      // [UPDATE] GitHub Actions 스케줄 실행 시에도 최초 1회는 알림을 보내어 작동 확인 가능하게 변경
-      if (isFirstScan) {
-        await sendTelegram(`📡 <b>[v7.0.3] 감시 시작</b>\n⌚ 시간: ${checkTime}\n💰 현재가: $${currentPrice.toLocaleString()}`);
-      }
+      // [UPDATE] '감시 시작' 알림 제거 요청에 따라 삭제됨
+      // if (isFirstScan) { ... }
 
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
