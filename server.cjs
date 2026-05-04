@@ -17,9 +17,13 @@ const LIVE_RULES_FILE = path.join(__dirname, 'live_rules.json');
 
 // --- 실전 매매 (Live Trading) API ---
 app.get('/api/live-status', (req, res) => {
-    if (!fs.existsSync(LIVE_STATE_FILE)) return res.json({ status: 'OFFLINE' });
-    const data = JSON.parse(fs.readFileSync(LIVE_STATE_FILE, 'utf8'));
-    res.json(data);
+    try {
+        if (!fs.existsSync(LIVE_STATE_FILE)) return res.json({ status: 'OFFLINE' });
+        const data = JSON.parse(fs.readFileSync(LIVE_STATE_FILE, 'utf8'));
+        res.json(data);
+    } catch (err) {
+        res.json({ status: 'ERROR', message: err.message });
+    }
 });
 
 app.post('/api/live-settings', (req, res) => {
@@ -36,58 +40,78 @@ app.get('/api/live-rules', (req, res) => {
 
 // 기록 불러오기 API
 app.get('/api/list-history', (req, res) => {
-    if (!fs.existsSync(RECORDS_FILE)) return res.json([]);
-    const data = fs.readFileSync(RECORDS_FILE, 'utf8');
-    res.json(JSON.parse(data));
+    try {
+        if (!fs.existsSync(RECORDS_FILE)) return res.json([]);
+        const data = fs.readFileSync(RECORDS_FILE, 'utf8');
+        res.json(JSON.parse(data || '[]'));
+    } catch (err) {
+        console.error("[LIST-HISTORY ERROR]", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // 백테스트 실행 API
 app.post('/api/backtest', (req, res) => {
-    const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin } = req.body;
-    // UI 우선순위: exitWaitLimit > exitWaitMin > 0
-    const finalExitWait = exitWaitLimit || exitWaitMin || 0;
-    const finalEntryWait = entryWaitLimit || entryWaitMin || 60;
-    const startStr = startDate.split('T')[0];
-    const endStr = endDate.split('T')[0];
-
-    // [New] 윈도우 따옴표 이슈 방지: 규칙을 임시 JSON 파일로 저장
-    let rulesFileArg = '';
-    const tempRulesPath = path.join(__dirname, `temp_rules_${Date.now()}.json`);
-
-    if (overrideRules) {
-        fs.writeFileSync(tempRulesPath, JSON.stringify(overrideRules, null, 2));
-        rulesFileArg = `--rulesFile="${tempRulesPath}"`;
-    }
-
-    const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${rulesFileArg}`;
-
-    console.log(`[API] Executing: ${cmd}`);
-
-    exec(cmd, { cwd: __dirname, maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
-        const output = stdout.toString();
-
-        // 임시 파일 삭제
-        if (fs.existsSync(tempRulesPath)) fs.unlinkSync(tempRulesPath);
-
-        if (error) {
-            console.error("[SERVER ERROR]", stderr);
-            return res.status(500).json({ success: false, error: error.message, output });
+    try {
+        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi } = req.body;
+        
+        // 필수 필드 체크
+        if (!version || !symbol || !startDate || !endDate) {
+            return res.status(400).json({ success: false, error: "필수 입력값(버전, 심볼, 시작/종료일)이 누락되었습니다." });
         }
 
-        const jsonMatch = output.match(/###JSON_RESULT###(.*?)###JSON_RESULT###/s);
+        // UI 우선순위: exitWaitLimit > exitWaitMin > 0
+        const finalExitWait = exitWaitLimit || exitWaitMin || 0;
+        const finalEntryWait = entryWaitLimit || entryWaitMin || 60;
+        const startStr = startDate.split('T')[0];
+        const endStr = endDate.split('T')[0];
 
-        if (jsonMatch) {
-            try {
-                const rawRes = JSON.parse(jsonMatch[1].trim());
+        // [New] 윈도우 따옴표 이슈 방지: 규칙을 임시 JSON 파일로 저장
+        let rulesFileArg = '';
+        const tempDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+        const tempRulesPath = path.join(tempDir, `temp_rules_${Date.now()}.json`);
 
-                res.json({ ...rawRes, detailFile: rawRes.resultFilePath, trades: rawRes.trades || [] });
-            } catch (pErr) {
-                res.status(500).json({ success: false, error: "파이널 결과 파싱 실패", output });
+        if (overrideRules) {
+            fs.writeFileSync(tempRulesPath, JSON.stringify(overrideRules, null, 2));
+            rulesFileArg = `--rulesFile="${tempRulesPath}"`;
+        }
+
+        const targetRoiArg = targetRoi !== undefined ? `--targetRoi=${targetRoi}` : '';
+        const slRoiArg = slRoi !== undefined ? `--slRoi=${slRoi}` : '';
+
+        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${rulesFileArg}`;
+
+        console.log(`[API] Executing: ${cmd}`);
+
+        exec(cmd, { cwd: __dirname, maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
+            const output = stdout.toString();
+
+            // 임시 파일 삭제
+            if (fs.existsSync(tempRulesPath)) fs.unlinkSync(tempRulesPath);
+
+            if (error) {
+                console.error("[SERVER ERROR]", stderr);
+                return res.status(500).json({ success: false, error: error.message, output });
             }
-        } else {
-            res.status(500).json({ success: false, error: "파싱할 JSON 블록을 찾지 못함", output });
-        }
-    });
+
+            const jsonMatch = output.match(/###JSON_RESULT###(.*?)###JSON_RESULT###/s);
+
+            if (jsonMatch) {
+                try {
+                    const rawRes = JSON.parse(jsonMatch[1].trim());
+                    res.json({ ...rawRes, detailFile: rawRes.resultFilePath, trades: rawRes.trades || [] });
+                } catch (pErr) {
+                    res.status(500).json({ success: false, error: "파이널 결과 파싱 실패", output });
+                }
+            } else {
+                res.status(500).json({ success: false, error: "파싱할 JSON 블록을 찾지 못함", output });
+            }
+        });
+    } catch (err) {
+        console.error("[CRITICAL API ERROR]", err);
+        res.status(500).json({ success: false, error: "서버 내부 오류: " + err.message });
+    }
 });
 
 // 결과 기록 (JSON + MD 동시 저장)

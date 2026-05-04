@@ -31,7 +31,6 @@ const strategy = {
     indicators_logic: (klines) => {
         return {
             m5: {
-                macd: calculateMACD(klines.m5.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
                 adx: calculateADX(klines.m5)
             },
@@ -109,7 +108,7 @@ const strategy = {
                 if (val < threshold) match = false;
             }
 
-            if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig')) && data.macd) {
+            if (chk('macdCrossEnabled') || chk('useMacdBeyondSig')) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
                 logDetail += `MACD:${side==='long'?(m>s?'OK':'NO'):(m<s?'OK':'NO')} `;
                 if (side === 'long' && m <= s) match = false;
@@ -123,7 +122,7 @@ const strategy = {
                 if (side === 'short' && k >= d) match = false;
             }
 
-            if ((chk('macdValueEnabled') || chk('useMacdVal')) && data.macd) {
+            if (chk('macdValueEnabled') || chk('useMacdVal')) {
                 const m = data.macd.m[idx];
                 const threshold = rules.macdValue || rules.macdVal;
                 if (side === 'long' && m >= threshold) match = false;

@@ -1,10 +1,10 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v7.0.3.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v7.0.4.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
-    name: 'Logic.v7.0.3',
-    description: 'v7.0.3 (Experimental - Base on v7.0.2)',
+    name: 'Logic.v7.0.4',
+    description: 'v7.0.4 (UI-Configurable ROI/SL)',
     header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX",
 
     config: {
@@ -57,7 +57,7 @@ const strategy = {
 
             const timeframeMap = { 'm5': '5m', 'h1': '1h', 'd1': '1d' };
             const uiInterval = timeframeMap[interval] || interval;
-            
+
             // [SIDE-FIRST NESTING] Unified structure: rules[side][interval]
             let rules = null;
             if (overrideRules) {
@@ -77,8 +77,8 @@ const strategy = {
                 ];
                 for (const k of variations) {
                     if (rules[k] !== undefined) {
-                      const v = rules[k];
-                      return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
+                        const v = rules[k];
+                        return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
                     }
                 }
                 return false;
@@ -111,14 +111,14 @@ const strategy = {
 
             if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig')) && data.macd) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
-                logDetail += `MACD:${side==='long'?(m>s?'OK':'NO'):(m<s?'OK':'NO')} `;
+                logDetail += `MACD:${side === 'long' ? (m > s ? 'OK' : 'NO') : (m < s ? 'OK' : 'NO')} `;
                 if (side === 'long' && m <= s) match = false;
                 if (side === 'short' && m >= s) match = false;
             }
 
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
-                logDetail += `Stoch:${side==='long'?(k>d?'OK':'NO'):(k<d?'OK':'NO')} `;
+                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')} `;
                 if (side === 'long' && k <= d) match = false;
                 if (side === 'short' && k >= d) match = false;
             }

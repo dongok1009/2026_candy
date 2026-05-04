@@ -738,6 +738,22 @@ const BacktestForm = () => {
                             </div>
                         </div>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                        <div className="input-group">
+                            <label style={{ color: '#26a69a' }}>Target ROI (Decimal, e.g. 0.03 = 3%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.001" name="targetRoi" value={config.targetRoi} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '12px' }}>목표 수익률 (Net ROI)</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ color: '#ef5350' }}>Stop Loss ROI (Decimal, e.g. 0.15 = 15%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.001" name="slRoi" value={config.slRoi} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '12px' }}>최대 허용 손실률</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

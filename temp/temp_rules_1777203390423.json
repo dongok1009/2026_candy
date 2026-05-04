@@ -1,19 +1,19 @@
 {
   "entryWaitMin": 180,
-  "exitWaitMin": 3000,
+  "exitWaitMin": 2000,
   "long": {
     "5m": {
       "useMacdVal": false,
       "macdVal": 0,
-      "useMacdBeyondSig": false,
+      "useMacdBeyondSig": true,
       "useStochCross": true,
-      "useAdx": true,
+      "useADX": true,
       "adxThreshold": 30
     },
     "1h": {
       "useMacdBeyondSig": true,
       "useStochCross": true,
-      "useAdx": true,
+      "useADX": false,
       "adxThreshold": 30
     },
     "1d": {
@@ -21,7 +21,7 @@
       "useStochCross": false,
       "useMacdSigDiff": false,
       "macdSigDiff": 0,
-      "useAdx": false,
+      "useADX": false,
       "adxThreshold": 15
     }
   },
@@ -29,15 +29,15 @@
     "5m": {
       "useMacdVal": false,
       "macdVal": 0,
-      "useMacdBeyondSig": false,
+      "useMacdBeyondSig": true,
       "useStochCross": true,
-      "useAdx": true,
+      "useADX": true,
       "adxThreshold": 30
     },
     "1h": {
       "useMacdBeyondSig": true,
       "useStochCross": true,
-      "useAdx": true,
+      "useADX": false,
       "adxThreshold": 30
     },
     "1d": {
@@ -45,7 +45,7 @@
       "useStochCross": false,
       "useMacdSigDiff": false,
       "macdSigDiff": 0,
-      "useAdx": false,
+      "useADX": false,
       "adxThreshold": 15
     }
   }

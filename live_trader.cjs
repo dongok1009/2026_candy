@@ -1,10 +1,11 @@
 const ccxt = require('ccxt');
+const axios = require('axios');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 
-// 로직 모듈 로드 (v7.0.2 기준)
-const strategy = require('./strategies/Logic.v7.0.2.cjs');
+// 로직 모듈 로드 (v7.0.3 기준)
+const strategy = require('./strategies/Logic.v7.0.3.cjs');
 
 dotenv.config();
 
@@ -19,19 +20,31 @@ const config = {
 };
 
 async function sendTelegram(message) {
-    if (!config.telegramToken || !config.telegramChatId) return;
+    let token = config.telegramToken || "";
+    let chatId = config.telegramChatId || "";
+
+    // Normalize token
+    if (token.startsWith('bot')) token = token.replace(/^bot/, '');
+    
+    const isPlaceholder = (val) => !val || val.includes("your_") || val.length < 5;
+    if (isPlaceholder(token) || isPlaceholder(chatId)) {
+        console.log(`⚠️ Telegram Secrets Missing or Invalid (Placeholder detected)`);
+        return;
+    }
+
     try {
-        const url = `https://api.telegram.org/bot${config.telegramToken}/sendMessage`;
-        await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: config.telegramChatId,
-                text: message,
-                parse_mode: 'HTML'
-            })
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        await axios.post(url, {
+            chat_id: chatId,
+            text: message,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
         });
-    } catch (e) { console.error("Telegram send error:", e.message); }
+        console.log("✉️ Telegram Alert Sent!");
+    } catch (e) { 
+        const errorMsg = e.response ? JSON.stringify(e.response.data) : e.message;
+        console.error("Telegram send error:", errorMsg); 
+    }
 }
 
 // 실시간 상태 저장용
@@ -82,7 +95,7 @@ async function init() {
         await exchange.setLeverage(config.leverage, config.symbol);
         console.log(`[INIT] Leverage set to ${config.leverage}x`);
         
-        await sendTelegram(`🤖 <b>[Antigravity v7.0.2] 24H 감시 시작</b>\n• 종목: ${config.symbol}\n• 상태: 현재 신호 대기 중...`);
+        await sendTelegram(`🤖 <b>[Antigravity v7.0.3] 24H 감시 시작</b>\n• 종목: ${config.symbol}\n• 상태: 현재 신호 대기 중...`);
         
         // 메인 루프 실행
         runLoop();
@@ -150,12 +163,12 @@ async function checkMarkets() {
             const tp = targetEntry * (signal === 'long' ? 1.03 : 0.97);
             const sl = targetEntry * (signal === 'long' ? 0.85 : 1.15);
 
-            const message = `🚀 <b>[v7.0.2 Persistent LIVE]</b>\n\n` +
+            const message = `🚀 <b>[v7.0.3 Persistent LIVE]</b>\n\n` +
                             `📌 <b>포지션: ${signal.toUpperCase()}</b> (실시간 감시 중)\n` +
                             `💵 <b>진입 희망가:</b> $${targetEntry.toLocaleString()}\n` +
                             `✅ <b>익절가(TP):</b> $${tp.toLocaleString()} (+3% Net)\n` +
                             `❌ <b>손절가(SL):</b> $${sl.toLocaleString()} (-15%)\n\n` +
-                            `📡 <b>v7.0.2 분석: 트리플 컨플루언스 발생! (실시간 정밀 추적 중)</b>`;
+                            `📡 <b>v7.0.3 분석: 트리플 컨플루언스 발생! (실시간 정밀 추적 중)</b>`;
             
             await sendTelegram(message);
         } else if (signal === 'hold' && liveState.lastSignal !== 'hold') {

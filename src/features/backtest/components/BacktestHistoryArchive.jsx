@@ -33,6 +33,18 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                 <div className="version-info">
                                     <span className="version-tag">{record.version}</span>
                                     <span className="base-version">Base: {record.baseVersion}</span>
+                                    <span className="symbol-tag" style={{ 
+                                        marginLeft: '8px', 
+                                        fontSize: '10px', 
+                                        color: '#f3ba2f', 
+                                        background: 'rgba(243, 186, 47, 0.1)', 
+                                        padding: '1px 6px', 
+                                        borderRadius: '4px',
+                                        fontWeight: 'bold',
+                                        border: '1px solid rgba(243, 186, 47, 0.2)'
+                                    }}>
+                                        {record.config?.symbol || 'BTCUSDT'}
+                                    </span>
                                 </div>
                                 <div className="timestamp">
                                     <Calendar size={12} />

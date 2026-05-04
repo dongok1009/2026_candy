@@ -135,7 +135,7 @@ async function checkMarkets() {
     const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
     const signal = strategy.signal_logic(indicators, indices, liveRules);
     
-    let lev = liveRules?.global?.leverage || 5;
+    let lev = parseInt(process.env.LEVERAGE) || liveRules?.global?.leverage || 5;
 
     // 포지션 진입 로직
     if (liveState.status === 'IDLE' && signal !== 'hold' && signal !== liveState.lastSignal) {
@@ -164,8 +164,8 @@ async function handleEntry(signal, lastM5, leverage) {
     const targetPrice = signal === 'long' ? lastM5.low : lastM5.high;
     const currentPrice = lastM5.close;
 
-    // 수량 계산 (테스트용: 100달러 증거금 기준)
-    const margin = 100; // 추후 환경변수로 분리 추천
+    // 수량 계산 (환경변수에서 가져옴)
+    const margin = parseFloat(process.env.ORDER_AMOUNT) || 100; 
     let quantity = (margin * leverage) / currentPrice;
     
     // 바이비트 최소 수량 소수점 맞춤 (BTCUSDT 기준 보통 0.001)

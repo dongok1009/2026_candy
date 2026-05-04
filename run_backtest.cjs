@@ -55,6 +55,8 @@ try {
     if (params.balance) strategy.config.INITIAL_BALANCE = parseFloat(params.balance);
     if (params.exitWaitMin) strategy.config.EXIT_WAIT_MIN = parseInt(params.exitWaitMin);
     if (params.entryWaitMin) strategy.config.ENTRY_WAIT_MIN = parseInt(params.entryWaitMin);
+    if (params.targetRoi) strategy.config.TARGET_NET_ROI = parseFloat(params.targetRoi);
+    if (params.slRoi) strategy.config.SL_ROI = parseFloat(params.slRoi);
 
     // [New] UI에서 전달된 Override Rules 적용 (임시 파일 방식)
     if (params.rulesFile && fs.existsSync(params.rulesFile)) {

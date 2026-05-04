@@ -600,3 +600,118 @@ v6.0.0은 2020년부터 2026년까지 비트코인 역대 최악의 하락장(20
 - ROI: 374.74% | 104W/14L
 - Params: BTCUSDT 5x | 1000 -> 4747.357913931472
 ---
+
+### 📊 Official Record: Record.7.0.3.1
+- ROI: 165.11% | 95W/11L
+- Params: ETHUSDT 5x | 1000 -> 2651.1416576935294
+---
+
+### 📊 Official Record: Record.7.0.3.2
+- ROI: 121.22% | 562W/103L
+- Params: ETHUSDT 5x | 1000 -> 2212.212887844816
+---
+
+### 📊 Official Record: Record.7.0.3.3
+- ROI: 131.88% | 489W/93L
+- Params: ETHUSDT 5x | 1000 -> 2318.8286169733005
+---
+
+### 📊 Official Record: Record.7.0.3.4
+- ROI: 451.96% | 76W/12L
+- Params: ETHUSDT 5x | 1000 -> 5519.6339681325035
+---
+
+### 📊 Official Record: Record.7.0.3.5
+- ROI: 451.96% | 76W/12L
+- Params: ETHUSDT 5x | 1000 -> 5519.6339681325035
+---
+
+### 📊 Official Record: Record.7.0.3.5
+- ROI: 1544.67% | 423W/116L
+- Params: ETHUSDT 5x | 1000 -> 16446.677146154503
+---
+
+### 📊 Official Record: Record.7.0.3.6
+- ROI: 1544.67% | 423W/116L
+- Params: ETHUSDT 5x | 1000 -> 16446.677146154503
+---
+
+### 📊 Official Record: Record.7.0.3.7
+- ROI: 134.39% | 346W/110L
+- Params: ETHUSDT 5x | 1000 -> 2343.9460377324785
+---
+
+### 📊 Official Record: Record.7.0.4.1
+- ROI: 220.07% | 58W/10L
+- Params: ETHUSDT 5x | 1000 -> 3200.729484517533
+---
+
+### 📊 Official Record: Record.7.0.4.2
+- ROI: 68.61% | 268W/87L
+- Params: ETHUSDT 5x | 1000 -> 1686.1296523848769
+---
+
+### 📊 Official Record: Record.7.0.4.3
+- ROI: 1160.59% | 140W/12L
+- Params: BTCUSDT 5x | 1000 -> 12605.925166243615
+---
+
+### 📊 Official Record: Record.7.0.4.4
+- ROI: 50926.17% | 619W/106L
+- Params: BTCUSDT 5x | 1000 -> 510261.6968106014
+---
+
+### 📊 Official Record: Record.7.0.4.5
+- ROI: 28460.62% | 782W/129L
+- Params: BTCUSDT 5x | 1000 -> 285606.209065271
+---
+
+### 📊 Official Record: Record.7.0.4.6
+- ROI: -19.51% | 556W/147L
+- Params: BTCUSDT 5x | 1000 -> 804.8668578366234
+---
+
+### 📊 Official Record: Record.7.0.4.7
+- ROI: 1425.22% | 883W/163L
+- Params: BTCUSDT 5x | 1000 -> 15252.19532363852
+---
+
+### 📊 Official Record: Record.7.0.4.8
+- ROI: 18057283.29% | 1290W/159L
+- Params: BTCUSDT 5x | 1000 -> 180573832.88737246
+---
+
+### 📊 Official Record: Record.7.0.4.9
+- ROI: 18057283.29% | 1290W/159L
+- Params: BTCUSDT 5x | 1000 -> 180573832.88737246
+---
+
+### 📊 Official Record: Record.7.0.4.10
+- ROI: 383.90% | 93W/9L
+- Params: BTCUSDT 5x | 1000 -> 4838.999592181792
+---
+
+### 📊 Official Record: Record.7.0.4.9
+- ROI: -40.89% | 41W/13L
+- Params: BTCUSDT 5x | 1000 -> 591.0685514851654
+---
+
+### 📊 Official Record: Record.7.0.4.10
+- ROI: 56.19% | 38W/5L
+- Params: BTCUSDT 5x | 1000 -> 1561.8571673032975
+---
+
+### 📊 Official Record: Record.7.0.4.11
+- ROI: 1093.22% | 169W/18L
+- Params: BTCUSDT 5x | 1000 -> 11932.166064445997
+---
+
+### 📊 Official Record: Record.7.0.4.12
+- ROI: 7760.37% | 169W/18L
+- Params: BTCUSDT 10x | 1000 -> 78603.7202343642
+---
+
+### 📊 Official Record: Record.7.0.4.13
+- ROI: 2997.43% | 171W/28L
+- Params: BTCUSDT 10x | 1000 -> 30974.269717376617
+---
