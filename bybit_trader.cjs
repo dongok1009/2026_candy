@@ -315,12 +315,17 @@ async function syncExchangeTPSL(leverage) {
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         } else {
-            // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION인 경우 상태 초기화
-            if (liveState.status === 'IN_POSITION') {
-                console.log(`⚠️ [SYNC] No active position found on Bybit. Resetting bot status to IDLE.`);
+            // [SYNC] 거래소에 포지션이 없는 경우, 미체결 주문이 있는지 추가 확인
+            const openOrders = await exchange.fetchOpenOrders(symbol);
+            const hasOpenOrders = openOrders.length > 0;
+
+            if (liveState.status === 'IN_POSITION' && !hasOpenOrders) {
+                console.log(`⚠️ [SYNC] No active position or open orders found. Resetting bot status to IDLE.`);
                 liveState.status = 'IDLE';
                 liveState.position = null;
                 saveState();
+            } else if (hasOpenOrders) {
+                console.log(`ℹ️ [SYNC] Waiting for limit order to fill... (Status: IN_POSITION preserved)`);
             }
         }
     } catch (err) {
