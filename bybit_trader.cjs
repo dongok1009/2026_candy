@@ -183,39 +183,32 @@ async function handleEntry(side, price) {
             : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            const tpslParams = {
-                'category': 'linear', 
-                'symbol': config.SYMBOL,
-                'takeProfit': tpPrice.toString(), 
-                'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Limit', 
-                'slOrderType': 'Market', 
-                'tpslMode': 'Full', 
-                'tpLimitPrice': tpPrice.toString()
-            };
-
-            // 3중 안전장치: 가능한 모든 함수 명칭 시도
-            const methods = [
-                'v5PrivatePostPositionSetTpsl',
-                'v5_private_post_position_set_tpsl',
-                'privatePostV5PositionSetTpsl',
-                'private_post_v5_position_set_tpsl'
-            ];
-            
-            let success = false;
-            for (const m of methods) {
-                if (typeof exchange[m] === 'function') {
-                    await exchange[m](tpslParams);
-                    success = true;
-                    console.log(`✅ [TPSL SET SUCCESS] Used method: ${m}`);
-                    break;
+            // 표준 CCXT 통합 함수 사용 (버전 호환성이 가장 높음)
+            if (exchange.has['setTakeProfit'] && exchange.has['setStopLoss']) {
+                await exchange.setTakeProfit(tpPrice, config.SYMBOL, { 
+                    'stopLoss': slPrice,
+                    'tpOrderType': 'Limit',
+                    'slOrderType': 'Market',
+                    'tpLimitPrice': tpPrice.toString()
+                });
+                console.log(`✅ [TPSL SET SUCCESS] Used standard CCXT setTakeProfit`);
+            } else {
+                // 표준 함수가 없는 구버전일 경우의 수동 요청 (4중 안전장치)
+                const tpslParams = {
+                    'category': 'linear', 'symbol': config.SYMBOL,
+                    'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                    'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Full', 'tpLimitPrice': tpPrice.toString()
+                };
+                const methods = ['v5PrivatePostPositionSetTpsl', 'privatePostV5PositionSetTpsl', 'v5_private_post_position_set_tpsl'];
+                let success = false;
+                for (const m of methods) {
+                    if (typeof exchange[m] === 'function') {
+                        await exchange[m](tpslParams);
+                        success = true; break;
+                    }
                 }
-            }
-
-            if (!success) {
-                // 마지막 수단: 직접 요청
-                await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
-                console.log(`✅ [TPSL SET SUCCESS] Used direct request`);
+                if (!success) await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
+                console.log(`✅ [TPSL SET SUCCESS] Used manual fallback`);
             }
         } catch (e) {
             console.error("TPSL Set Error (Retrying later):", e.message);
@@ -307,37 +300,31 @@ async function syncExchangeTPSL(leverage) {
                 const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
                 console.log(`[TPSL SYNC] Setting TP: ${tpPrice}, SL: ${slPrice}`);
-                const tpslParams = {
-                    'category': 'linear', 
-                    'symbol': symbol,
-                    'takeProfit': tpPrice.toString(), 
-                    'stopLoss': slPrice.toString(),
-                    'tpOrderType': 'Limit', 
-                    'slOrderType': 'Market', 
-                    'tpslMode': 'Full', 
-                    'tpLimitPrice': tpPrice.toString()
-                };
-
-                const methods = [
-                    'v5PrivatePostPositionSetTpsl',
-                    'v5_private_post_position_set_tpsl',
-                    'privatePostV5PositionSetTpsl',
-                    'private_post_v5_position_set_tpsl'
-                ];
                 
-                let success = false;
-                for (const m of methods) {
-                    if (typeof exchange[m] === 'function') {
-                        await exchange[m](tpslParams);
-                        success = true;
-                        console.log(`✅ [TPSL SYNC SUCCESS] Used method: ${m}`);
-                        break;
+                if (exchange.has['setTakeProfit'] && exchange.has['setStopLoss']) {
+                    await exchange.setTakeProfit(tpPrice, symbol, { 
+                        'stopLoss': slPrice,
+                        'tpOrderType': 'Limit',
+                        'slOrderType': 'Market',
+                        'tpLimitPrice': tpPrice.toString()
+                    });
+                    console.log(`✅ [TPSL SYNC SUCCESS] Used standard CCXT setTakeProfit`);
+                } else {
+                    const tpslParams = {
+                        'category': 'linear', 'symbol': symbol,
+                        'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                        'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Full', 'tpLimitPrice': tpPrice.toString()
+                    };
+                    const methods = ['v5PrivatePostPositionSetTpsl', 'privatePostV5PositionSetTpsl', 'v5_private_post_position_set_tpsl'];
+                    let success = false;
+                    for (const m of methods) {
+                        if (typeof exchange[m] === 'function') {
+                            await exchange[m](tpslParams);
+                            success = true; break;
+                        }
                     }
-                }
-
-                if (!success) {
-                    await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
-                    console.log(`✅ [TPSL SYNC SUCCESS] Used direct request`);
+                    if (!success) await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
+                    console.log(`✅ [TPSL SYNC SUCCESS] Used manual fallback`);
                 }
             }
         }
