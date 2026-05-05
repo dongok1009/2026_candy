@@ -101,7 +101,7 @@ async function checkMarkets() {
         const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
         if (liveState.status === 'IDLE') {
-            const signals = strategy.signal_logic(indicators, indices, overrideRules);
+            const finalSignal = strategy.signal_logic(indicators, indices, overrideRules);
             
             // 개별 지표 계산 (로그용)
             const m5Long = indicators.m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
@@ -118,11 +118,13 @@ async function checkMarkets() {
             console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'} (MACD:${indicators.h1.macd.m[indices.r1h]>indicators.h1.macd.s[indices.r1h]?'OK':'WAIT'}, Stoch:${h1K.toFixed(1)}/${h1D.toFixed(1)})`);
             console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'} (MACD:${indicators.d1.macd.m[indices.r1d]>indicators.d1.macd.s[indices.r1d]?'OK':'WAIT'})`);
             
-            // 실제 전략의 최종 신호 사용
-            console.log(`--- 최종 결과: ${signals.long ? '🔥 SIGNAL' : 'PASS'} ---`);
+            // 실제 전략의 최종 신호 판정 (문자열 'long', 'short' 체크)
+            const isLong = finalSignal === 'long';
+            const isShort = finalSignal === 'short';
+            console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
-            if (signals.long) await handleEntry('LONG', m5[m5.length - 1].close);
-            else if (signals.short) await handleEntry('SHORT', m5[m5.length - 1].close);
+            if (isLong) await handleEntry('LONG', m5[m5.length - 1].close);
+            else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close);
         } else {
             await monitorPosition(m5[m5.length - 1].close);
         }
@@ -139,7 +141,8 @@ async function handleEntry(side, price) {
         const amount = (parseFloat(process.env.INITIAL_BALANCE) || 1000) * (parseFloat(process.env.LEVERAGE) || 5) / price;
         const contracts = exchange.amountToLots(config.SYMBOL, amount);
 
-        const order = await exchange.createOrder(config.SYMBOL, 'market', side === 'LONG' ? 'buy' : 'sell', contracts);
+        const orderSide = side === 'LONG' ? 'buy' : 'sell';
+        const order = await exchange.createOrder(config.SYMBOL, 'market', orderSide, contracts);
         console.log(`✅ [BYBIT ENTRY] Order Placed: ${order.id}`);
 
         liveState.status = 'IN_POSITION';
