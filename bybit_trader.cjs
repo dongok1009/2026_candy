@@ -138,19 +138,22 @@ async function handleEntry(side, price) {
     console.log(`\n🚀 [ENTRY SIGNAL] ${side} at $${price}`);
 
     try {
-        // 실제 잔고 확인 (안전장치용)
+        // 실제 잔고 확인
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
         
-        // 고정 주문 금액 설정 (INITIAL_BALANCE 사용)
-        const fixedAmount = parseFloat(process.env.INITIAL_BALANCE) || 1000;
+        // .env에서 주문 기준 금액 설정 (AMOUNT 또는 INITIAL_BALANCE)
+        const setAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
+        
+        // 설정 금액과 실제 잔고 중 더 작은 값을 기준으로 주문 (에러 방지)
+        const finalAmount = Math.min(setAmount, availableBalance);
 
-        if (availableBalance < fixedAmount) {
-            throw new Error(`Actual balance (${availableBalance}) is less than fixed amount (${fixedAmount}). Order aborted for safety.`);
+        if (finalAmount <= 0) {
+            throw new Error(`Available balance is 0 or less. Cannot place order.`);
         }
 
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
-        const amount = fixedAmount * leverage / price;
+        const amount = finalAmount * leverage / price;
         
         // ccxt 버전에 상관없이 작동하도록 수량 정밀도 처리
         const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
