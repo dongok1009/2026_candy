@@ -183,7 +183,6 @@ async function handleEntry(side, price) {
             : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            // 가장 안정적인 V5 전용 요청 방식
             const tpslParams = {
                 'category': 'linear', 
                 'symbol': config.SYMBOL,
@@ -195,10 +194,31 @@ async function handleEntry(side, price) {
                 'tpLimitPrice': tpPrice.toString()
             };
 
-            await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
-            console.log(`✅ [TPSL SET] TP: ${tpPrice}, SL: ${slPrice}`);
+            // 3중 안전장치: 가능한 모든 함수 명칭 시도
+            const methods = [
+                'v5PrivatePostPositionSetTpsl',
+                'v5_private_post_position_set_tpsl',
+                'privatePostV5PositionSetTpsl',
+                'private_post_v5_position_set_tpsl'
+            ];
+            
+            let success = false;
+            for (const m of methods) {
+                if (typeof exchange[m] === 'function') {
+                    await exchange[m](tpslParams);
+                    success = true;
+                    console.log(`✅ [TPSL SET SUCCESS] Used method: ${m}`);
+                    break;
+                }
+            }
+
+            if (!success) {
+                // 마지막 수단: 직접 요청
+                await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
+                console.log(`✅ [TPSL SET SUCCESS] Used direct request`);
+            }
         } catch (e) {
-            console.error("TPSL Set Error:", e.message);
+            console.error("TPSL Set Error (Retrying later):", e.message);
         }
 
         // 텔레그램 메시지 스타일 (신호봇과 동일하게 맞춤)
@@ -287,7 +307,7 @@ async function syncExchangeTPSL(leverage) {
                 const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
                 console.log(`[TPSL SYNC] Setting TP: ${tpPrice}, SL: ${slPrice}`);
-                await exchange.request('position/set-tpsl', 'v5Private', 'POST', {
+                const tpslParams = {
                     'category': 'linear', 
                     'symbol': symbol,
                     'takeProfit': tpPrice.toString(), 
@@ -296,12 +316,33 @@ async function syncExchangeTPSL(leverage) {
                     'slOrderType': 'Market', 
                     'tpslMode': 'Full', 
                     'tpLimitPrice': tpPrice.toString()
-                });
-                console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
+                };
+
+                const methods = [
+                    'v5PrivatePostPositionSetTpsl',
+                    'v5_private_post_position_set_tpsl',
+                    'privatePostV5PositionSetTpsl',
+                    'private_post_v5_position_set_tpsl'
+                ];
+                
+                let success = false;
+                for (const m of methods) {
+                    if (typeof exchange[m] === 'function') {
+                        await exchange[m](tpslParams);
+                        success = true;
+                        console.log(`✅ [TPSL SYNC SUCCESS] Used method: ${m}`);
+                        break;
+                    }
+                }
+
+                if (!success) {
+                    await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
+                    console.log(`✅ [TPSL SYNC SUCCESS] Used direct request`);
+                }
             }
         }
     } catch (err) {
-        console.error("[TPSL SYNC ERROR]", err.message);
+        console.error("[TPSL SYNC ERROR] (Retrying later):", err.message);
     }
 }
 
