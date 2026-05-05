@@ -1,13 +1,14 @@
 const ccxt = require('ccxt');
 const axios = require('axios');
-const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-
-// v7.0.3 로직 모듈 로드
-const strategy = require('./strategies/Logic.v7.0.3.cjs');
+const dotenv = require('dotenv');
 
 dotenv.config();
+
+// 전략 로직 모듈 동적 로드 (기본값 v7.0.3)
+const strategyVersion = process.env.STRATEGY_VERSION || 'Logic.v7.0.3.cjs';
+const strategy = require('./strategies/' + strategyVersion);
 
 const config = {
     apiKey: process.env.BYBIT_API_KEY,
@@ -312,7 +313,7 @@ async function init() {
     await syncExchangeTPSL(leverage);
     
     while(true) {
-        await scan();
+        await checkMarkets();
         await new Promise(r => setTimeout(r, 60000)); // 1분 대기
     }
 }
