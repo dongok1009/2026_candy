@@ -165,7 +165,6 @@ async function handleEntry(side, price) {
         liveState.entryTime = Date.now();
         saveState();
 
-        const leverage = parseFloat(process.env.LEVERAGE) || 5;
         const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
         const slRoi = strategy.config.SL_ROI || 0.15;
 
