@@ -26,6 +26,7 @@ let liveState = {
     position: null,
     entryPrice: 0,
     entryTime: null,
+    orderId: null,
     lastUpdate: null,
     lastPrice: null
 };
@@ -196,6 +197,7 @@ async function handleEntry(side, price, klines) {
         liveState.position = side;
         liveState.entryPrice = entryPrice;
         liveState.entryTime = Date.now();
+        liveState.orderId = order.id;
         saveState();
 
         // 기존의 별도 TP/SL 설정 로직은 예외 처리 강화 (이미 주문 시 설정되었으므로 중복 방지)
@@ -250,6 +252,13 @@ async function monitorPosition(currentPrice) {
 
     const target = strategy.config.TARGET_NET_ROI || 0.03;
     const sl = strategy.config.SL_ROI || 0.15;
+    const exitWait = strategy.config.EXIT_WAIT_MIN || 2000;
+
+    // [TIME_OUT] 2000분 초과 시 강제 종료
+    if (durationMin >= exitWait) {
+        await closePosition(side, `TIME_OUT (${exitWait}m)`, currentPrice, roe, durationMin);
+        return;
+    }
 
     if (roe >= target) await closePosition(side, 'TAKE_PROFIT', currentPrice, roe, durationMin);
     else if (roe <= -sl) await closePosition(side, 'STOP_LOSS', currentPrice, roe, durationMin);
@@ -315,17 +324,46 @@ async function syncExchangeTPSL(leverage) {
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         } else {
-            // [SYNC] 거래소에 포지션이 없는 경우, 미체결 주문이 있는지 추가 확인
-            const openOrders = await exchange.fetchOpenOrders(symbol);
-            const hasOpenOrders = openOrders.length > 0;
+            // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION인 경우
+            if (liveState.status === 'IN_POSITION') {
+                const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
+                const entryWait = strategy.config.ENTRY_WAIT_MIN || 180;
 
-            if (liveState.status === 'IN_POSITION' && !hasOpenOrders) {
-                console.log(`⚠️ [SYNC] No active position or open orders found. Resetting bot status to IDLE.`);
-                liveState.status = 'IDLE';
-                liveState.position = null;
-                saveState();
-            } else if (hasOpenOrders) {
-                console.log(`ℹ️ [SYNC] Waiting for limit order to fill... (Status: IN_POSITION preserved)`);
+                // 1. 미체결 주문이 있는지 확인
+                if (liveState.orderId) {
+                    try {
+                        const order = await exchange.fetchOrder(liveState.orderId, symbol);
+                        if (order.status === 'open') {
+                            if (durationMin >= entryWait) {
+                                console.log(`⚠️ [ENTRY TIMEOUT] Order ${liveState.orderId} not filled for ${durationMin}m. Cancelling...`);
+                                await exchange.cancelOrder(liveState.orderId, symbol);
+                                await sendTelegram(`⚠️ <b>[ENTRY TIMEOUT]</b>\n• Order cancelled after ${durationMin}m waiting.`);
+                                liveState.status = 'IDLE';
+                                liveState.orderId = null;
+                                saveState();
+                            } else {
+                                console.log(`⏳ [WAITING] Order ${liveState.orderId} is still open (${durationMin}/${entryWait}m)`);
+                            }
+                        } else {
+                            // 주문이 취소되었거나 이미 처리됨 (하지만 포지션은 없음)
+                            console.log(`⚠️ [SYNC] Order ${liveState.orderId} status is ${order.status} but no position found.`);
+                            liveState.status = 'IDLE';
+                            liveState.orderId = null;
+                            saveState();
+                        }
+                    } catch (e) {
+                        console.error("[FETCH ORDER ERROR]", e.message);
+                        // 주문을 찾을 수 없는 경우 등
+                        liveState.status = 'IDLE';
+                        liveState.orderId = null;
+                        saveState();
+                    }
+                } else {
+                    // orderId가 없는데 포지션도 없는 경우
+                    console.log(`⚠️ [SYNC] No active position and no orderId. Resetting to IDLE.`);
+                    liveState.status = 'IDLE';
+                    saveState();
+                }
             }
         }
     } catch (err) {
@@ -347,7 +385,7 @@ async function checkStatusNotification() {
     const kstHour = kstDate.getUTCHours();
     const kstMin = kstDate.getUTCMinutes();
 
-    const targetHours = [9, 11, 13, 15, 17, 19, 21];
+    const targetHours = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
     
     if (targetHours.includes(kstHour) && lastStatusSentHour !== kstHour) {
         const timeStr = kstDate.toISOString().replace('T', ' ').substring(0, 19);
