@@ -271,8 +271,16 @@ async function monitorPosition(currentPrice, leverage) {
 async function syncExchangeTPSL(leverage) {
     try {
         const positions = await exchange.fetchPositions([config.symbol]);
+        console.log(`[DEBUG] Found ${positions.length} positions from Exchange.`);
+        
         const pos = positions.find(p => p.symbol === config.symbol && parseFloat(p.contracts) > 0);
         
+        if (pos) {
+            console.log(`[DEBUG] Current Position: ${pos.symbol} | Side: ${pos.side} | Qty: ${pos.contracts} | TP: ${pos.takeProfit} | SL: ${pos.stopLoss}`);
+        } else {
+            console.log(`[DEBUG] No active position found for ${config.symbol} on Exchange.`);
+        }
+
         // 익절이나 손절 중 하나라도 없으면 재설정
         if (pos && (!pos.takeProfit || !pos.stopLoss || pos.takeProfit === 0 || pos.stopLoss === 0)) {
             console.log(`\n🔄 [SYNC] Missing TPSL on Exchange. Setting now...`);
