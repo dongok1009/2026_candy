@@ -272,19 +272,28 @@ async function syncExchangeTPSL(leverage) {
                 saveState();
             }
 
-            if (!pos.takeProfit || !pos.stopLoss || pos.takeProfit === 0 || pos.stopLoss === 0) {
+            if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
                 const entry = parseFloat(pos.entryPrice || pos.avgPrice);
                 const tpPrice = correctSide === 'LONG' ? parseFloat((entry * (1 + 0.03/leverage)).toFixed(2)) : parseFloat((entry * (1 - 0.03/leverage)).toFixed(2));
                 const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
+                console.log(`[TPSL SYNC] Setting TP: ${tpPrice}, SL: ${slPrice}`);
                 await exchange.request('v5/position/set-tpsl', 'private', 'POST', {
-                    'category': 'linear', 'symbol': symbol,
-                    'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
-                    'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice.toString()
+                    'category': 'linear', 
+                    'symbol': symbol,
+                    'takeProfit': tpPrice.toString(), 
+                    'stopLoss': slPrice.toString(),
+                    'tpOrderType': 'Limit', 
+                    'slOrderType': 'Market', 
+                    'tpslMode': 'Full',  // 'Partial'에서 'Full'로 변경하여 안정성 확보
+                    'tpLimitPrice': tpPrice.toString()
                 });
+                console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         }
-    } catch (err) {}
+    } catch (err) {
+        console.error("[TPSL SYNC ERROR]", err.message);
+    }
 }
 
 let lastStatusSentHour = -1;
