@@ -127,8 +127,8 @@ async function checkMarkets() {
             const isShort = finalSignal === 'short';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
-            if (isLong) await handleEntry('LONG', m5[m5.length - 1].close);
-            else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close);
+            if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines);
+            else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines);
         } else {
             await monitorPosition(m5[m5.length - 1].close);
         }
@@ -137,34 +137,37 @@ async function checkMarkets() {
     }
 }
 
-async function handleEntry(side, price) {
+async function handleEntry(side, price, klines) {
     const config = strategy.config;
-    console.log(`\n🚀 [ENTRY SIGNAL] ${side} at $${price}`);
+    
+    // v7.0.3 하이브리드 지정가 로직 적용
+    const m5 = klines.m5;
+    const prevM5 = m5[m5.length - 2]; // 방금 마감된 캔들
+    const targetPrice = side === 'LONG' ? prevM5.low : prevM5.high;
+    
+    console.log(`\n🚀 [ENTRY SIGNAL] ${side}`);
+    console.log(`• 현재가: $${price} | 진입 희망가(Target): $${targetPrice}`);
 
     try {
-        // 실제 잔고 확인
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
-        
-        // .env에서 주문 기준 금액 설정 (AMOUNT 또는 INITIAL_BALANCE)
         const envAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
-        console.log(`[DEBUG] ENV 설정 금액: $${envAmount}, 실제 가용 잔고: $${availableBalance.toFixed(2)}`);
-
-        // 설정 금액과 실제 잔고 중 더 작은 값을 기준으로 주문 (에러 방지)
         const finalAmount = Math.min(envAmount, availableBalance);
-        console.log(`[DEBUG] 최종 주문 기준 금액 (마진): $${finalAmount}`);
-
-        if (finalAmount <= 0) {
-            throw new Error(`Available balance is 0 or less. Cannot place order.`);
-        }
-
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
-        const amount = finalAmount * leverage / price;
+
+        // 현재가가 희망가보다 유리하면 현재가로, 아니면 희망가로 지정가 주문
+        const entryPrice = side === 'LONG' 
+            ? (price <= targetPrice ? price : targetPrice)
+            : (price >= targetPrice ? price : targetPrice);
+
+        const amount = finalAmount * leverage / entryPrice;
         const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
 
+        console.log(`[DEBUG] 주문 방식: LIMIT | 가격: $${entryPrice} | 수량: ${contracts}`);
+
         const orderSide = side === 'LONG' ? 'buy' : 'sell';
-        const order = await exchange.createOrder(config.SYMBOL, 'market', orderSide, contracts);
-        console.log(`✅ [BYBIT ENTRY] Order Placed: ${order.id}`);
+        const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice);
+        console.log(`✅ [BYBIT ENTRY] Limit Order Placed: ${order.id}`);
 
         liveState.status = 'IN_POSITION';
         liveState.position = side;
