@@ -112,9 +112,15 @@ async function checkMarkets() {
             const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
             const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
 
-            console.log(`[SCAN] LONG [M5] : ${m5Long ? 'OK' : 'WAIT'}`);
-            console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'}`);
-            console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'}`);
+            const adxVal = indicators.m5.adx[indices.idx5m];
+            const m5K = indicators.m5.stoch.k[indices.idx5m];
+            const m5D = indicators.m5.stoch.d[indices.idx5m];
+            const h1K = indicators.h1.stoch.k[indices.r1h];
+            const h1D = indicators.h1.stoch.d[indices.r1h];
+
+            console.log(`[SCAN] LONG [M5] : ${m5Long ? 'OK' : 'WAIT'} (ADX:${adxVal.toFixed(1)}/30, Stoch:${m5K.toFixed(1)}/${m5D.toFixed(1)})`);
+            console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'} (MACD:${indicators.h1.macd.m[indices.r1h]>indicators.h1.macd.s[indices.r1h]?'OK':'WAIT'}, Stoch:${h1K.toFixed(1)}/${h1D.toFixed(1)})`);
+            console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'} (MACD:${indicators.d1.macd.m[indices.r1d]>indicators.d1.macd.s[indices.r1d]?'OK':'WAIT'})`);
             console.log(`--- 최종 결과: ${longSignal ? '🔥 SIGNAL' : 'PASS'} ---`);
 
             if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
