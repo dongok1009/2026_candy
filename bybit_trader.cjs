@@ -293,7 +293,8 @@ async function syncExchangeTPSL(leverage) {
             if (liveState.status !== 'IN_POSITION') {
                 console.log(`⚠️ [SYNC] Bot state was IDLE, but Position exists. Updating state to IN_POSITION.`);
                 liveState.status = 'IN_POSITION';
-                liveState.position = pos.side === 'Buy' ? 'LONG' : 'SHORT';
+                const sideLower = pos.side.toLowerCase();
+                liveState.position = (sideLower === 'long' || sideLower === 'buy') ? 'LONG' : 'SHORT';
                 liveState.entryPrice = parseFloat(pos.entryPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
                 saveState();
@@ -319,13 +320,13 @@ async function syncExchangeTPSL(leverage) {
                 ? parseFloat((entry * (1 - slRate / leverage)).toFixed(2))
                 : parseFloat((entry * (1 + slRate / leverage)).toFixed(2));
 
-            await exchange.setParams(config.symbol, {
-                takeProfit: tpPrice,
-                stopLoss: slPrice,
-                tpOrderType: 'Limit',
-                slOrderType: 'Market',
-                tpslMode: 'Partial',
-                tpLimitPrice: tpPrice
+            // ccxt 바이비트 v5 전용 메서드 사용 (setTakeProfit, setStopLoss 등은 버전마다 다를 수 있어 가장 확실한 파라미터 방식 사용)
+            await exchange.setTakeProfit(config.symbol, tpPrice, {
+                'stopLoss': slPrice,
+                'tpOrderType': 'Limit',
+                'slOrderType': 'Market',
+                'tpslMode': 'Partial',
+                'tpLimitPrice': tpPrice
             });
             console.log(`✅ [SYNC] Exchange TPSL set: TP ${tpPrice}, SL ${slPrice}`);
             await sendTelegram(`🔄 <b>[BYBIT SYNC] TPSL Updated</b>\n• TP (Limit): $${tpPrice}\n• SL (Market): $${slPrice}`);
