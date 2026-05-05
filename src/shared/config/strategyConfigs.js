@@ -4,35 +4,6 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
-    version: 'Logic.v7.0.5',
-    name: 'Logic.v7.0.5 (3m Entry Edition)',
-    description: '진입 주기를 3분봉(3m)으로 단축하여 시장 변화에 더욱 민감하게 대응하는 버전',
-    stats: {
-      initialBalance: 1000,
-      finalBalance: 1000,
-      roi: '0.0%',
-      winRate: '-',
-      trades: 0,
-      wins: 0,
-      losses: 0,
-      period: 'New'
-    },
-    rules: {
-      entryWaitMin: 180,
-      exitWaitMin: 2000,
-      long: {
-        '3m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
-      },
-      short: {
-        '3m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
-        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
-        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
-      }
-    }
-  },
-  {
     version: 'Logic.v7.0.4',
     name: 'Logic.v7.0.4 (Adjustable ROI/SL)',
     description: '익절률(Target ROI)과 손절률(SL ROI)을 UI에서 직접 입력하여 테스트할 수 있는 버전',

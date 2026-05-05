@@ -338,7 +338,10 @@ async function checkStatusNotification() {
             const current = liveState.lastPrice;
             const side = liveState.position;
             const roe = side === 'LONG' ? (current - entry) / entry * leverage : (entry - current) / entry * leverage;
-            msg += `\n• <b>현재 수익률: ${(roe * 100).toFixed(2)}%</b>`;
+            const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
+            
+            msg += `\n• <b>Final ROE: ${(roe * 100).toFixed(2)}%</b>` +
+                   `\n• <b>Duration: ${durationMin}m</b>`;
         }
 
         await sendTelegram(msg);
