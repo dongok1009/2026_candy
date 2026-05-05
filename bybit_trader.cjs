@@ -185,7 +185,8 @@ async function handleEntry(side, price, klines) {
             'takeProfit': tpPrice.toString(),
             'stopLoss': slPrice.toString(),
             'tpOrderType': 'Market',
-            'slOrderType': 'Market'
+            'slOrderType': 'Market',
+            'tpslMode': 'Full'
         };
 
         const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice, orderParams);
