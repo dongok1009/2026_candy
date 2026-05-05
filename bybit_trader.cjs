@@ -270,9 +270,15 @@ async function monitorPosition(currentPrice, leverage) {
 
 async function syncExchangeTPSL(leverage) {
     try {
-        const positions = await exchange.fetchPositions([config.symbol]);
-        console.log(`[DEBUG] Found ${positions.length} positions from Exchange.`);
+        const positions = await exchange.fetchPositions(); // 전체 포지션 가져오기
+        console.log(`[DEBUG] Found ${positions.length} active positions on Exchange.`);
         
+        positions.forEach(p => {
+            if (parseFloat(p.contracts) > 0) {
+                console.log(`[DEBUG] Detected Active Position: ${p.symbol} (${p.contracts} contracts)`);
+            }
+        });
+
         const pos = positions.find(p => p.symbol === config.symbol && parseFloat(p.contracts) > 0);
         
         if (pos) {
