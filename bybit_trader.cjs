@@ -145,11 +145,15 @@ async function handleEntry(side, price) {
 
         // Exchange-side TPSL 등록 (Partial Mode + Limit TP)
         try {
-            await exchange.setTPSL(config.SYMBOL, tpPrice, slPrice, {
+            await exchange.privatePostV5PositionSetTpsl({
+                'category': 'linear',
+                'symbol': config.SYMBOL,
+                'takeProfit': tpPrice.toString(),
+                'stopLoss': slPrice.toString(),
                 'tpOrderType': 'Limit',
                 'slOrderType': 'Market',
                 'tpslMode': 'Partial',
-                'tpLimitPrice': tpPrice
+                'tpLimitPrice': tpPrice.toString()
             });
             console.log(`✅ [TPSL SET] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
@@ -257,10 +261,18 @@ async function syncExchangeTPSL(leverage) {
                     : parseFloat((entry * (1 + slRoi / leverage)).toFixed(2));
 
                 try {
-                    await exchange.setTPSL(symbol, tpPrice, slPrice, {
-                        'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice
+                    // ccxt 버전에 상관없이 바이비트 v5 API 직접 호출
+                    await exchange.privatePostV5PositionSetTpsl({
+                        'category': 'linear',
+                        'symbol': symbol,
+                        'takeProfit': tpPrice.toString(),
+                        'stopLoss': slPrice.toString(),
+                        'tpOrderType': 'Limit',
+                        'slOrderType': 'Market',
+                        'tpslMode': 'Partial',
+                        'tpLimitPrice': tpPrice.toString()
                     });
-                    console.log(`✅ [SYNC] TPSL Set Success`);
+                    console.log(`✅ [SYNC] TPSL Set Success (Raw API)`);
                 } catch (e) {
                     console.log(`[SYNC ERROR] ${e.message}`);
                 }
