@@ -268,13 +268,38 @@ async function syncExchangeTPSL(leverage) {
     } catch (err) {}
 }
 
+let lastStatusSentHour = -1;
+
+async function checkStatusNotification() {
+    const now = new Date();
+    // 한국 시간(KST, UTC+9) 계산
+    const kstOffset = 9 * 60 * 60 * 1000;
+    const kstDate = new Date(now.getTime() + kstOffset);
+    const kstHour = kstDate.getUTCHours();
+    const kstMin = kstDate.getUTCMinutes();
+
+    // 9시 ~ 21시 사이, 2시간 단위 (9, 11, 13, 15, 17, 19, 21)
+    const targetHours = [9, 11, 13, 15, 17, 19, 21];
+    
+    if (targetHours.includes(kstHour) && lastStatusSentHour !== kstHour) {
+        const timeStr = kstDate.toISOString().replace('T', ' ').substring(0, 19);
+        await sendTelegram(`🔔 <b>[v7.0.3 LIVE] 시스템 가동 중</b>\n• 체크 시간: ${timeStr} (KST)\n• 봇 상태: ${liveState.status}\n• 현재가: $${liveState.lastPrice || '계산중'}`);
+        lastStatusSentHour = kstHour;
+    }
+}
+
 async function init() {
     loadState();
     console.log(`\n🤖 [Antigravity ${strategyVersion}] Bybit Live Bot Starting...`);
     const leverage = parseFloat(process.env.LEVERAGE) || 5;
     await syncExchangeTPSL(leverage);
     while(true) {
-        await checkMarkets();
+        try {
+            await checkMarkets();
+            await checkStatusNotification();
+        } catch (e) {
+            console.error("Loop Error:", e.message);
+        }
         await new Promise(r => setTimeout(r, 60000));
     }
 }
