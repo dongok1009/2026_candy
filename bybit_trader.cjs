@@ -95,7 +95,7 @@ async function checkMarkets() {
     ]);
 
     const indicators = strategy.indicators_logic({ m5, h1, h12, d1 });
-    const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r12h: h12.length - 2, r1d: d1.length - 2 };
+    const indices = { idx5m: m5.length - 1, r1h: h1.length - 1, r12h: h12.length - 1, r1d: d1.length - 1 };
 
     const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
