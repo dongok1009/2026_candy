@@ -191,16 +191,15 @@ async function handleEntry(side, price, klines) {
             : parseFloat((entryPrice * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            // 서버 실사 결과 확인된 정확한 V5 함수명 사용
+            // 바이비트 V5 'Full' 모드 규격에 맞게 수정 (tpOrderType은 Market만 지원됨)
             const tpslParams = {
                 'category': 'linear', 
                 'symbol': config.SYMBOL,
                 'takeProfit': tpPrice.toString(), 
                 'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Limit', 
+                'tpOrderType': 'Market', // 'Limit'에서 'Market'으로 변경
                 'slOrderType': 'Market', 
-                'tpslMode': 'Full', 
-                'tpLimitPrice': tpPrice.toString()
+                'tpslMode': 'Full'
             };
 
             await exchange.privatePostV5PositionTradingStop(tpslParams);
@@ -299,7 +298,7 @@ async function syncExchangeTPSL(leverage) {
                 const tpslParams = {
                     'category': 'linear', 'symbol': symbol,
                     'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
-                    'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Full', 'tpLimitPrice': tpPrice.toString()
+                    'tpOrderType': 'Market', 'slOrderType': 'Market', 'tpslMode': 'Full'
                 };
 
                 await exchange.privatePostV5PositionTradingStop(tpslParams);
