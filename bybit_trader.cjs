@@ -217,7 +217,7 @@ async function handleEntry(side, price, klines) {
                     `⌚ <b>체크 시간:</b> ${timeStr}\n` +
                     `💰 <b>현재 가격:</b> $${price.toLocaleString()}\n\n` +
                     `📌 <b>포지션:</b> ${side}\n` +
-                    `💵 <b>진입 가격:</b> $${price.toLocaleString()}\n` +
+                    `💵 <b>진입 가격:</b> $${entryPrice.toLocaleString()}\n` +
                     `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()} (ROI ${(targetRoi * 100).toFixed(1)}%)\n` +
                     `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()} (ROI ${(slRoi * 100).toFixed(1)}%)\n\n` +
                     `📡 레버리지 ${leverage}배 기준 계산됨`;
