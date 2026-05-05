@@ -191,21 +191,20 @@ async function handleEntry(side, price, klines) {
             : parseFloat((entryPrice * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            // 바이비트 V5 'Full' 모드 규격에 맞게 수정 (tpOrderType은 Market만 지원됨)
             const tpslParams = {
-                'category': 'linear', 
-                'symbol': config.SYMBOL,
-                'takeProfit': tpPrice.toString(), 
-                'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Market', // 'Limit'에서 'Market'으로 변경
-                'slOrderType': 'Market', 
-                'tpslMode': 'Full'
+                'category': 'linear', 'symbol': config.SYMBOL,
+                'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                'tpOrderType': 'Market', 'slOrderType': 'Market', 'tpslMode': 'Full'
             };
 
             await exchange.privatePostV5PositionTradingStop(tpslParams);
             console.log(`✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
-            console.error("TPSL Set Error:", e.message);
+            if (e.message.includes('not modified')) {
+                console.log(`ℹ️ [TPSL ALREADY SET] TP/SL is already synced with exchange`);
+            } else {
+                console.error("TPSL Set Error:", e.message);
+            }
         }
 
         // 텔레그램 메시지 스타일 (신호봇과 동일하게 맞춤)
@@ -306,7 +305,11 @@ async function syncExchangeTPSL(leverage) {
             }
         }
     } catch (err) {
-        console.error("[TPSL SYNC ERROR]:", err.message);
+        if (err.message.includes('not modified')) {
+            console.log(`ℹ️ [TPSL SYNC] Already up to date`);
+        } else {
+            console.error("[TPSL SYNC ERROR]:", err.message);
+        }
     }
 }
 
