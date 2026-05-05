@@ -197,7 +197,8 @@ async function handleEntry(signal, lastM5, leverage) {
                 stopLoss: slPrice,
                 tpOrderType: 'Limit', // 익절은 지정가(Maker)
                 slOrderType: 'Market', // 손절은 시장가(Taker) 확실한 보호
-                tpslMode: 'Full'
+                tpslMode: 'Partial',   // 지정가 익절을 위해 Partial 모드 사용
+                tpLimitPrice: tpPrice  // 지정가 익절의 실제 가격
             }
         );
         
@@ -296,7 +297,8 @@ async function syncExchangeTPSL(leverage) {
                 stopLoss: slPrice,
                 tpOrderType: 'Limit',
                 slOrderType: 'Market',
-                tpslMode: 'Full'
+                tpslMode: 'Partial',
+                tpLimitPrice: tpPrice
             });
             console.log(`✅ [SYNC] Exchange TPSL set: TP ${tpPrice}, SL ${slPrice}`);
             await sendTelegram(`🔄 <b>[BYBIT SYNC] TPSL Updated</b>\n• TP (Limit): $${tpPrice}\n• SL (Market): $${slPrice}`);
