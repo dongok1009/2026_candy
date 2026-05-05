@@ -94,6 +94,8 @@ async function checkMarkets() {
             fetchOHLCV('1d', 1000)
         ]);
 
+        liveState.lastPrice = m5[m5.length - 1].close;
+
         const klines = { m5, h1, d1 };
         const indicators = strategy.indicators_logic(klines);
         const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
