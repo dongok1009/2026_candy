@@ -139,7 +139,9 @@ async function handleEntry(side, price) {
 
     try {
         const amount = (parseFloat(process.env.INITIAL_BALANCE) || 1000) * (parseFloat(process.env.LEVERAGE) || 5) / price;
-        const contracts = exchange.amountToLots(config.SYMBOL, amount);
+        
+        // ccxt 버전에 상관없이 작동하도록 수량 정밀도 처리
+        const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
 
         const orderSide = side === 'LONG' ? 'buy' : 'sell';
         const order = await exchange.createOrder(config.SYMBOL, 'market', orderSide, contracts);
