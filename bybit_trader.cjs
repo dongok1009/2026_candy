@@ -94,20 +94,16 @@ async function checkMarkets() {
             fetchOHLCV('1d', 1000)
         ]);
 
-        // v7.0.3이 기대하는 데이터 구조로 전달
         const klines = { m5, h1, d1 };
         const indicators = strategy.indicators_logic(klines);
-        
-        // 확정봉(length-2) 기준으로 인덱스 설정
         const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
 
         const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
         if (liveState.status === 'IDLE') {
             const signals = strategy.signal_logic(indicators, indices, overrideRules);
-            const longSignal = signals.long;
-            const shortSignal = signals.short;
-
+            
+            // 개별 지표 계산 (로그용)
             const m5Long = indicators.m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
             const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
             const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
@@ -121,10 +117,12 @@ async function checkMarkets() {
             console.log(`[SCAN] LONG [M5] : ${m5Long ? 'OK' : 'WAIT'} (ADX:${adxVal.toFixed(1)}/30, Stoch:${m5K.toFixed(1)}/${m5D.toFixed(1)})`);
             console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'} (MACD:${indicators.h1.macd.m[indices.r1h]>indicators.h1.macd.s[indices.r1h]?'OK':'WAIT'}, Stoch:${h1K.toFixed(1)}/${h1D.toFixed(1)})`);
             console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'} (MACD:${indicators.d1.macd.m[indices.r1d]>indicators.d1.macd.s[indices.r1d]?'OK':'WAIT'})`);
-            console.log(`--- 최종 결과: ${longSignal ? '🔥 SIGNAL' : 'PASS'} ---`);
+            
+            // 실제 전략의 최종 신호 사용
+            console.log(`--- 최종 결과: ${signals.long ? '🔥 SIGNAL' : 'PASS'} ---`);
 
-            if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
-            else if (shortSignal) await handleEntry('SHORT', m5[m5.length - 1].close);
+            if (signals.long) await handleEntry('LONG', m5[m5.length - 1].close);
+            else if (signals.short) await handleEntry('SHORT', m5[m5.length - 1].close);
         } else {
             await monitorPosition(m5[m5.length - 1].close);
         }
