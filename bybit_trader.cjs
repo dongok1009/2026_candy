@@ -303,6 +303,14 @@ async function syncExchangeTPSL(leverage) {
                 await exchange.privatePostV5PositionTradingStop(tpslParams);
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
+        } else {
+            // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION인 경우 상태 초기화
+            if (liveState.status === 'IN_POSITION') {
+                console.log(`⚠️ [SYNC] No active position found on Bybit. Resetting bot status to IDLE.`);
+                liveState.status = 'IDLE';
+                liveState.position = null;
+                saveState();
+            }
         }
     } catch (err) {
         if (err.message.includes('not modified')) {
