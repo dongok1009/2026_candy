@@ -192,7 +192,22 @@ async function handleEntry(side, price) {
             console.error("TPSL Set Error:", e.message);
         }
 
-        await sendTelegram(`🚀 <b>[BYBIT ENTRY] ${config.SYMBOL} ${side}</b>\n• Price: $${price}\n• Qty: ${contracts}\n• Leverage: ${leverage}x`);
+        // 텔레그램 메시지 스타일 (신호봇과 동일하게 맞춤)
+        const kstDate = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+        const ampm = kstDate.getUTCHours() >= 12 ? 'PM' : 'AM';
+        const displayHour = kstDate.getUTCHours() % 12 || 12;
+        const timeStr = `${kstDate.getUTCFullYear()}. ${kstDate.getUTCMonth() + 1}. ${kstDate.getUTCDate()}. ${ampm} ${displayHour}:${kstDate.getUTCMinutes().toString().padStart(2, '0')}:${kstDate.getUTCSeconds().toString().padStart(2, '0')}`;
+
+        const msg = `🚀 <b>[v7.0.3 LIVE] 신호 발생!</b>\n\n` +
+                    `⌚ <b>체크 시간:</b> ${timeStr}\n` +
+                    `💰 <b>현재 가격:</b> $${price.toLocaleString()}\n\n` +
+                    `📌 <b>포지션:</b> ${side}\n` +
+                    `💵 <b>진입 가격:</b> $${price.toLocaleString()}\n` +
+                    `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()} (ROI ${(targetRoi * 100).toFixed(1)}%)\n` +
+                    `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()} (ROI ${(slRoi * 100).toFixed(1)}%)\n\n` +
+                    `📡 레버리지 ${leverage}배 기준 계산됨`;
+
+        await sendTelegram(msg);
     } catch (err) {
         console.error("[BYBIT ENTRY ERROR]", err.message);
     }
