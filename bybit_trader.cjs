@@ -151,19 +151,24 @@ async function handleEntry(side, price, klines) {
     try {
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
-        const envAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
-        const finalAmount = Math.min(envAmount, availableBalance);
+        
+        // .env에서 AMOUNT 또는 INITIAL_BALANCE 읽기 (없으면 100)
+        const envAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100;
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
 
-        // 현재가가 희망가보다 유리하면 현재가로, 아니면 희망가로 지정가 주문
+        // 실제 가용 잔고와 설정 금액 중 작은 값 선택
+        const finalAmount = Math.min(envAmount, availableBalance);
+        
+        console.log(`[DEBUG] 설정금액:$${envAmount}, 가용잔고:$${availableBalance.toFixed(2)}, 최종마진:$${finalAmount}`);
+
         const entryPrice = side === 'LONG' 
             ? (price <= targetPrice ? price : targetPrice)
             : (price >= targetPrice ? price : targetPrice);
 
-        const amount = finalAmount * leverage / entryPrice;
+        const amount = (finalAmount * leverage) / entryPrice;
         const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
 
-        console.log(`[DEBUG] 주문 방식: LIMIT | 가격: $${entryPrice} | 수량: ${contracts}`);
+        console.log(`[DEBUG] 주문수량: ${contracts} BTC (마진 $${finalAmount} x ${leverage}배)`);
 
         const orderSide = side === 'LONG' ? 'buy' : 'sell';
         const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice);
@@ -171,7 +176,7 @@ async function handleEntry(side, price, klines) {
 
         liveState.status = 'IN_POSITION';
         liveState.position = side;
-        liveState.entryPrice = price;
+        liveState.entryPrice = entryPrice;
         liveState.entryTime = Date.now();
         saveState();
 
@@ -179,13 +184,14 @@ async function handleEntry(side, price, klines) {
         const slRoi = strategy.config.SL_ROI || 0.15;
 
         const tpPrice = side === 'LONG' 
-            ? parseFloat((price * (1 + targetRoi / leverage)).toFixed(2))
-            : parseFloat((price * (1 - targetRoi / leverage)).toFixed(2));
+            ? parseFloat((entryPrice * (1 + targetRoi / leverage)).toFixed(2))
+            : parseFloat((entryPrice * (1 - targetRoi / leverage)).toFixed(2));
         const slPrice = side === 'LONG'
-            ? parseFloat((price * (1 - slRoi / leverage)).toFixed(2))
-            : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
+            ? parseFloat((entryPrice * (1 - slRoi / leverage)).toFixed(2))
+            : parseFloat((entryPrice * (1 + slRoi / leverage)).toFixed(2));
 
         try {
+            // 서버 실사 결과 확인된 정확한 V5 함수명 사용
             const tpslParams = {
                 'category': 'linear', 
                 'symbol': config.SYMBOL,
@@ -197,8 +203,7 @@ async function handleEntry(side, price, klines) {
                 'tpLimitPrice': tpPrice.toString()
             };
 
-            // CCXT 4.5.48 버전에서 작동하는 정확한 V5 함수 호출
-            await exchange.v5PrivatePostPositionSetTpsl(tpslParams);
+            await exchange.privatePostV5PositionTradingStop(tpslParams);
             console.log(`✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
             console.error("TPSL Set Error:", e.message);
@@ -297,7 +302,7 @@ async function syncExchangeTPSL(leverage) {
                     'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Full', 'tpLimitPrice': tpPrice.toString()
                 };
 
-                await exchange.v5PrivatePostPositionSetTpsl(tpslParams);
+                await exchange.privatePostV5PositionTradingStop(tpslParams);
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         }
