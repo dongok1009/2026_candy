@@ -4,9 +4,9 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
-    version: 'Logic.v7.0.6',
-    name: 'Logic.v7.0.6 (12h Filter Edition)',
-    description: '1일봉 대신 12시간봉(12h) 필터를 적용하여 추세 대응 속도를 높인 최신 버전',
+    version: 'Logic.v7.0.5',
+    name: 'Logic.v7.0.5 (3m Entry Edition)',
+    description: '진입 주기를 3분봉(3m)으로 단축하여 시장 변화에 더욱 민감하게 대응하는 버전',
     stats: {
       initialBalance: 1000,
       finalBalance: 1000,
@@ -21,14 +21,14 @@ export const OFFICIAL_STRATEGIES = [
       entryWaitMin: 180,
       exitWaitMin: 2000,
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '3m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
-        '12h': { useMacdBeyondSig: true, useStochCross: false, useADX: false, adxThreshold: 15 }
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
+        '3m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30 },
         '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30 },
-        '12h': { useMacdBeyondSig: true, useStochCross: false, useADX: false, adxThreshold: 15 }
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15 }
       }
     }
   },

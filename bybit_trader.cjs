@@ -327,7 +327,21 @@ async function checkStatusNotification() {
     
     if (targetHours.includes(kstHour) && lastStatusSentHour !== kstHour) {
         const timeStr = kstDate.toISOString().replace('T', ' ').substring(0, 19);
-        await sendTelegram(`🔔 <b>[v7.0.3 LIVE] 시스템 가동 중</b>\n• 체크 시간: ${timeStr} (KST)\n• 봇 상태: ${liveState.status}\n• 현재가: $${liveState.lastPrice || '계산중'}`);
+        let msg = `🔔 <b>[v7.0.3 LIVE] 시스템 가동 중</b>\n` +
+                  `• 체크 시간: ${timeStr} (KST)\n` +
+                  `• 봇 상태: ${liveState.status}\n` +
+                  `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`;
+        
+        if (liveState.status === 'IN_POSITION' && liveState.entryPrice && liveState.lastPrice) {
+            const leverage = parseFloat(process.env.LEVERAGE) || 5;
+            const entry = liveState.entryPrice;
+            const current = liveState.lastPrice;
+            const side = liveState.position;
+            const roe = side === 'LONG' ? (current - entry) / entry * leverage : (entry - current) / entry * leverage;
+            msg += `\n• <b>현재 수익률: ${(roe * 100).toFixed(2)}%</b>`;
+        }
+
+        await sendTelegram(msg);
         lastStatusSentHour = kstHour;
     }
 }
