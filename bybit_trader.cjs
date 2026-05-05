@@ -279,12 +279,25 @@ async function syncExchangeTPSL(leverage) {
             }
         });
 
-        const pos = positions.find(p => p.symbol === config.symbol && parseFloat(p.contracts) > 0);
+        const pos = positions.find(p => {
+            const isMatch = p.symbol === config.symbol || 
+                          p.info.symbol === config.symbol || 
+                          p.symbol.replace(/\W/g, '') === config.symbol.replace(/\W/g, '');
+            return isMatch && parseFloat(p.contracts) > 0;
+        });
         
         if (pos) {
-            console.log(`[DEBUG] Current Position: ${pos.symbol} | Side: ${pos.side} | Qty: ${pos.contracts} | TP: ${pos.takeProfit} | SL: ${pos.stopLoss}`);
-        } else {
-            console.log(`[DEBUG] No active position found for ${config.symbol} on Exchange.`);
+            console.log(`[DEBUG] Current Position: ${pos.symbol} matched! | Side: ${pos.side} | Qty: ${pos.contracts} | TP: ${pos.takeProfit} | SL: ${pos.stopLoss}`);
+            
+            // 봇 상태 강제 동기화 (팔았다고 착각하고 있는 상태 방지)
+            if (liveState.status !== 'IN_POSITION') {
+                console.log(`⚠️ [SYNC] Bot state was IDLE, but Position exists. Updating state to IN_POSITION.`);
+                liveState.status = 'IN_POSITION';
+                liveState.position = pos.side === 'Buy' ? 'LONG' : 'SHORT';
+                liveState.entryPrice = parseFloat(pos.entryPrice);
+                liveState.entryTime = liveState.entryTime || Date.now();
+                saveState();
+            }
         }
 
         // 익절이나 손절 중 하나라도 없으면 재설정
