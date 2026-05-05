@@ -197,21 +197,11 @@ async function handleEntry(side, price, klines) {
                 'tpLimitPrice': tpPrice.toString()
             };
 
-            // 1순위: V5 직접 그룹 요청 (가장 확실함)
-            try {
-                await exchange.request('position/set-tpsl', 'v5', 'POST', tpslParams, { 'private': true });
-                console.log(`✅ [TPSL SET SUCCESS] Used direct V5 request`);
-            } catch (e1) {
-                // 2순위: 표준 통합 함수 시도
-                if (exchange.has['setTakeProfit']) {
-                    await exchange.setTakeProfit(tpPrice, config.SYMBOL, { 'stopLoss': slPrice });
-                    console.log(`✅ [TPSL SET SUCCESS] Used setTakeProfit`);
-                } else {
-                    throw e1;
-                }
-            }
+            // CCXT 4.5.48 버전에서 작동하는 정확한 V5 함수 호출
+            await exchange.v5PrivatePostPositionSetTpsl(tpslParams);
+            console.log(`✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
-            console.error("TPSL Set Error (Retrying later):", e.message);
+            console.error("TPSL Set Error:", e.message);
         }
 
         // 텔레그램 메시지 스타일 (신호봇과 동일하게 맞춤)
@@ -307,21 +297,12 @@ async function syncExchangeTPSL(leverage) {
                     'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Full', 'tpLimitPrice': tpPrice.toString()
                 };
 
-                try {
-                    await exchange.request('position/set-tpsl', 'v5', 'POST', tpslParams, { 'private': true });
-                    console.log(`✅ [TPSL SYNC SUCCESS] Used direct V5 request`);
-                } catch (e1) {
-                    if (exchange.has['setTakeProfit']) {
-                        await exchange.setTakeProfit(tpPrice, symbol, { 'stopLoss': slPrice });
-                        console.log(`✅ [TPSL SYNC SUCCESS] Used setTakeProfit`);
-                    } else {
-                        throw e1;
-                    }
-                }
+                await exchange.v5PrivatePostPositionSetTpsl(tpslParams);
+                console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         }
     } catch (err) {
-        console.error("[TPSL SYNC ERROR] (Retrying later):", err.message);
+        console.error("[TPSL SYNC ERROR]:", err.message);
     }
 }
 
