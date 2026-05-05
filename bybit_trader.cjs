@@ -142,10 +142,17 @@ async function handleEntry(side, price) {
     console.log(`\n🚀 [ENTRY SIGNAL] ${side} at $${price}`);
 
     try {
+        // 실제 잔고 확인
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
-        const setAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
-        const finalAmount = Math.min(setAmount, availableBalance);
+        
+        // .env에서 주문 기준 금액 설정 (AMOUNT 또는 INITIAL_BALANCE)
+        const envAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
+        console.log(`[DEBUG] ENV 설정 금액: $${envAmount}, 실제 가용 잔고: $${availableBalance.toFixed(2)}`);
+
+        // 설정 금액과 실제 잔고 중 더 작은 값을 기준으로 주문 (에러 방지)
+        const finalAmount = Math.min(envAmount, availableBalance);
+        console.log(`[DEBUG] 최종 주문 기준 금액 (마진): $${finalAmount}`);
 
         if (finalAmount <= 0) {
             throw new Error(`Available balance is 0 or less. Cannot place order.`);
@@ -176,17 +183,19 @@ async function handleEntry(side, price) {
             : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            // 가장 호환성이 높은 request 방식으로 TPSL 설정 (V5 API)
-            await exchange.request('v5/position/set-tpsl', 'private', 'POST', {
+            // 가장 안정적인 V5 전용 요청 방식
+            const tpslParams = {
                 'category': 'linear', 
                 'symbol': config.SYMBOL,
                 'takeProfit': tpPrice.toString(), 
                 'stopLoss': slPrice.toString(),
                 'tpOrderType': 'Limit', 
                 'slOrderType': 'Market', 
-                'tpslMode': 'Partial', 
+                'tpslMode': 'Full', 
                 'tpLimitPrice': tpPrice.toString()
-            });
+            };
+
+            await exchange.request('position/set-tpsl', 'v5Private', 'POST', tpslParams);
             console.log(`✅ [TPSL SET] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
             console.error("TPSL Set Error:", e.message);
@@ -278,14 +287,14 @@ async function syncExchangeTPSL(leverage) {
                 const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
                 console.log(`[TPSL SYNC] Setting TP: ${tpPrice}, SL: ${slPrice}`);
-                await exchange.request('v5/position/set-tpsl', 'private', 'POST', {
+                await exchange.request('position/set-tpsl', 'v5Private', 'POST', {
                     'category': 'linear', 
                     'symbol': symbol,
                     'takeProfit': tpPrice.toString(), 
                     'stopLoss': slPrice.toString(),
                     'tpOrderType': 'Limit', 
                     'slOrderType': 'Market', 
-                    'tpslMode': 'Full',  // 'Partial'에서 'Full'로 변경하여 안정성 확보
+                    'tpslMode': 'Full', 
                     'tpLimitPrice': tpPrice.toString()
                 });
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
