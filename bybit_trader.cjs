@@ -298,6 +298,15 @@ async function syncExchangeTPSL(leverage) {
                 liveState.entryPrice = parseFloat(pos.entryPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
                 saveState();
+            } else {
+                // 상태는 IN_POSITION인데 방향이 틀린 경우 바로잡기
+                const sideLower = pos.side.toLowerCase();
+                const correctSide = (sideLower === 'long' || sideLower === 'buy') ? 'LONG' : 'SHORT';
+                if (liveState.position !== correctSide) {
+                    console.log(`⚠️ [SYNC] Position side mismatch! Correcting ${liveState.position} -> ${correctSide}`);
+                    liveState.position = correctSide;
+                    saveState();
+                }
             }
         }
 
@@ -320,8 +329,9 @@ async function syncExchangeTPSL(leverage) {
                 ? parseFloat((entry * (1 - slRate / leverage)).toFixed(2))
                 : parseFloat((entry * (1 + slRate / leverage)).toFixed(2));
 
-            // ccxt 바이비트 v5 전용 메서드 사용 (setTakeProfit, setStopLoss 등은 버전마다 다를 수 있어 가장 확실한 파라미터 방식 사용)
-            await exchange.setTakeProfit(config.symbol, tpPrice, {
+            // ccxt 바이비트 v5 공식 메서드 setPositionTPSL 사용
+            await exchange.setPositionTPSL(config.symbol, {
+                'takeProfit': tpPrice,
                 'stopLoss': slPrice,
                 'tpOrderType': 'Limit',
                 'slOrderType': 'Market',
