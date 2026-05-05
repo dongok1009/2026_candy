@@ -85,39 +85,42 @@ async function fetchOHLCV(interval, limit = 200) {
 
 async function checkMarkets() {
     const config = strategy.config;
-    console.log(`\n[${new Date().toLocaleTimeString()}] --- BYBIT SCANNING ---`);
+    console.log(`\n[${new Date().toLocaleTimeString()}] --- BYBIT SCANNING (v7.0.3 Mode) ---`);
 
-    const [m5, h1, h12, d1] = await Promise.all([
-        fetchOHLCV('5m', 1000),
-        fetchOHLCV('1h', 1000),
-        fetchOHLCV('12h', 1000),
-        fetchOHLCV('1d', 1000)
-    ]);
+    try {
+        const [m5, h1, d1] = await Promise.all([
+            fetchOHLCV('5m', 1000),
+            fetchOHLCV('1h', 1000),
+            fetchOHLCV('1d', 1000)
+        ]);
 
-    const indicators = strategy.indicators_logic({ m5, h1, h12, d1 });
-    const indices = { idx5m: m5.length - 1, r1h: h1.length - 1, r12h: h12.length - 1, r1d: d1.length - 1 };
-
-    const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
-
-    if (liveState.status === 'IDLE') {
-        const longStatus = {
-            m5: strategy.indicators_logic({ m5, h1, h12, d1 }).m5 ? 'OK' : 'WAIT', // 이 부분은 예시이며 실제 로직 결과를 가져와야 함
-        };
+        // v7.0.3이 기대하는 데이터 구조로 전달
+        const klines = { m5, h1, d1 };
+        const indicators = strategy.indicators_logic(klines);
         
-        // 실제 전략의 개별 조건을 체크하도록 보강
-        const m5Long = strategy.indicators_logic({m5}).m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
-        const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
-        const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
+        // 확정봉(length-2) 기준으로 인덱스 설정
+        const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
 
-        const longSignal = m5Long && h1Long && d1Long;
-        const shortSignal = false; // 숏은 일단 제외하거나 나중에 추가
+        const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
-        console.log(`[SCAN] LONG  | M5:${m5Long?'OK':'WAIT'} | H1:${h1Long?'OK':'WAIT'} | D1:${d1Long?'OK':'WAIT'} -> ${longSignal ? '🔥 SIGNAL' : 'PASS'}`);
+        if (liveState.status === 'IDLE') {
+            const signals = strategy.signal_logic(indicators, indices, overrideRules);
+            const longSignal = signals.long;
+            const shortSignal = signals.short;
 
-        if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
-        else if (shortSignal) await handleEntry('SHORT', m5[m5.length - 1].close);
-    } else {
-        await monitorPosition(m5[m5.length - 1].close);
+            const m5Long = indicators.m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
+            const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
+            const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
+
+            console.log(`[SCAN] LONG | M5:${m5Long?'OK':'WAIT'} | H1:${h1Long?'OK':'WAIT'} | D1:${d1Long?'OK':'WAIT'} -> ${longSignal ? '🔥 SIGNAL' : 'PASS'}`);
+
+            if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
+            else if (shortSignal) await handleEntry('SHORT', m5[m5.length - 1].close);
+        } else {
+            await monitorPosition(m5[m5.length - 1].close);
+        }
+    } catch (err) {
+        console.error("[SCAN ERROR]", err.message);
     }
 }
 
@@ -138,7 +141,6 @@ async function handleEntry(side, price) {
         liveState.entryTime = Date.now();
         saveState();
 
-        // TPSL 계산
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
         const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
         const slRoi = strategy.config.SL_ROI || 0.15;
@@ -150,17 +152,11 @@ async function handleEntry(side, price) {
             ? parseFloat((price * (1 - slRoi / leverage)).toFixed(2))
             : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
 
-        // Exchange-side TPSL 등록 (Partial Mode + Limit TP)
         try {
             await exchange.privatePostV5PositionSetTpsl({
-                'category': 'linear',
-                'symbol': config.SYMBOL,
-                'takeProfit': tpPrice.toString(),
-                'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Limit',
-                'slOrderType': 'Market',
-                'tpslMode': 'Partial',
-                'tpLimitPrice': tpPrice.toString()
+                'category': 'linear', 'symbol': config.SYMBOL,
+                'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice.toString()
             });
             console.log(`✅ [TPSL SET] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
@@ -174,33 +170,21 @@ async function handleEntry(side, price) {
 }
 
 async function monitorPosition(currentPrice) {
-    const config = strategy.config;
     const entry = liveState.entryPrice;
     const side = liveState.position;
     const leverage = parseFloat(process.env.LEVERAGE) || 5;
 
-    const roe = side === 'LONG' 
-        ? (currentPrice - entry) / entry * leverage 
-        : (entry - currentPrice) / entry * leverage;
-
+    const roe = side === 'LONG' ? (currentPrice - entry) / entry * leverage : (entry - currentPrice) / entry * leverage;
     const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
     console.log(`[MONITOR] ${side} | ROE: ${(roe * 100).toFixed(2)}% | Time: ${durationMin}m`);
 
     const target = strategy.config.TARGET_NET_ROI || 0.03;
     const sl = strategy.config.SL_ROI || 0.15;
 
-    let exitReason = null;
-    if (roe >= target) exitReason = 'TAKE_PROFIT';
-    else if (roe <= -sl) exitReason = 'STOP_LOSS';
-
-    if (exitReason) {
-        console.log(`\n🏁 [EXIT] ${exitReason} Triggered! Closing Position...`);
-        await closePosition(side, exitReason, currentPrice, roe, durationMin);
-    } else {
-        // 5분마다 동기화 체크
-        if (durationMin % 5 === 0 && durationMin > 0) {
-            await syncExchangeTPSL(leverage);
-        }
+    if (roe >= target) await closePosition(side, 'TAKE_PROFIT', currentPrice, roe, durationMin);
+    else if (roe <= -sl) await closePosition(side, 'STOP_LOSS', currentPrice, roe, durationMin);
+    else {
+        if (durationMin % 5 === 0 && durationMin > 0) await syncExchangeTPSL(leverage);
     }
 }
 
@@ -211,24 +195,17 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         const pos = positions.find(p => isSymbolMatch(p.symbol, symbol) && parseFloat(p.contracts) > 0);
 
         if (!pos) {
-            console.log(`⚠️ [EXIT] No active position found on Exchange for ${symbol}. Updating state to IDLE.`);
-            liveState.status = 'IDLE';
-            saveState();
-            return;
+            liveState.status = 'IDLE'; saveState(); return;
         }
 
         const contracts = parseFloat(pos.contracts);
         const orderSide = pos.side.toLowerCase() === 'long' || pos.side.toLowerCase() === 'buy' ? 'sell' : 'buy';
-
-        console.log(`🔥 [BYBIT EXIT ORDER] ${symbol} | Side: ${orderSide} | Qty: ${contracts}`);
         await exchange.createOrder(symbol, 'market', orderSide, contracts, undefined, { reduceOnly: true });
 
         const finalRoe = (roe * 100).toFixed(2);
         await sendTelegram(`🏁 <b>[BYBIT EXIT] ${symbol} ${side}</b>\n• Reason: ${reason}\n• Price: $${currentPrice}\n• Final ROE: <b>${finalRoe}%</b>\n• Duration: ${durationMin}m`);
         
-        liveState.status = 'IDLE';
-        liveState.position = null;
-        saveState();
+        liveState.status = 'IDLE'; liveState.position = null; saveState();
     } catch (err) {
         console.error("[BYBIT EXIT ERROR]", err.message);
     }
@@ -245,66 +222,33 @@ async function syncExchangeTPSL(leverage) {
             const correctSide = (sideLower === 'long' || sideLower === 'buy') ? 'LONG' : 'SHORT';
 
             if (liveState.status !== 'IN_POSITION' || liveState.position !== correctSide) {
-                console.log(`⚠️ [SYNC] Correcting State: ${liveState.status} -> IN_POSITION | Side: ${correctSide}`);
-                liveState.status = 'IN_POSITION';
-                liveState.position = correctSide;
+                liveState.status = 'IN_POSITION'; liveState.position = correctSide;
                 liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
                 saveState();
             }
 
-            // TPSL 설정 안되어 있으면 시도
             if (!pos.takeProfit || !pos.stopLoss || pos.takeProfit === 0 || pos.stopLoss === 0) {
-                console.log(`🔄 [SYNC] Setting missing TPSL on Exchange...`);
                 const entry = parseFloat(pos.entryPrice || pos.avgPrice);
-                const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
-                const slRoi = strategy.config.SL_ROI || 0.15;
+                const tpPrice = correctSide === 'LONG' ? parseFloat((entry * (1 + 0.03/leverage)).toFixed(2)) : parseFloat((entry * (1 - 0.03/leverage)).toFixed(2));
+                const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
-                const tpPrice = correctSide === 'LONG' 
-                    ? parseFloat((entry * (1 + targetRoi / leverage)).toFixed(2))
-                    : parseFloat((entry * (1 - targetRoi / leverage)).toFixed(2));
-                const slPrice = correctSide === 'LONG'
-                    ? parseFloat((entry * (1 - slRoi / leverage)).toFixed(2))
-                    : parseFloat((entry * (1 + slRoi / leverage)).toFixed(2));
-
-                try {
-                    // ccxt 버전에 상관없이 바이비트 v5 API 직접 호출
-                    await exchange.privatePostV5PositionSetTpsl({
-                        'category': 'linear',
-                        'symbol': symbol,
-                        'takeProfit': tpPrice.toString(),
-                        'stopLoss': slPrice.toString(),
-                        'tpOrderType': 'Limit',
-                        'slOrderType': 'Market',
-                        'tpslMode': 'Partial',
-                        'tpLimitPrice': tpPrice.toString()
-                    });
-                    console.log(`✅ [SYNC] TPSL Set Success (Raw API)`);
-                } catch (e) {
-                    console.log(`[SYNC ERROR] ${e.message}`);
-                }
+                await exchange.privatePostV5PositionSetTpsl({
+                    'category': 'linear', 'symbol': symbol, 'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                    'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice.toString()
+                });
             }
         }
-    } catch (err) {
-        console.error("[SYNC ERROR]", err.message);
-    }
+    } catch (err) {}
 }
 
 async function init() {
     loadState();
     console.log(`\n🤖 [Antigravity ${strategyVersion}] Bybit Live Bot Starting...`);
-    console.log(`• Symbol: ${strategy.config.SYMBOL}`);
-    console.log(`• Status: ${liveState.status} ${liveState.status === 'IN_POSITION' ? '(' + liveState.position + ')' : ''}`);
-
     const leverage = parseFloat(process.env.LEVERAGE) || 5;
     await syncExchangeTPSL(leverage);
-
     while(true) {
-        try {
-            await checkMarkets();
-        } catch (err) {
-            console.error("[LOOP ERROR]", err.message);
-        }
+        await checkMarkets();
         await new Promise(r => setTimeout(r, 60000));
     }
 }
