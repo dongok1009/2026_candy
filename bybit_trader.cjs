@@ -170,16 +170,6 @@ async function handleEntry(side, price, klines) {
 
         console.log(`[DEBUG] 주문수량: ${contracts} BTC (마진 $${finalAmount} x ${leverage}배)`);
 
-        const orderSide = side === 'LONG' ? 'buy' : 'sell';
-        const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice);
-        console.log(`✅ [BYBIT ENTRY] Limit Order Placed: ${order.id}`);
-
-        liveState.status = 'IN_POSITION';
-        liveState.position = side;
-        liveState.entryPrice = entryPrice;
-        liveState.entryTime = Date.now();
-        saveState();
-
         const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
         const slRoi = strategy.config.SL_ROI || 0.15;
 
@@ -190,7 +180,27 @@ async function handleEntry(side, price, klines) {
             ? parseFloat((entryPrice * (1 - slRoi / leverage)).toFixed(2))
             : parseFloat((entryPrice * (1 + slRoi / leverage)).toFixed(2));
 
+        const orderSide = side === 'LONG' ? 'buy' : 'sell';
+        const orderParams = {
+            'takeProfit': tpPrice.toString(),
+            'stopLoss': slPrice.toString(),
+            'tpOrderType': 'Market',
+            'slOrderType': 'Market'
+        };
+
+        const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice, orderParams);
+        console.log(`✅ [BYBIT ENTRY] Limit Order Placed: ${order.id} with TP/SL`);
+
+        liveState.status = 'IN_POSITION';
+        liveState.position = side;
+        liveState.entryPrice = entryPrice;
+        liveState.entryTime = Date.now();
+        saveState();
+
+        // 기존의 별도 TP/SL 설정 로직은 예외 처리 강화 (이미 주문 시 설정되었으므로 중복 방지)
         try {
+            // [Optional Fallback] 포지션이 이미 체결된 경우를 대비한 동기화 시도
+            // 하지만 주문 시 설정했으므로 여기서는 10001 에러를 무시하도록 처리
             const tpslParams = {
                 'category': 'linear', 'symbol': config.SYMBOL,
                 'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
@@ -200,8 +210,8 @@ async function handleEntry(side, price, klines) {
             await exchange.privatePostV5PositionTradingStop(tpslParams);
             console.log(`✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
-            if (e.message.includes('not modified')) {
-                console.log(`ℹ️ [TPSL ALREADY SET] TP/SL is already synced with exchange`);
+            if (e.message.includes('not modified') || e.message.includes('10001') || e.message.includes('zero position')) {
+                console.log(`ℹ️ [TPSL SYNC] TP/SL already set or waiting for order fill`);
             } else {
                 console.error("TPSL Set Error:", e.message);
             }
