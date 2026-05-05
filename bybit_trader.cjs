@@ -26,7 +26,8 @@ let liveState = {
     position: null,
     entryPrice: 0,
     entryTime: null,
-    lastUpdate: null
+    lastUpdate: null,
+    lastPrice: null
 };
 
 // 심볼 매칭 헬퍼 함수
@@ -85,7 +86,9 @@ async function fetchOHLCV(interval, limit = 200) {
 
 async function checkMarkets() {
     const config = strategy.config;
-    console.log(`\n[${new Date().toLocaleTimeString()}] --- BYBIT SCANNING (v7.0.3 Mode) ---`);
+    // 한국 시간(KST)으로 로그 시간 표시
+    const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(11, 19);
+    console.log(`\n[${nowKST}] --- BYBIT SCANNING (v7.0.3 Mode) ---`);
 
     try {
         const [m5, h1, d1] = await Promise.all([
@@ -120,7 +123,6 @@ async function checkMarkets() {
             console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'} (MACD:${indicators.h1.macd.m[indices.r1h]>indicators.h1.macd.s[indices.r1h]?'OK':'WAIT'}, Stoch:${h1K.toFixed(1)}/${h1D.toFixed(1)})`);
             console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'} (MACD:${indicators.d1.macd.m[indices.r1d]>indicators.d1.macd.s[indices.r1d]?'OK':'WAIT'})`);
             
-            // 실제 전략의 최종 신호 판정 (문자열 'long', 'short' 체크)
             const isLong = finalSignal === 'long';
             const isShort = finalSignal === 'short';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
@@ -140,14 +142,9 @@ async function handleEntry(side, price) {
     console.log(`\n🚀 [ENTRY SIGNAL] ${side} at $${price}`);
 
     try {
-        // 실제 잔고 확인
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
-        
-        // .env에서 주문 기준 금액 설정 (AMOUNT 또는 INITIAL_BALANCE)
         const setAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 1000;
-        
-        // 설정 금액과 실제 잔고 중 더 작은 값을 기준으로 주문 (에러 방지)
         const finalAmount = Math.min(setAmount, availableBalance);
 
         if (finalAmount <= 0) {
@@ -156,8 +153,6 @@ async function handleEntry(side, price) {
 
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
         const amount = finalAmount * leverage / price;
-        
-        // ccxt 버전에 상관없이 작동하도록 수량 정밀도 처리
         const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
 
         const orderSide = side === 'LONG' ? 'buy' : 'sell';
@@ -181,10 +176,16 @@ async function handleEntry(side, price) {
             : parseFloat((price * (1 + slRoi / leverage)).toFixed(2));
 
         try {
-            await exchange.privatePostV5PositionSetTpsl({
-                'category': 'linear', 'symbol': config.SYMBOL,
-                'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice.toString()
+            // 가장 호환성이 높은 request 방식으로 TPSL 설정 (V5 API)
+            await exchange.request('v5/position/set-tpsl', 'private', 'POST', {
+                'category': 'linear', 
+                'symbol': config.SYMBOL,
+                'takeProfit': tpPrice.toString(), 
+                'stopLoss': slPrice.toString(),
+                'tpOrderType': 'Limit', 
+                'slOrderType': 'Market', 
+                'tpslMode': 'Partial', 
+                'tpLimitPrice': tpPrice.toString()
             });
             console.log(`✅ [TPSL SET] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
@@ -261,8 +262,9 @@ async function syncExchangeTPSL(leverage) {
                 const tpPrice = correctSide === 'LONG' ? parseFloat((entry * (1 + 0.03/leverage)).toFixed(2)) : parseFloat((entry * (1 - 0.03/leverage)).toFixed(2));
                 const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
 
-                await exchange.privatePostV5PositionSetTpsl({
-                    'category': 'linear', 'symbol': symbol, 'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                await exchange.request('v5/position/set-tpsl', 'private', 'POST', {
+                    'category': 'linear', 'symbol': symbol,
+                    'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
                     'tpOrderType': 'Limit', 'slOrderType': 'Market', 'tpslMode': 'Partial', 'tpLimitPrice': tpPrice.toString()
                 });
             }
@@ -280,7 +282,6 @@ async function checkStatusNotification() {
     const kstHour = kstDate.getUTCHours();
     const kstMin = kstDate.getUTCMinutes();
 
-    // 9시 ~ 21시 사이, 2시간 단위 (9, 11, 13, 15, 17, 19, 21)
     const targetHours = [9, 11, 13, 15, 17, 19, 21];
     
     if (targetHours.includes(kstHour) && lastStatusSentHour !== kstHour) {
