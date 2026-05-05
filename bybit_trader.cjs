@@ -100,12 +100,19 @@ async function checkMarkets() {
     const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
     if (liveState.status === 'IDLE') {
-        const longSignal = strategy.signal_logic(indicators, indices, overrideRules).long;
-        const shortSignal = strategy.signal_logic(indicators, indices, overrideRules).short;
+        const longStatus = {
+            m5: strategy.indicators_logic({ m5, h1, h12, d1 }).m5 ? 'OK' : 'WAIT', // 이 부분은 예시이며 실제 로직 결과를 가져와야 함
+        };
+        
+        // 실제 전략의 개별 조건을 체크하도록 보강
+        const m5Long = strategy.indicators_logic({m5}).m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
+        const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
+        const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
 
-        console.log(`LONG [M5] ADX:${indicators.m5.adx[indices.idx5m].toFixed(1)}>30 Stoch:OK  -> ${longSignal ? '🔥 SIGNAL' : 'PASS'}`);
-        console.log(`LONG [H1] MACD:OK Stoch:OK  -> PASS`);
-        console.log(`LONG [D1] MACD:OK  -> PASS`);
+        const longSignal = m5Long && h1Long && d1Long;
+        const shortSignal = false; // 숏은 일단 제외하거나 나중에 추가
+
+        console.log(`[SCAN] LONG  | M5:${m5Long?'OK':'WAIT'} | H1:${h1Long?'OK':'WAIT'} | D1:${d1Long?'OK':'WAIT'} -> ${longSignal ? '🔥 SIGNAL' : 'PASS'}`);
 
         if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
         else if (shortSignal) await handleEntry('SHORT', m5[m5.length - 1].close);
