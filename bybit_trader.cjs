@@ -112,7 +112,10 @@ async function checkMarkets() {
             const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
             const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
 
-            console.log(`[SCAN] LONG | M5:${m5Long?'OK':'WAIT'} | H1:${h1Long?'OK':'WAIT'} | D1:${d1Long?'OK':'WAIT'} -> ${longSignal ? '🔥 SIGNAL' : 'PASS'}`);
+            console.log(`[SCAN] LONG [M5] : ${m5Long ? 'OK' : 'WAIT'}`);
+            console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'}`);
+            console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'}`);
+            console.log(`--- 최종 결과: ${longSignal ? '🔥 SIGNAL' : 'PASS'} ---`);
 
             if (longSignal) await handleEntry('LONG', m5[m5.length - 1].close);
             else if (shortSignal) await handleEntry('SHORT', m5[m5.length - 1].close);
