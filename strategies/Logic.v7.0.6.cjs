@@ -1,11 +1,11 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v7.0.3.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v7.0.6.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
-    name: 'Logic.v7.0.3',
-    description: 'v7.0.3 (Experimental - Base on v7.0.2)',
-    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX",
+    name: 'Logic.v7.0.6',
+    description: 'v7.0.6 (12h Filter Edition)',
+    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,H12_MACD,H12_Sig,H12_StochK,H12_StochD,H12_ADX",
 
     config: {
         SYMBOL: 'BTCUSDT',
@@ -31,6 +31,7 @@ const strategy = {
     indicators_logic: (klines) => {
         return {
             m5: {
+                macd: calculateMACD(klines.m5.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
                 adx: calculateADX(klines.m5)
             },
@@ -39,25 +40,24 @@ const strategy = {
                 stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))),
                 adx: calculateADX(klines.h1)
             },
-            d1: {
-                macd: calculateMACD(klines.d1.map(k => k.close)),
-                stoch: calculateStochRSI(calculateRSI(klines.d1.map(k => k.close))),
-                adx: calculateADX(klines.d1)
+            h12: {
+                macd: calculateMACD(klines.h12.map(k => k.close)),
+                stoch: calculateStochRSI(calculateRSI(klines.h12.map(k => k.close))),
+                adx: calculateADX(klines.h12)
             }
         };
     },
 
     signal_logic: (indicators, indices, overrideRules) => {
-        const { idx5m, r1h, r1d } = indices;
+        const { idx5m, r1h, r12h } = indices;
 
         const checkCondition = (side, interval, idx, indicatorsObj) => {
             const data = indicatorsObj[interval];
             if (!data) return true;
 
-            const timeframeMap = { 'm5': '5m', 'h1': '1h', 'd1': '1d' };
+            const timeframeMap = { 'm5': '5m', 'h1': '1h', 'h12': '12h' };
             const uiInterval = timeframeMap[interval] || interval;
-            
-            // [SIDE-FIRST NESTING] Unified structure: rules[side][interval]
+
             let rules = null;
             if (overrideRules) {
                 if (overrideRules[side] && overrideRules[side][uiInterval]) {
@@ -76,8 +76,8 @@ const strategy = {
                 ];
                 for (const k of variations) {
                     if (rules[k] !== undefined) {
-                      const v = rules[k];
-                      return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
+                        const v = rules[k];
+                        return v === true || v === 'true' || v === 1 || v === '1' || v === 'on';
                     }
                 }
                 return false;
@@ -86,21 +86,19 @@ const strategy = {
             let match = true;
             let logDetail = `[${interval.toUpperCase()}] `;
 
-            // 1. If NO rules provided (Fallback) - Match screenshot EXACTLY
             if (!rules) {
                 if (side === 'long') {
                     if (interval === 'm5') return data.adx[idx] >= 30 && data.stoch.k[idx] > data.stoch.d[idx];
                     if (interval === 'h1') return data.macd.m[idx] > data.macd.s[idx] && data.stoch.k[idx] > data.stoch.d[idx];
-                    if (interval === 'd1') return data.macd.m[idx] > data.macd.s[idx];
+                    if (interval === 'h12') return data.macd.m[idx] > data.macd.s[idx];
                 } else {
                     if (interval === 'm5') return data.adx[idx] >= 30 && data.stoch.k[idx] < data.stoch.d[idx];
                     if (interval === 'h1') return data.macd.m[idx] < data.macd.s[idx] && data.stoch.k[idx] < data.stoch.d[idx];
-                    if (interval === 'd1') return data.macd.m[idx] < data.macd.s[idx];
+                    if (interval === 'h12') return data.macd.m[idx] < data.macd.s[idx];
                 }
                 return true;
             }
 
-            // 2. If rules provided (Interactive Mode from UI)
             if (chk('adxEnabled') || chk('useADX')) {
                 const threshold = rules.adxThreshold || 30;
                 const val = data.adx[idx];
@@ -108,38 +106,31 @@ const strategy = {
                 if (val < threshold) match = false;
             }
 
-            if (chk('macdCrossEnabled') || chk('useMacdBeyondSig')) {
+            if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig')) && data.macd) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
-                logDetail += `MACD:${side==='long'?(m>s?'OK':'NO'):(m<s?'OK':'NO')} `;
+                logDetail += `MACD:${side === 'long' ? (m > s ? 'OK' : 'NO') : (m < s ? 'OK' : 'NO')} `;
                 if (side === 'long' && m <= s) match = false;
                 if (side === 'short' && m >= s) match = false;
             }
 
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
-                logDetail += `Stoch:${side==='long'?(k>d?'OK':'NO'):(k<d?'OK':'NO')} `;
+                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')} `;
                 if (side === 'long' && k <= d) match = false;
                 if (side === 'short' && k >= d) match = false;
-            }
-
-            if (chk('macdValueEnabled') || chk('useMacdVal')) {
-                const m = data.macd.m[idx];
-                const threshold = rules.macdValue || rules.macdVal;
-                if (side === 'long' && m >= threshold) match = false;
-                if (side === 'short' && m <= threshold) match = false;
             }
 
             if (match) console.log(`${side.toUpperCase()} ${logDetail} -> PASS`);
             return match;
         };
 
-        const longMatch = ['m5', 'h1', 'd1'].every(iv => {
-            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+        const longMatch = ['m5', 'h1', 'h12'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r12h);
             return checkCondition('long', iv, idx, indicators);
         });
 
-        const shortMatch = ['m5', 'h1', 'd1'].every(iv => {
-            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
+        const shortMatch = ['m5', 'h1', 'h12'].every(iv => {
+            const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r12h);
             return checkCondition('short', iv, idx, indicators);
         });
 
@@ -160,7 +151,6 @@ const strategy = {
 
         const waitLimit = (config && config.ENTRY_WAIT_MIN) || 180;
 
-        // [Latest Logic] Better Price Hybrid Entry
         if (sig === 'long' && signalPrice <= targetPrice) {
             finalEntryPrice = signalPrice;
             executed = true;
@@ -170,7 +160,6 @@ const strategy = {
             executed = true;
             entryType = "MARKET(Better)";
         } else {
-            // Signal price is not hit target yet, start waiting
             for (let j = currentIndex; j < klines1m.length; j++) {
                 const ex = klines1m[j];
                 if (sig === 'long' && ex.low <= targetPrice) {

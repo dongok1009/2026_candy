@@ -636,37 +636,37 @@ const BacktestForm = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                     <div>
                         <h4 style={{ color: '#26a69a', fontSize: '14px', fontWeight: '900', marginBottom: '20px' }}>LONG (GREEN BORDER)</h4>
-                        {['5m', '1h', '1d'].map(iv => (
-                            <div key={iv} className="interval-row" style={{ marginBottom: iv !== '1d' ? '20px' : '0' }}>
+                        {Object.keys(rules.long || {}).map((iv, idx, arr) => (
+                            <div key={iv} className="interval-row" style={{ marginBottom: idx !== arr.length - 1 ? '20px' : '0' }}>
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.long[iv].useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.long?.[iv]?.useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
                                     <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>ADX &gt;</span>
-                                    <input type="number" className="cond-input-small" value={rules.long[iv].adxThreshold} onChange={e => handleRuleChange('long', iv, 'adxThreshold', parseFloat(e.target.value))} />
+                                    <input type="number" className="cond-input-small" value={rules.long?.[iv]?.adxThreshold} onChange={e => handleRuleChange('long', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.long[iv].useMacdBeyondSig} onChange={e => handleRuleChange('long', iv, 'useMacdBeyondSig', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.long?.[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('long', iv, 'useMacdBeyondSig', e.target.checked)} />
                                     <span style={{ color: '#eaebed' }}>MACD &gt; Signal</span>
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.long[iv].useStochCross} onChange={e => handleRuleChange('long', iv, 'useStochCross', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.long?.[iv]?.useStochCross} onChange={e => handleRuleChange('long', iv, 'useStochCross', e.target.checked)} />
                                     <span style={{ color: '#eaebed' }}>Stoch D &lt; Stoch K</span>
-                                    {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>}
+                                    {(iv === '1d' || iv === '12h' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>}
                                 </div>
-                                {iv === '1d' && (
+                                {(iv === '1d' || iv === '12h') && (
                                     <div className="cond-item">
-                                        <input type="checkbox" checked={rules.long[iv].useMacdSigDiff} onChange={e => handleRuleChange('long', iv, 'useMacdSigDiff', e.target.checked)} />
-                                        <span style={{ color: '#eaebed' }}>|MACD-Sig| &gt;</span>
-                                        <input type="number" className="cond-input-small" value={rules.long[iv].macdSigDiff} onChange={e => handleRuleChange('long', iv, 'macdSigDiff', parseFloat(e.target.value))} />
+                                        <input type="checkbox" checked={rules.long?.[iv]?.useMacdSigDiff} onChange={e => handleRuleChange('long', iv, 'useMacdSigDiff', e.target.checked)} />
+                                        <span style={{ color: '#eaebed', fontSize: '11px' }}>|MACD-Sig| &gt;</span>
+                                        <input type="number" className="cond-input-small" value={rules.long?.[iv]?.macdSigDiff} onChange={e => handleRuleChange('long', iv, 'macdSigDiff', parseFloat(e.target.value))} />
                                     </div>
                                 )}
                                 {iv === '5m' && (
                                     <div className="cond-item">
-                                        <input type="checkbox" checked={rules.long[iv].useMacdVal} onChange={e => handleRuleChange('long', iv, 'useMacdVal', e.target.checked)} />
+                                        <input type="checkbox" checked={rules.long?.[iv]?.useMacdVal} onChange={e => handleRuleChange('long', iv, 'useMacdVal', e.target.checked)} />
                                         <span style={{ color: '#eaebed' }}>MACD &lt;</span>
-                                        <input type="number" className="cond-input-small" value={rules.long[iv].macdVal} onChange={e => handleRuleChange('long', iv, 'macdVal', parseFloat(e.target.value))} />
+                                        <input type="number" className="cond-input-small" value={rules.long?.[iv]?.macdVal} onChange={e => handleRuleChange('long', iv, 'macdVal', parseFloat(e.target.value))} />
                                     </div>
                                 )}
                             </div>
@@ -674,37 +674,37 @@ const BacktestForm = () => {
                     </div>
                     <div>
                         <h4 style={{ color: '#ff4d4d', fontSize: '14px', fontWeight: '900', marginBottom: '20px' }}>SHORT (RED BORDER)</h4>
-                        {['5m', '1h', '1d'].map(iv => (
-                            <div key={iv} className="interval-row" style={{ marginBottom: iv !== '1d' ? '20px' : '0' }}>
+                        {Object.keys(rules.short || {}).map((iv, idx, arr) => (
+                            <div key={iv} className="interval-row" style={{ marginBottom: idx !== arr.length - 1 ? '20px' : '0' }}>
                                 <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', marginRight: '15px' }}>{iv}:</span>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.short[iv].useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.short?.[iv]?.useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
                                     <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>ADX &gt;</span>
-                                    <input type="number" className="cond-input-small" value={rules.short[iv].adxThreshold} onChange={e => handleRuleChange('short', iv, 'adxThreshold', parseFloat(e.target.value))} />
+                                    <input type="number" className="cond-input-small" value={rules.short?.[iv]?.adxThreshold} onChange={e => handleRuleChange('short', iv, 'adxThreshold', parseFloat(e.target.value))} />
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.short[iv].useMacdBeyondSig} onChange={e => handleRuleChange('short', iv, 'useMacdBeyondSig', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.short?.[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('short', iv, 'useMacdBeyondSig', e.target.checked)} />
                                     <span style={{ color: '#eaebed' }}>MACD &lt; Signal</span>
                                     <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>
                                 </div>
                                 <div className="cond-item">
-                                    <input type="checkbox" checked={rules.short[iv].useStochCross} onChange={e => handleRuleChange('short', iv, 'useStochCross', e.target.checked)} />
+                                    <input type="checkbox" checked={rules.short?.[iv]?.useStochCross} onChange={e => handleRuleChange('short', iv, 'useStochCross', e.target.checked)} />
                                     <span style={{ color: '#eaebed' }}>Stoch D &gt; Stoch K</span>
-                                    {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>}
+                                    {(iv === '1d' || iv === '12h' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 8px' }}>AND</span>}
                                 </div>
-                                {iv === '1d' && (
+                                {(iv === '1d' || iv === '12h') && (
                                     <div className="cond-item">
-                                        <input type="checkbox" checked={rules.short[iv].useMacdSigDiff} onChange={e => handleRuleChange('short', iv, 'useMacdSigDiff', e.target.checked)} />
-                                        <span style={{ color: '#eaebed' }}>|MACD-Sig| &gt;</span>
-                                        <input type="number" className="cond-input-small" value={rules.short[iv].macdSigDiff} onChange={e => handleRuleChange('short', iv, 'macdSigDiff', parseFloat(e.target.value))} />
+                                        <input type="checkbox" checked={rules.short?.[iv]?.useMacdSigDiff} onChange={e => handleRuleChange('short', iv, 'useMacdSigDiff', e.target.checked)} />
+                                        <span style={{ color: '#eaebed', fontSize: '11px' }}>|MACD-Sig| &gt;</span>
+                                        <input type="number" className="cond-input-small" value={rules.short?.[iv]?.macdSigDiff} onChange={e => handleRuleChange('short', iv, 'macdSigDiff', parseFloat(e.target.value))} />
                                     </div>
                                 )}
                                 {iv === '5m' && (
                                     <div className="cond-item">
-                                        <input type="checkbox" checked={rules.short[iv].useMacdVal} onChange={e => handleRuleChange('short', iv, 'useMacdVal', e.target.checked)} />
+                                        <input type="checkbox" checked={rules.short?.[iv]?.useMacdVal} onChange={e => handleRuleChange('short', iv, 'useMacdVal', e.target.checked)} />
                                         <span style={{ color: '#eaebed' }}>MACD &gt;</span>
-                                        <input type="number" className="cond-input-small" value={rules.short[iv].macdVal} onChange={e => handleRuleChange('short', iv, 'macdVal', parseFloat(e.target.value))} />
+                                        <input type="number" className="cond-input-small" value={rules.short?.[iv]?.macdVal} onChange={e => handleRuleChange('short', iv, 'macdVal', parseFloat(e.target.value))} />
                                     </div>
                                 )}
                             </div>

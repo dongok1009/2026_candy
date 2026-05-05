@@ -95,7 +95,7 @@ async function init() {
 }
 
 async function fetchOHLCV(interval, limit = 1000) {
-    const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
+    const bybitInterval = interval === '1h' ? '60' : (interval === '12h' ? '720' : (interval === '5m' ? '5' : 'D'));
     const candles = await exchange.fetchOHLCV(config.symbol, bybitInterval, undefined, limit);
     return candles.map(c => ({
         time: c[0], open: c[1], high: c[2], low: c[3], close: c[4], volume: c[5]
@@ -121,9 +121,10 @@ async function checkMarkets() {
     const now = new Date();
     console.log(`\n[${now.toLocaleTimeString()}] --- BYBIT SCANNING ---`);
 
-    const [m5, h1, d1] = await Promise.all([
+    const [m5, h1, h12, d1] = await Promise.all([
         fetchOHLCV('5m', 1000),
         fetchOHLCV('1h', 1000),
+        fetchOHLCV('12h', 1000),
         fetchOHLCV('1d', 1000)
     ]);
 
@@ -131,8 +132,8 @@ async function checkMarkets() {
         liveRules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
     }
 
-    const indicators = strategy.indicators_logic({ m5, h1, d1 });
-    const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
+    const indicators = strategy.indicators_logic({ m5, h1, h12, d1 });
+    const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r12h: h12.length - 2, r1d: d1.length - 2 };
     const signal = strategy.signal_logic(indicators, indices, liveRules);
     
     let lev = parseInt(process.env.LEVERAGE) || liveRules?.global?.leverage || 5;
@@ -171,7 +172,16 @@ async function handleEntry(signal, lastM5, leverage) {
     // 바이비트 최소 수량 소수점 맞춤 (BTCUSDT 기준 보통 0.001)
     quantity = parseFloat(quantity.toFixed(3)); 
 
+    const tpPrice = signal === 'long' 
+        ? parseFloat((targetPrice * (1 + strategy.config.TARGET_NET_ROI / leverage)).toFixed(2))
+        : parseFloat((targetPrice * (1 - strategy.config.TARGET_NET_ROI / leverage)).toFixed(2));
+    
+    const slPrice = signal === 'long'
+        ? parseFloat((targetPrice * (1 - strategy.config.SL_ROI / leverage)).toFixed(2))
+        : parseFloat((targetPrice * (1 + strategy.config.SL_ROI / leverage)).toFixed(2));
+
     console.log(`[TRADE] Placing ${signal.toUpperCase()} Limit Order @ ${targetPrice} (Qty: ${quantity})`);
+    console.log(`[TPSL] Expected TP (Limit): ${tpPrice}, SL (Market): ${slPrice}`);
 
     try {
         // [실전 매매 API 호출]
@@ -180,7 +190,14 @@ async function handleEntry(signal, lastM5, leverage) {
             'limit', 
             signal === 'long' ? 'buy' : 'sell', 
             quantity, 
-            targetPrice
+            targetPrice,
+            {
+                takeProfit: tpPrice,
+                stopLoss: slPrice,
+                tpOrderType: 'Limit', // 익절은 지정가(Maker)
+                slOrderType: 'Market', // 손절은 시장가(Taker) 확실한 보호
+                tpslMode: 'Full'
+            }
         );
         
         liveState.status = 'IN_POSITION';
@@ -189,7 +206,7 @@ async function handleEntry(signal, lastM5, leverage) {
         liveState.entryTime = Date.now();
         saveState();
 
-        await sendTelegram(`🚀 <b>[BYBIT ENTRY] ${config.symbol} ${liveState.position}</b>\n• Price: $${targetPrice}\n• Qty: ${quantity}\n• Leverage: ${leverage}x`);
+        await sendTelegram(`🚀 <b>[BYBIT ENTRY] ${config.symbol} ${liveState.position}</b>\n• Price: $${targetPrice}\n• TP (Limit): $${tpPrice}\n• SL (Market): $${slPrice}\n• Leverage: ${leverage}x`);
     } catch (err) {
         console.error("[BYBIT ENTRY ERROR]", err.message);
         await sendTelegram(`⚠️ <b>[진입 에러]</b>\n${err.message}`);
@@ -213,13 +230,12 @@ async function monitorPosition(currentPrice, leverage) {
     else if (roe <= -sl) exitReason = 'STOP_LOSS';
     else if (durationMin >= waitLimit) exitReason = 'TIMEOUT';
 
+    // 만약 거래소 서버에 TP/SL이 안 걸려있다면 다시 한 번 시도 (백업)
     if (exitReason) {
         console.log(`\n🏁 [EXIT] ${exitReason} Triggered! Closing Position...`);
         try {
-            // [실전 청산 API 호출] (보유 수량 100% 시장가 종료)
-            // Bybit에서 포지션을 닫기 위해 reduceOnly 주문 사용
             const positions = await exchange.fetchPositions([config.symbol]);
-            const pos = positions.find(p => p.symbol === config.symbol && p.contracts > 0);
+            const pos = positions.find(p => p.symbol === config.symbol && parseFloat(p.contracts) > 0);
             
             if (pos) {
                 await exchange.createOrder(
@@ -241,6 +257,63 @@ async function monitorPosition(currentPrice, leverage) {
         } catch (err) {
             console.error("[BYBIT EXIT ERROR]", err.message);
         }
+    } else {
+        // 매 5분마다 한 번씩 거래소의 TPSL 상태를 체크하여 동기화
+        if (durationMin % 5 === 0 && durationMin > 0) {
+            const leverage = parseFloat(process.env.LEVERAGE) || 5;
+            await syncExchangeTPSL(leverage);
+        }
+    }
+}
+
+async function syncExchangeTPSL(leverage) {
+    try {
+        const positions = await exchange.fetchPositions([config.symbol]);
+        const pos = positions.find(p => p.symbol === config.symbol && parseFloat(p.contracts) > 0);
+        
+        // 익절이나 손절 중 하나라도 없으면 재설정
+        if (pos && (!pos.takeProfit || !pos.stopLoss || pos.takeProfit === 0 || pos.stopLoss === 0)) {
+            console.log(`\n🔄 [SYNC] Missing TPSL on Exchange. Setting now...`);
+            
+            const entry = parseFloat(pos.entryPrice);
+            const side = pos.side === 'Buy' ? 1 : -1;
+            
+            // UI에서 가져온 설정값 사용
+            const tpRate = strategy.config.TARGET_NET_ROI || 0.03;
+            const slRate = strategy.config.SL_ROI || 0.15;
+
+            const tpPrice = side === 1 
+                ? parseFloat((entry * (1 + tpRate / leverage)).toFixed(2))
+                : parseFloat((entry * (1 - tpRate / leverage)).toFixed(2));
+            
+            const slPrice = side === 1
+                ? parseFloat((entry * (1 - slRate / leverage)).toFixed(2))
+                : parseFloat((entry * (1 + slRate / leverage)).toFixed(2));
+
+            await exchange.setParams(config.symbol, {
+                takeProfit: tpPrice,
+                stopLoss: slPrice,
+                tpOrderType: 'Limit',
+                slOrderType: 'Market',
+                tpslMode: 'Full'
+            });
+            console.log(`✅ [SYNC] Exchange TPSL set: TP ${tpPrice}, SL ${slPrice}`);
+            await sendTelegram(`🔄 <b>[BYBIT SYNC] TPSL Updated</b>\n• TP (Limit): $${tpPrice}\n• SL (Market): $${slPrice}`);
+        }
+    } catch (err) {
+        console.error("[SYNC ERROR]", err.message);
+    }
+}
+
+async function init() {
+    console.log("🚀 Starting Bybit Live Bot...");
+    // 시작 시 현재 포지션 동기화
+    const leverage = parseFloat(process.env.LEVERAGE) || 5;
+    await syncExchangeTPSL(leverage);
+    
+    while(true) {
+        await scan();
+        await new Promise(r => setTimeout(r, 60000)); // 1분 대기
     }
 }
 
