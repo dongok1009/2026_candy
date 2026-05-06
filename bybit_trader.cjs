@@ -327,6 +327,7 @@ async function syncExchangeTPSL(leverage) {
                 liveState.status = 'IN_POSITION'; liveState.position = correctSide;
                 liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
+                liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
             }
 
@@ -384,10 +385,12 @@ async function syncExchangeTPSL(leverage) {
                         }
                     }
                 } else {
-                    // orderId가 없는데 포지션도 없는 경우
-                    console.log(`⚠️ [SYNC] No active position and no orderId. Resetting to IDLE.`);
+                    // orderId가 없는데 포지션도 없는 경우 -> 거래소에서 TP/SL 등으로 종료됨
+                    console.log(`🏁 [SYNC] Position closed on exchange. Resetting to IDLE.`);
+                    await sendTelegram(`🏁 <b>[EXCHANGE EXIT]</b>\n• ${liveState.position || 'Position'} closed on Bybit (TP/SL or Manual).`);
                     liveState.status = 'IDLE';
-                    liveState.position = null; // 포지션 정보도 초기화
+                    liveState.position = null;
+                    liveState.orderId = null;
                     saveState();
                 }
             }
