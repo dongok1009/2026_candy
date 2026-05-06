@@ -106,6 +106,29 @@ async function checkMarkets() {
 
         const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
 
+        // [RESCUE] IDLE 상태라 하더라도 실제 거래소에 포지션이나 미체결 주문이 있는지 최종 확인
+        if (liveState.status === 'IDLE') {
+            const positions = await exchange.fetchPositions();
+            const pos = positions.find(p => isSymbolMatch(p.symbol, config.SYMBOL) && parseFloat(p.contracts) > 0);
+            if (pos) {
+                console.log(`⚠️ [RESCUE] Active position found on exchange. Syncing status to IN_POSITION.`);
+                liveState.status = 'IN_POSITION';
+                liveState.position = pos.side.toUpperCase();
+                liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
+                liveState.entryTime = liveState.entryTime || Date.now();
+                saveState();
+            } else {
+                const openOrders = await exchange.fetchOpenOrders(config.SYMBOL);
+                if (openOrders.length > 0) {
+                    console.log(`⚠️ [RESCUE] Open orders found on exchange. Syncing status to IN_POSITION.`);
+                    liveState.status = 'IN_POSITION';
+                    liveState.orderId = openOrders[0].id;
+                    liveState.entryTime = liveState.entryTime || Date.now();
+                    saveState();
+                }
+            }
+        }
+
         if (liveState.status === 'IDLE') {
             const finalSignal = strategy.signal_logic(indicators, indices, overrideRules);
             
@@ -353,15 +376,18 @@ async function syncExchangeTPSL(leverage) {
                         }
                     } catch (e) {
                         console.error("[FETCH ORDER ERROR]", e.message);
-                        // 주문을 찾을 수 없는 경우 등
-                        liveState.status = 'IDLE';
-                        liveState.orderId = null;
-                        saveState();
+                        // 네트워크 에러 등 일시적 오류일 수 있으므로 IDLE로 성급하게 리셋하지 않음
+                        if (e.message.includes('not found') || e.message.includes('Order does not exist')) {
+                            liveState.status = 'IDLE';
+                            liveState.orderId = null;
+                            saveState();
+                        }
                     }
                 } else {
                     // orderId가 없는데 포지션도 없는 경우
                     console.log(`⚠️ [SYNC] No active position and no orderId. Resetting to IDLE.`);
                     liveState.status = 'IDLE';
+                    liveState.position = null; // 포지션 정보도 초기화
                     saveState();
                 }
             }
