@@ -25,7 +25,7 @@ const strategy = {
 
         ADX_THRESHOLD: 30, // Default fallback
         ENTRY_WAIT_MIN: 180,
-        EXIT_WAIT_MIN: 2000
+        EXIT_WAIT_MIN: 1500
     },
 
     indicators_logic: (klines) => {
