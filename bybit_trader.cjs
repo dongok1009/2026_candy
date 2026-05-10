@@ -394,6 +394,8 @@ async function syncExchangeTPSL(leverage) {
                 liveState.entryTime = liveState.entryTime || Date.now();
                 liveState.quantity = parseFloat(pos.contracts);
                 liveState.totalAmount = liveState.entryPrice * liveState.quantity;
+                liveState.tpPrice = parseFloat(pos.takeProfit || 0);
+                liveState.slPrice = parseFloat(pos.stopLoss || 0);
                 liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
                 console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC`);
@@ -522,8 +524,11 @@ async function checkStatusNotification() {
             const roe = side === 'LONG' ? (current - entry) / entry * leverage : (entry - current) / entry * leverage;
             const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
             
-            msg += `\n• <b>수량: ${liveState.quantity} BTC</b>` +
+            msg += `\n• <b>진입가: $${entry.toLocaleString()}</b>` +
+                   `\n• <b>수량: ${liveState.quantity} BTC</b>` +
                    `\n• <b>총 금액: $${(liveState.totalAmount || 0).toLocaleString()}</b>` +
+                   `\n• <b>익절가: $${(liveState.tpPrice || 0).toLocaleString()}</b>` +
+                   `\n• <b>손절가: $${(liveState.slPrice || 0).toLocaleString()}</b>` +
                    `\n• <b>ROE: ${(roe * 100).toFixed(2)}%</b>` +
                    `\n• <b>Duration: ${durationMin}m</b>`;
         }
