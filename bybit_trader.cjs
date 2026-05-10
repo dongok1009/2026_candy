@@ -535,6 +535,10 @@ async function init() {
     loadState();
     console.log(`\n🤖 [Antigravity ${strategyVersion}] Bybit Live Bot Starting...`);
     const leverage = parseFloat(process.env.LEVERAGE) || 5;
+    
+    // 시작 시 텔레그램 알림 추가
+    await sendTelegram(`🤖 <b>[v7.0.3 LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}`);
+    
     await syncExchangeTPSL(leverage);
     while(true) {
         try {
