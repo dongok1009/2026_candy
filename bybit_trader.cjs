@@ -31,6 +31,7 @@ let liveState = {
     totalAmount: 0,
     tpPrice: 0,
     slPrice: 0,
+    filledNotified: false,
     lastUpdate: null,
     lastPrice: null
 };
@@ -264,6 +265,7 @@ async function handleEntry(side, price, klines) {
         liveState.totalAmount = finalAmount * leverage;
         liveState.tpPrice = tpPrice;
         liveState.slPrice = slPrice;
+        liveState.filledNotified = false;
         saveState();
 
         updateTradeLog('ENTRY_ORDER', {
@@ -415,21 +417,40 @@ async function syncExchangeTPSL(leverage) {
                         : parseFloat((liveState.entryPrice * (1 + slRoi / leverage)).toFixed(2));
                 }
 
-                liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
                 console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC | TP: ${liveState.tpPrice}`);
-                
-                // 체결 확인 알림 (지정가 주문이 실제 포지션으로 변했을 때)
-                const msg = `✅ <b>[v7.0.3 LIVE] 주문 체결 완료!</b>\n\n` +
-                            `📌 <b>포지션:</b> ${liveState.position}\n` +
-                            `💵 <b>진입가:</b> $${liveState.entryPrice.toLocaleString()}\n` +
-                            `📦 <b>수량:</b> ${liveState.quantity} BTC\n` +
-                            `💰 <b>총 금액:</b> $${(liveState.totalAmount || 0).toLocaleString()}\n` +
-                            `✅ <b>익절가:</b> $${(liveState.tpPrice || 0).toLocaleString()}\n` +
-                            `❌ <b>손절가:</b> $${(liveState.slPrice || 0).toLocaleString()}`;
-                await sendTelegram(msg);
+            }
 
-                updateTradeLog('SYNC_POS_UPDATED', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity, tp: liveState.tpPrice, sl: liveState.slPrice });
+            // [FULL FILL CHECK] 모든 수량이 매수되었을 때만 알림 (분할 매수 대응)
+            if (!liveState.filledNotified) {
+                let isFullFill = false;
+                if (liveState.orderId) {
+                    try {
+                        const order = await exchange.fetchOrder(liveState.orderId, symbol);
+                        if (order.status === 'closed') isFullFill = true;
+                    } catch (e) {
+                        // 주문 조회 실패 시 수량 비교로 대체
+                        if (parseFloat(pos.contracts) >= parseFloat(liveState.quantity)) isFullFill = true;
+                    }
+                } else {
+                    // 주문 ID가 없는 경우 현재 수량으로 판단
+                    if (parseFloat(pos.contracts) >= parseFloat(liveState.quantity)) isFullFill = true;
+                }
+
+                if (isFullFill) {
+                    const msg = `✅ <b>[v7.0.3 LIVE] 주문 전량 체결 완료!</b>\n\n` +
+                                `📌 <b>포지션:</b> ${liveState.position}\n` +
+                                `💵 <b>진입가:</b> $${liveState.entryPrice.toLocaleString()}\n` +
+                                `📦 <b>수량:</b> ${liveState.quantity} BTC\n` +
+                                `💰 <b>총 금액:</b> $${(liveState.totalAmount || 0).toLocaleString()}\n` +
+                                `✅ <b>익절가:</b> $${(liveState.tpPrice || 0).toLocaleString()}\n` +
+                                `❌ <b>손절가:</b> $${(liveState.slPrice || 0).toLocaleString()}`;
+                    await sendTelegram(msg);
+                    liveState.filledNotified = true;
+                    liveState.orderId = null; // 전량 체결 시 주문 ID 초기화
+                    saveState();
+                    updateTradeLog('FULL_FILL', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity });
+                }
             }
 
             if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
