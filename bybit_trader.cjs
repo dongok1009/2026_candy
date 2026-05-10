@@ -543,6 +543,7 @@ async function checkStatusNotification() {
             const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
             
             msg += `\n• <b>진입가: $${entry.toLocaleString()}</b>` +
+                   `\n• <b>레버리지: ${leverage}배</b>` +
                    `\n• <b>수량: ${liveState.quantity} BTC</b>` +
                    `\n• <b>총 금액: $${(liveState.totalAmount || 0).toLocaleString()}</b>` +
                    `\n• <b>익절가: $${(liveState.tpPrice || 0).toLocaleString()}</b>` +
