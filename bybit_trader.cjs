@@ -426,7 +426,7 @@ async function syncExchangeTPSL(leverage) {
                 let isFullFill = false;
                 if (liveState.orderId) {
                     try {
-                        const order = await exchange.fetchOrder(liveState.orderId, symbol);
+                        const order = await exchange.fetchOrder(liveState.orderId, symbol, { acknowledged: true });
                         if (order.status === 'closed') isFullFill = true;
                     } catch (e) {
                         // 주문 조회 실패 시 수량 비교로 대체
@@ -478,7 +478,7 @@ async function syncExchangeTPSL(leverage) {
                 // 1. 미체결 주문이 있는지 확인
                 if (liveState.orderId) {
                     try {
-                        const order = await exchange.fetchOrder(liveState.orderId, symbol);
+                        const order = await exchange.fetchOrder(liveState.orderId, symbol, { acknowledged: true });
                         if (order.status === 'open') {
                             if (durationMin >= entryWait) {
                                 console.log(`⚠️ [ENTRY TIMEOUT] Order ${liveState.orderId} not filled for ${durationMin}m. Cancelling...`);
