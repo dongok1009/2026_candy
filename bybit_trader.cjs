@@ -256,7 +256,7 @@ async function handleEntry(side, price, klines) {
         const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice, orderParams);
         console.log(`✅ [BYBIT ENTRY] Limit Order Placed: ${order.id} with TP/SL`);
 
-        liveState.status = 'IN_POSITION';
+        liveState.status = 'WAITING';
         liveState.position = side;
         liveState.entryPrice = entryPrice;
         liveState.entryTime = Date.now();
@@ -319,6 +319,14 @@ async function monitorPosition(currentPrice) {
     const entry = liveState.entryPrice;
     const side = liveState.position;
     const leverage = parseFloat(process.env.LEVERAGE) || 5;
+
+    // WAITING 상태이면 체결 확인만 수행
+    if (liveState.status === 'WAITING') {
+        const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
+        console.log(`[MONITOR] WAITING for Fill | Time: ${durationMin}m`);
+        await syncExchangeTPSL(leverage);
+        return;
+    }
 
     const roe = side === 'LONG' ? (currentPrice - entry) / entry * leverage : (entry - currentPrice) / entry * leverage;
     const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
@@ -446,6 +454,7 @@ async function syncExchangeTPSL(leverage) {
                                 `✅ <b>익절가:</b> $${(liveState.tpPrice || 0).toLocaleString()}\n` +
                                 `❌ <b>손절가:</b> $${(liveState.slPrice || 0).toLocaleString()}`;
                     await sendTelegram(msg);
+                    liveState.status = 'IN_POSITION'; // 체결 완료 시 상태 변경
                     liveState.filledNotified = true;
                     liveState.orderId = null; // 전량 체결 시 주문 ID 초기화
                     saveState();
@@ -509,6 +518,11 @@ async function syncExchangeTPSL(leverage) {
                     }
                 } else {
                     // orderId가 없는데 포지션도 없는 경우 -> 거래소에서 TP/SL 등으로 종료됨
+                    if (liveState.status === 'WAITING') {
+                         console.log(`⚠️ [SYNC] Order ${liveState.orderId} disappeared without fill. Resetting to IDLE.`);
+                         liveState.status = 'IDLE'; liveState.orderId = null; saveState(); return;
+                    }
+                    
                     const leverage = parseFloat(process.env.LEVERAGE) || 5;
                     const currentPrice = liveState.lastPrice || 0;
                     const roe = liveState.position === 'LONG' 
