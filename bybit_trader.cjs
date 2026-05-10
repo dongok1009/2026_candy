@@ -388,18 +388,36 @@ async function syncExchangeTPSL(leverage) {
             const correctSide = (sideLower === 'long' || sideLower === 'buy') ? 'LONG' : 'SHORT';
 
             // 기존 상태에 정보가 없거나 부족한 경우 강제 업데이트
-            if (liveState.status !== 'IN_POSITION' || liveState.position !== correctSide || !liveState.quantity) {
+            if (liveState.status !== 'IN_POSITION' || liveState.position !== correctSide || !liveState.quantity || !liveState.tpPrice) {
                 liveState.status = 'IN_POSITION'; liveState.position = correctSide;
                 liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
                 liveState.quantity = parseFloat(pos.contracts);
                 liveState.totalAmount = liveState.entryPrice * liveState.quantity;
-                liveState.tpPrice = parseFloat(pos.takeProfit || 0);
-                liveState.slPrice = parseFloat(pos.stopLoss || 0);
+                
+                // TP/SL 확인 (거래소 데이터 우선, 없으면 전략 기반 계산)
+                const leverage = parseFloat(process.env.LEVERAGE) || 5;
+                const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
+                const slRoi = strategy.config.SL_ROI || 0.15;
+
+                liveState.tpPrice = parseFloat(pos.takeProfit || pos.info?.takeProfit || 0);
+                liveState.slPrice = parseFloat(pos.stopLoss || pos.info?.stopLoss || 0);
+
+                if (liveState.tpPrice === 0) {
+                    liveState.tpPrice = correctSide === 'LONG' 
+                        ? parseFloat((liveState.entryPrice * (1 + targetRoi / leverage)).toFixed(2))
+                        : parseFloat((liveState.entryPrice * (1 - targetRoi / leverage)).toFixed(2));
+                }
+                if (liveState.slPrice === 0) {
+                    liveState.slPrice = correctSide === 'LONG'
+                        ? parseFloat((liveState.entryPrice * (1 - slRoi / leverage)).toFixed(2))
+                        : parseFloat((liveState.entryPrice * (1 + slRoi / leverage)).toFixed(2));
+                }
+
                 liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
-                console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC`);
-                updateTradeLog('SYNC_POS_UPDATED', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity });
+                console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC | TP: ${liveState.tpPrice}`);
+                updateTradeLog('SYNC_POS_UPDATED', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity, tp: liveState.tpPrice, sl: liveState.slPrice });
             }
 
             if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
