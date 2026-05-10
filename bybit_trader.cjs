@@ -472,6 +472,7 @@ async function syncExchangeTPSL(leverage) {
                         } else {
                             // 주문이 취소되었거나 이미 처리됨 (하지만 포지션은 없음)
                             console.log(`⚠️ [SYNC] Order ${liveState.orderId} status is ${order.status} but no position found.`);
+                            await sendTelegram(`ℹ️ <b>[ORDER SYNC]</b>\n• Order status: ${order.status}\n• No active position found. Resetting to IDLE.`);
                             liveState.status = 'IDLE';
                             liveState.orderId = null;
                             saveState();
