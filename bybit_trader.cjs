@@ -221,7 +221,8 @@ async function handleEntry(side, price, klines) {
         // 실제 가용 잔고와 설정 금액 중 작은 값 선택
         const finalAmount = Math.min(envAmount, availableBalance);
         
-        console.log(`[DEBUG] 설정금액:$${envAmount}, 가용잔고:$${availableBalance.toFixed(2)}, 최종마진:$${finalAmount}`);
+        console.log(`[DEBUG] ENV_AMOUNT:$${envAmount}, BYBIT_FREE:$${availableBalance.toFixed(2)}, FINAL_MARGIN:$${finalAmount}`);
+        updateTradeLog('DEBUG_AMOUNT', { envAmount, availableBalance, finalAmount });
 
         const entryPrice = side === 'LONG' 
             ? (price <= targetPrice ? price : targetPrice)
@@ -417,6 +418,17 @@ async function syncExchangeTPSL(leverage) {
                 liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
                 console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC | TP: ${liveState.tpPrice}`);
+                
+                // 체결 확인 알림 (지정가 주문이 실제 포지션으로 변했을 때)
+                const msg = `✅ <b>[v7.0.3 LIVE] 주문 체결 완료!</b>\n\n` +
+                            `📌 <b>포지션:</b> ${liveState.position}\n` +
+                            `💵 <b>진입가:</b> $${liveState.entryPrice.toLocaleString()}\n` +
+                            `📦 <b>수량:</b> ${liveState.quantity} BTC\n` +
+                            `💰 <b>총 금액:</b> $${(liveState.totalAmount || 0).toLocaleString()}\n` +
+                            `✅ <b>익절가:</b> $${(liveState.tpPrice || 0).toLocaleString()}\n` +
+                            `❌ <b>손절가:</b> $${(liveState.slPrice || 0).toLocaleString()}`;
+                await sendTelegram(msg);
+
                 updateTradeLog('SYNC_POS_UPDATED', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity, tp: liveState.tpPrice, sl: liveState.slPrice });
             }
 
