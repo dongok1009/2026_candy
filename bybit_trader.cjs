@@ -27,6 +27,10 @@ let liveState = {
     entryPrice: 0,
     entryTime: null,
     orderId: null,
+    quantity: 0,
+    totalAmount: 0,
+    tpPrice: 0,
+    slPrice: 0,
     lastUpdate: null,
     lastPrice: null
 };
@@ -68,6 +72,31 @@ async function sendTelegram(message) {
         });
     } catch (err) {
         console.error("Telegram send error:", err.message);
+    }
+}
+
+// 월별 트레이딩 로그 기록 함수
+function updateTradeLog(event, data) {
+    try {
+        const kstOffset = 9 * 60 * 60 * 1000;
+        const nowKST = new Date(Date.now() + kstOffset);
+        const monthStr = nowKST.toISOString().substring(0, 7).replace('-', '_'); // 2026_05
+        const logFile = path.join(__dirname, `trade_log_${monthStr}.json`);
+        
+        let logs = [];
+        if (fs.existsSync(logFile)) {
+            logs = JSON.parse(fs.readFileSync(logFile, 'utf8'));
+        }
+        
+        logs.push({
+            timeKST: nowKST.toISOString().replace('T', ' ').substring(0, 19),
+            event: event,
+            ...data
+        });
+        
+        fs.writeFileSync(logFile, JSON.stringify(logs, null, 2));
+    } catch (e) {
+        console.error("Log Write Error:", e.message);
     }
 }
 
@@ -151,6 +180,15 @@ async function checkMarkets() {
             const isShort = finalSignal === 'short';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
+            if (isLong || isShort) {
+                updateTradeLog('SIGNAL', {
+                    side: finalSignal.toUpperCase(),
+                    price: m5[m5.length - 1].close,
+                    adx: adxVal,
+                    m5Stoch: `${m5K.toFixed(1)}/${m5D.toFixed(1)}`
+                });
+            }
+
             if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines);
             else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines);
         } else {
@@ -221,7 +259,15 @@ async function handleEntry(side, price, klines) {
         liveState.entryPrice = entryPrice;
         liveState.entryTime = Date.now();
         liveState.orderId = order.id;
+        liveState.quantity = contracts;
+        liveState.totalAmount = finalAmount * leverage;
+        liveState.tpPrice = tpPrice;
+        liveState.slPrice = slPrice;
         saveState();
+
+        updateTradeLog('ENTRY_ORDER', {
+            side, price: entryPrice, quantity: contracts, totalAmount: liveState.totalAmount, tp: tpPrice, sl: slPrice
+        });
 
         // 기존의 별도 TP/SL 설정 로직은 예외 처리 강화 (이미 주문 시 설정되었으므로 중복 방지)
         try {
@@ -254,6 +300,8 @@ async function handleEntry(side, price, klines) {
                     `💰 <b>현재 가격:</b> $${price.toLocaleString()}\n\n` +
                     `📌 <b>포지션:</b> ${side}\n` +
                     `💵 <b>진입 가격:</b> $${entryPrice.toLocaleString()}\n` +
+                    `📦 <b>수량:</b> ${contracts} BTC\n` +
+                    `💰 <b>총 금액:</b> $${(finalAmount * leverage).toLocaleString()}\n` +
                     `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()} (ROI ${(targetRoi * 100).toFixed(1)}%)\n` +
                     `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()} (ROI ${(slRoi * 100).toFixed(1)}%)\n\n` +
                     `📡 레버리지 ${leverage}배 기준 계산됨`;
@@ -305,9 +353,25 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         await exchange.createOrder(symbol, 'market', orderSide, contracts, undefined, { reduceOnly: true });
 
         const finalRoe = (roe * 100).toFixed(2);
-        await sendTelegram(`🏁 <b>[BYBIT EXIT] ${symbol} ${side}</b>\n• Reason: ${reason}\n• Price: $${currentPrice}\n• Final ROE: <b>${finalRoe}%</b>\n• Duration: ${durationMin}m`);
+        const leverage = parseFloat(process.env.LEVERAGE) || 5;
+        const profitAmount = side === 'LONG' 
+            ? (currentPrice - liveState.entryPrice) * liveState.quantity 
+            : (liveState.entryPrice - currentPrice) * liveState.quantity;
+
+        const msg = `🏁 <b>[BYBIT EXIT] ${symbol} ${side}</b>\n` +
+                    `• Reason: ${reason}\n` +
+                    `• Price: $${currentPrice.toLocaleString()}\n` +
+                    `• Quantity: ${liveState.quantity} BTC\n` +
+                    `• <b>Final ROE: ${finalRoe}%</b>\n` +
+                    `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n` +
+                    `• Duration: ${durationMin}m`;
         
-        liveState.status = 'IDLE'; liveState.position = null; saveState();
+        await sendTelegram(msg);
+        updateTradeLog('EXIT', {
+            side, reason, price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
+        });
+        
+        liveState.status = 'IDLE'; liveState.position = null; liveState.quantity = 0; liveState.totalAmount = 0; saveState();
     } catch (err) {
         console.error("[BYBIT EXIT ERROR]", err.message);
     }
@@ -327,8 +391,11 @@ async function syncExchangeTPSL(leverage) {
                 liveState.status = 'IN_POSITION'; liveState.position = correctSide;
                 liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
+                liveState.quantity = parseFloat(pos.contracts);
+                liveState.totalAmount = liveState.entryPrice * liveState.quantity;
                 liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
+                updateTradeLog('SYNC_POS_FOUND', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity });
             }
 
             if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
@@ -386,11 +453,33 @@ async function syncExchangeTPSL(leverage) {
                     }
                 } else {
                     // orderId가 없는데 포지션도 없는 경우 -> 거래소에서 TP/SL 등으로 종료됨
+                    const leverage = parseFloat(process.env.LEVERAGE) || 5;
+                    const currentPrice = liveState.lastPrice || 0;
+                    const roe = liveState.position === 'LONG' 
+                        ? (currentPrice - liveState.entryPrice) / liveState.entryPrice * leverage 
+                        : (liveState.entryPrice - currentPrice) / liveState.entryPrice * leverage;
+                    const profitAmount = liveState.position === 'LONG' 
+                        ? (currentPrice - liveState.entryPrice) * liveState.quantity 
+                        : (liveState.entryPrice - currentPrice) * liveState.quantity;
+
+                    const msg = `🏁 <b>[EXCHANGE EXIT]</b>\n` +
+                                `• ${liveState.position || 'Position'} closed on Bybit (TP/SL or Manual).\n` +
+                                `• Est. Price: $${currentPrice.toLocaleString()}\n` +
+                                `• Quantity: ${liveState.quantity} BTC\n` +
+                                `• Est. ROE: ${(roe * 100).toFixed(2)}%\n` +
+                                `• Est. Profit: $${profitAmount.toFixed(2)}`;
+
                     console.log(`🏁 [SYNC] Position closed on exchange. Resetting to IDLE.`);
-                    await sendTelegram(`🏁 <b>[EXCHANGE EXIT]</b>\n• ${liveState.position || 'Position'} closed on Bybit (TP/SL or Manual).`);
+                    await sendTelegram(msg);
+                    updateTradeLog('EXCHANGE_EXIT', {
+                        side: liveState.position, price: currentPrice, quantity: liveState.quantity, roe: (roe * 100).toFixed(2), profit: profitAmount
+                    });
+
                     liveState.status = 'IDLE';
                     liveState.position = null;
                     liveState.orderId = null;
+                    liveState.quantity = 0;
+                    liveState.totalAmount = 0;
                     saveState();
                 }
             }
@@ -431,7 +520,9 @@ async function checkStatusNotification() {
             const roe = side === 'LONG' ? (current - entry) / entry * leverage : (entry - current) / entry * leverage;
             const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
             
-            msg += `\n• <b>Final ROE: ${(roe * 100).toFixed(2)}%</b>` +
+            msg += `\n• <b>수량: ${liveState.quantity} BTC</b>` +
+                   `\n• <b>총 금액: $${(liveState.totalAmount || 0).toLocaleString()}</b>` +
+                   `\n• <b>ROE: ${(roe * 100).toFixed(2)}%</b>` +
                    `\n• <b>Duration: ${durationMin}m</b>`;
         }
 
