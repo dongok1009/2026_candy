@@ -489,6 +489,13 @@ async function syncExchangeTPSL(leverage) {
                     try {
                         const order = await exchange.fetchOrder(liveState.orderId, symbol, { acknowledged: true });
                         if (order.status === 'open') {
+                            // [CORRECTIVE SYNC] 포지션은 없는데 주문만 있는 경우 상태를 WAITING으로 강제 조정
+                            if (liveState.status === 'IN_POSITION') {
+                                console.log(`⚠️ [SYNC] No position but open order found. Correcting status to WAITING.`);
+                                liveState.status = 'WAITING';
+                                saveState();
+                            }
+
                             if (durationMin >= entryWait) {
                                 console.log(`⚠️ [ENTRY TIMEOUT] Order ${liveState.orderId} not filled for ${durationMin}m. Cancelling...`);
                                 await exchange.cancelOrder(liveState.orderId, symbol);
