@@ -214,8 +214,8 @@ async function handleEntry(side, price, klines) {
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
         
-        // .env에서 AMOUNT 또는 INITIAL_BALANCE 읽기 (없으면 100)
-        const envAmount = parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100;
+        // .env에서 ORDER_AMOUNT, AMOUNT 또는 INITIAL_BALANCE 읽기 (없으면 100)
+        const envAmount = parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100;
         const leverage = parseFloat(process.env.LEVERAGE) || 5;
 
         // 실제 가용 잔고와 설정 금액 중 작은 값 선택
