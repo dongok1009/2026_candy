@@ -387,7 +387,8 @@ async function syncExchangeTPSL(leverage) {
             const sideLower = pos.side.toLowerCase();
             const correctSide = (sideLower === 'long' || sideLower === 'buy') ? 'LONG' : 'SHORT';
 
-            if (liveState.status !== 'IN_POSITION' || liveState.position !== correctSide) {
+            // 기존 상태에 정보가 없거나 부족한 경우 강제 업데이트
+            if (liveState.status !== 'IN_POSITION' || liveState.position !== correctSide || !liveState.quantity) {
                 liveState.status = 'IN_POSITION'; liveState.position = correctSide;
                 liveState.entryPrice = parseFloat(pos.entryPrice || pos.avgPrice);
                 liveState.entryTime = liveState.entryTime || Date.now();
@@ -395,7 +396,8 @@ async function syncExchangeTPSL(leverage) {
                 liveState.totalAmount = liveState.entryPrice * liveState.quantity;
                 liveState.orderId = null; // 포지션 확인 시 주문 ID 초기화
                 saveState();
-                updateTradeLog('SYNC_POS_FOUND', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity });
+                console.log(`✅ [SYNC] Position data updated: ${liveState.quantity} BTC`);
+                updateTradeLog('SYNC_POS_UPDATED', { side: correctSide, price: liveState.entryPrice, quantity: liveState.quantity });
             }
 
             if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
