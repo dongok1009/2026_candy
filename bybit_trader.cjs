@@ -479,8 +479,8 @@ async function syncExchangeTPSL(leverage) {
                 console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
             }
         } else {
-            // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION인 경우
-            if (liveState.status === 'IN_POSITION') {
+            // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION 또는 WAITING인 경우
+            if (liveState.status === 'IN_POSITION' || liveState.status === 'WAITING') {
                 const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
                 const entryWait = strategy.config.ENTRY_WAIT_MIN || 180;
 
