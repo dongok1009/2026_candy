@@ -56,3 +56,33 @@
 - ROI: 142.43% | 530W/105L
 - Params: BTCUSDT 5x | 1000 -> 2424.3434948329427
 ---
+
+### 📊 Official Record: Record.7.0.4.5
+- ROI: 878.68% | 175W/21L
+- Params: BTCUSDT 5x | 1000 -> 9786.770966327958
+---
+
+### 📊 Official Record: Record.7.0.4.6
+- ROI: 393.92% | 94W/11L
+- Params: BTCUSDT 5x | 1000 -> 4939.231724444618
+---
+
+### 📊 Official Record: Record.7.0.4.7
+- ROI: 389.21% | 96W/17L
+- Params: BTCUSDT 5x | 1000 -> 4892.075627075557
+---
+
+### 📊 Official Record: Record.7.0.4.5
+- ROI: 1082.92% | 383W/90L
+- Params: BTCUSDT 5x | 1000 -> 11829.236504926772
+---
+
+### 📊 Official Record: Record.7.0.4.6
+- ROI: 1596.61% | 383W/76L
+- Params: BTCUSDT 5x | 1000 -> 16966.1282118397
+---
+
+### 📊 Official Record: Record.7.0.4.7
+- ROI: 77.58% | 85W/16L
+- Params: BTCUSDT 5x | 1000 -> 1775.8295590265784
+---
