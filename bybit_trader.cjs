@@ -180,6 +180,7 @@ async function checkMarkets() {
             
             const isLong = finalSignal === 'long';
             const isShort = finalSignal === 'short';
+            const lastSignal = liveState.lastSignal || 'HOLD';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
             if (isLong || isShort) {
@@ -189,10 +190,23 @@ async function checkMarkets() {
                     adx: adxVal,
                     m5Stoch: `${m5K.toFixed(1)}/${m5D.toFixed(1)}`
                 });
+
+                const now = Date.now();
+                const signalCooldown = 60 * 60 * 1000; // 1시간 쿨다운
+                const skipNotify = (now - liveState.lastNotifiedSignalTime < signalCooldown);
+
+                if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify);
+                else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify);
+                
+                if (!skipNotify) {
+                    liveState.lastNotifiedSignalTime = now;
+                }
+            } else if (finalSignal === 'HOLD' && lastSignal !== 'HOLD' && liveState.status === 'IDLE') {
+                await sendTelegram(`💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간:</b> ${new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toLocaleString('ko-KR')}\n💰 <b>가격:</b> $${m5[m5.length - 1].close.toLocaleString()}`);
             }
 
-            if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines);
-            else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines);
+            liveState.lastSignal = finalSignal.toUpperCase();
+            saveState();
         } else {
             await monitorPosition(m5[m5.length - 1].close);
         }
@@ -201,7 +215,7 @@ async function checkMarkets() {
     }
 }
 
-async function handleEntry(side, price, klines) {
+async function handleEntry(side, price, klines, skipNotify = false) {
     const config = strategy.config;
     
     // v7.0.3 하이브리드 지정가 로직 적용
@@ -310,7 +324,9 @@ async function handleEntry(side, price, klines) {
                     `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()} (ROI ${(slRoi * 100).toFixed(1)}%)\n\n` +
                     `📡 레버리지 ${leverage}배 기준 계산됨`;
 
-        await sendTelegram(msg);
+        if (!skipNotify) {
+            await sendTelegram(msg);
+        }
     } catch (err) {
         console.error("[BYBIT ENTRY ERROR]", err.message);
     }
