@@ -32,6 +32,7 @@ let liveState = {
     tpPrice: 0,
     slPrice: 0,
     filledNotified: false,
+    lastNotifiedSignalTime: 0, // 신호 알림 중복 방지용
     lastUpdate: null,
     lastPrice: null
 };
