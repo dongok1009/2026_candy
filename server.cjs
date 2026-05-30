@@ -3,6 +3,7 @@ const cors = require('cors');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { buildRulesFromEnv, syncRulesToEnv } = require('./lib/rules_helper.cjs');
 const app = express();
 const PORT = 3001;
 
@@ -28,13 +29,51 @@ app.get('/api/live-status', (req, res) => {
 
 app.post('/api/live-settings', (req, res) => {
     const { rules } = req.body;
-    fs.writeFileSync(LIVE_RULES_FILE, JSON.stringify(rules, null, 2));
-    res.json({ success: true });
+    try {
+        fs.writeFileSync(LIVE_RULES_FILE, JSON.stringify(rules, null, 2));
+
+        // syncRulesToEnv를 통해 .env 파일의 지표 조건 및 청산 변수 전체를 실시간 대칭 동기화
+        const syncSuccess = syncRulesToEnv(rules);
+        if (syncSuccess) {
+            console.log(`[SERVER] Full bidirectional sync completed for .env file parameters!`);
+        } else {
+            console.warn(`[SERVER] .env sync was skipped or encountered an issue.`);
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Live settings save error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 app.get('/api/live-rules', (req, res) => {
-    if (!fs.existsSync(LIVE_RULES_FILE)) return res.json({});
-    res.json(JSON.parse(fs.readFileSync(LIVE_RULES_FILE, 'utf8')));
+    try {
+        let rules = {};
+        if (fs.existsSync(LIVE_RULES_FILE)) {
+            rules = JSON.parse(fs.readFileSync(LIVE_RULES_FILE, 'utf8'));
+        }
+
+        // .env 파일의 규칙을 읽어와서 병합(Merge)합니다.
+        const envRules = buildRulesFromEnv();
+        if (envRules) {
+            const mergeRules = (target, source) => {
+                for (const key in source) {
+                    if (source[key] && typeof source[key] === 'object') {
+                        if (!target[key]) target[key] = {};
+                        mergeRules(target[key], source[key]);
+                    } else if (source[key] !== undefined) {
+                        target[key] = source[key];
+                    }
+                }
+            };
+            mergeRules(rules, envRules);
+        }
+
+        res.json(rules);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 // ----------------------------------
 
@@ -53,7 +92,7 @@ app.get('/api/list-history', (req, res) => {
 // 백테스트 실행 API
 app.post('/api/backtest', (req, res) => {
     try {
-        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi } = req.body;
+        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi, reduceTpWaitMin, reducedTargetRoi } = req.body;
         
         // 필수 필드 체크
         if (!version || !symbol || !startDate || !endDate) {
@@ -79,8 +118,10 @@ app.post('/api/backtest', (req, res) => {
 
         const targetRoiArg = targetRoi !== undefined ? `--targetRoi=${targetRoi}` : '';
         const slRoiArg = slRoi !== undefined ? `--slRoi=${slRoi}` : '';
+        const reduceTpWaitMinArg = reduceTpWaitMin !== undefined ? `--reduceTpWaitMin=${reduceTpWaitMin}` : '';
+        const reducedTargetRoiArg = reducedTargetRoi !== undefined ? `--reducedTargetRoi=${reducedTargetRoi}` : '';
 
-        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${rulesFileArg}`;
+        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${reduceTpWaitMinArg} ${reducedTargetRoiArg} ${rulesFileArg}`;
 
         console.log(`[API] Executing: ${cmd}`);
 
@@ -146,6 +187,7 @@ app.post('/api/save-history', (req, res) => {
             stats: {
                 roi: `${result.roi}%`,
                 winRate: `${((result.wins / (result.wins + result.losses || 1)) * 100).toFixed(1)}%`,
+                mdd: result.mdd ? `${parseFloat(result.mdd).toFixed(2)}%` : '-',
                 trades: result.wins + result.losses,
                 wins: result.wins,
                 losses: result.losses,
@@ -161,7 +203,7 @@ app.post('/api/save-history', (req, res) => {
         fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
 
         // Markdown 추가 기록
-        const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}\n---\n`;
+        const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | MDD: ${result.mdd || '-'}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}\n---\n`;
         fs.appendFileSync(HISTORY_MD, logEntry);
 
         res.json({ success: true, newVersion, record: newRecord });
@@ -224,6 +266,63 @@ app.get('/api/download', (req, res) => {
     } else {
         console.error(`[404] File not found: ${filePath}`);
         res.status(404).send("파일을 찾을 수 없습니다.");
+    }
+});
+
+// 전략 다차원 최적화 실행 API
+app.post('/api/optimize', (req, res) => {
+    try {
+        const { searchSpace, globalConfig } = req.body;
+        console.log('[API] Starting grid search optimization...');
+
+        const tempDir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+        const tempConfigPath = path.join(tempDir, `temp_opt_config_${Date.now()}.json`);
+
+        fs.writeFileSync(tempConfigPath, JSON.stringify({ searchSpace, globalConfig }, null, 2));
+
+        const cmd = `node scratch/optimize_agent.cjs --configFile="${tempConfigPath}"`;
+        console.log(`[API] Executing optimization: ${cmd}`);
+
+        exec(cmd, { cwd: __dirname, maxBuffer: 100 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (fs.existsSync(tempConfigPath)) fs.unlinkSync(tempConfigPath);
+
+            if (error) {
+                console.error("[OPTIMIZE ERROR]", stderr);
+                return res.status(500).json({ success: false, error: error.message });
+            }
+
+            // 최적화 보고서 파일 읽기
+            const reportPath = path.join(__dirname, 'scratch', 'optimization_report.md');
+            let reportContent = "";
+            if (fs.existsSync(reportPath)) {
+                reportContent = fs.readFileSync(reportPath, 'utf8');
+            }
+
+            // 최신 랭킹 결과 목록들 읽기
+            const optDir = path.join(__dirname, 'results', 'optimization');
+            let rankings = [];
+            if (fs.existsSync(optDir)) {
+                try {
+                    const files = fs.readdirSync(optDir).filter(f => f.startsWith('backtest_') && f.endsWith('.json'));
+                    rankings = files.map(f => {
+                        try {
+                            return JSON.parse(fs.readFileSync(path.join(optDir, f), 'utf8'));
+                        } catch (e) { return null; }
+                    }).filter(r => r !== null);
+
+                    // ROI 기준 정렬
+                    rankings.sort((a, b) => parseFloat(b.stats.roi) - parseFloat(a.stats.roi));
+                } catch (e) {
+                    console.error("[RANKINGS LOAD ERROR]", e.message);
+                }
+            }
+
+            res.json({ success: true, report: reportContent, rankings });
+        });
+    } catch (err) {
+        console.error("[CRITICAL OPTIMIZE API ERROR]", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

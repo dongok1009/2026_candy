@@ -74,6 +74,10 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                     <span className="value text-gold">{record.stats.winRate}</span>
                                 </div>
                                 <div className="stat-mini">
+                                    <span className="label">MDD</span>
+                                    <span className="value" style={{ color: '#ff4d4d' }}>{record.stats.mdd || '-'}</span>
+                                </div>
+                                <div className="stat-mini">
                                     <span className="label">TRADES</span>
                                     <span className="value">{record.stats.trades}</span>
                                 </div>

@@ -1,63 +1,74 @@
 {
   "5m": {
     "long": {
-      "macdValueEnabled": false,
-      "macdValue": -10,
+      "adxEnabled": true,
+      "adxThreshold": 30,
       "macdCrossEnabled": false,
       "stochCrossEnabled": true,
-      "adxEnabled": true,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98,
+      "macdValueEnabled": false,
+      "macdValue": 0
     },
     "short": {
-      "macdValueEnabled": false,
-      "macdValue": 10,
+      "adxEnabled": true,
+      "adxThreshold": 30,
       "macdCrossEnabled": false,
       "stochCrossEnabled": true,
-      "adxEnabled": true,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98,
+      "macdValueEnabled": false,
+      "macdValue": 0
     }
   },
   "1h": {
     "long": {
-      "macdValueEnabled": false,
-      "macdValue": -100,
+      "adxEnabled": false,
+      "adxThreshold": 30,
       "macdCrossEnabled": true,
       "stochCrossEnabled": true,
-      "adxEnabled": false,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98
     },
     "short": {
-      "macdValueEnabled": false,
-      "macdValue": 100,
+      "adxEnabled": false,
+      "adxThreshold": 30,
       "macdCrossEnabled": true,
       "stochCrossEnabled": true,
-      "adxEnabled": false,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98
     }
   },
   "1d": {
     "long": {
-      "macdValueEnabled": false,
-      "macdValue": -100,
+      "adxEnabled": false,
+      "adxThreshold": 30,
       "macdCrossEnabled": true,
       "stochCrossEnabled": false,
-      "macdHistEnabled": false,
-      "macdHistValue": 0,
-      "adxEnabled": false,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98,
+      "macdSigDiffEnabled": false,
+      "macdSigDiffThreshold": 0
     },
     "short": {
-      "macdValueEnabled": false,
-      "macdValue": 100,
+      "adxEnabled": false,
+      "adxThreshold": 30,
       "macdCrossEnabled": true,
       "stochCrossEnabled": false,
-      "macdHistEnabled": false,
-      "macdHistValue": 0,
-      "adxEnabled": false,
-      "adxThreshold": 30
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98,
+      "macdSigDiffEnabled": false,
+      "macdSigDiffThreshold": 0
     }
   },
   "global": {
-    "leverage": 5
+    "leverage": 5,
+    "orderAmount": 100,
+    "entryWaitMin": 180,
+    "exitWaitMin": 1500,
+    "targetRoi": 0.03,
+    "slRoi": 0.15,
+    "reduceTpWaitMin": 0,
+    "reducedTargetRoi": 0.02
   }
 }

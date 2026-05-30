@@ -41,7 +41,9 @@ const SignalSettings = ({
         macdVal: 'macdValueEnabled',
         macdValNum: 'macdValue',
         macdSigDiff: 'macdHistEnabled',
-        macdSigDiffNum: 'macdHistValue'
+        macdSigDiffNum: 'macdHistValue',
+        stochKLimit: 'stochKLimitEnabled',
+        stochKLimitVal: 'stochKThreshold'
     };
 
     return (
@@ -71,6 +73,18 @@ const SignalSettings = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
           <input type="checkbox" checked={getRuleValue(iv, side, fields.stochCross)} onChange={e => updateRule(iv, side, fields.stochCross, e.target.checked)} />
           <span style={{ color: '#eaebed', fontSize: '12px' }}>Stoch D {isLong ? '<' : '>'} Stoch K</span>
+          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
+        </div>
+
+        {/* Stoch K Limit (Added for Backtest Engine Alignment) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <input type="checkbox" checked={getRuleValue(iv, side, fields.stochKLimit)} onChange={e => updateRule(iv, side, fields.stochKLimit, e.target.checked)} />
+          <span style={{ color: '#eaebed', fontSize: '12px' }}>StochK &lt;</span>
+          <input type="number" 
+            style={{ width: '50px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} 
+            value={getRuleNum(iv, side, fields.stochKLimitVal)} 
+            onChange={e => updateRule(iv, side, fields.stochKLimitVal, parseFloat(e.target.value))} 
+          />
           {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>}
         </div>
 
@@ -144,14 +158,15 @@ const SignalSettings = ({
       </div>
 
       <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+          {/* Row 1: Entry Wait & Exit Wait */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div className="input-group">
                   <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
                         value={getRuleNum('global', null, 'entryWaitMin')} 
                         onChange={e => updateRule('global', null, 'entryWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 실패</span>
                   </div>
@@ -162,20 +177,87 @@ const SignalSettings = ({
                       <input type="number" 
                         value={getRuleNum('global', null, 'exitWaitMin')} 
                         onChange={e => updateRule('global', null, 'exitWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 강제</span>
                   </div>
               </div>
+          </div>
+
+          {/* Row 2: Target ROI & Stop Loss ROI */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#26a69a', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Target ROI (e.g. 0.03 = 3%)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" step="0.005"
+                        value={getRuleNum('global', null, 'targetRoi')} 
+                        onChange={e => updateRule('global', null, 'targetRoi', parseFloat(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>기본 익절율</span>
+                  </div>
+              </div>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#ef5350', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Stop Loss ROI (e.g. 0.15 = 15%)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" step="0.01"
+                        value={getRuleNum('global', null, 'slRoi')} 
+                        onChange={e => updateRule('global', null, 'slRoi', parseFloat(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>손절 기준율</span>
+                  </div>
+              </div>
+          </div>
+
+          {/* Row 3: TP Reduction Wait & Reduced Target ROI */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>TP Reduction Wait (min)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" 
+                        value={getRuleNum('global', null, 'reduceTpWaitMin')} 
+                        onChange={e => updateRule('global', null, 'reduceTpWaitMin', parseInt(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 뒤 익절 하향</span>
+                  </div>
+              </div>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Reduced Target ROI (e.g. 0.01)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" step="0.005"
+                        value={getRuleNum('global', null, 'reducedTargetRoi')} 
+                        onChange={e => updateRule('global', null, 'reducedTargetRoi', parseFloat(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>조정된 익절율</span>
+                  </div>
+              </div>
+          </div>
+
+          {/* Row 4: Trading Leverage & Max Order Amount */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
               <div className="input-group">
                   <label style={{ display: 'block', color: '#26a69a', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Trading Leverage (x)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
                         value={getRuleNum('global', null, 'leverage')} 
                         onChange={e => updateRule('global', null, 'leverage', parseInt(e.target.value))} 
-                        style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
-                      <span style={{ color: '#848e9c', fontSize: '12px' }}>배 레버리지 계산 적용</span>
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>배 레버리지</span>
+                  </div>
+              </div>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Max Order Amount ($)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" 
+                        value={getRuleNum('global', null, 'orderAmount')} 
+                        onChange={e => updateRule('global', null, 'orderAmount', parseFloat(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>달러 ($) 최대 진입</span>
                   </div>
               </div>
           </div>

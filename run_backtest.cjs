@@ -57,6 +57,8 @@ try {
     if (params.entryWaitMin) strategy.config.ENTRY_WAIT_MIN = parseInt(params.entryWaitMin);
     if (params.targetRoi) strategy.config.TARGET_NET_ROI = parseFloat(params.targetRoi);
     if (params.slRoi) strategy.config.SL_ROI = parseFloat(params.slRoi);
+    if (params.reduceTpWaitMin) strategy.config.reduceTpWaitMin = parseInt(params.reduceTpWaitMin);
+    if (params.reducedTargetRoi) strategy.config.reducedTargetRoi = parseFloat(params.reducedTargetRoi);
 
     // [New] UI에서 전달된 Override Rules 적용 (임시 파일 방식)
     if (params.rulesFile && fs.existsSync(params.rulesFile)) {
@@ -82,6 +84,7 @@ try {
             losses: res.losses,
             roi: res.roi,
             finalBalance: res.finalBalance,
+            mdd: res.mdd,
             trades: res.trades,
             resultFilePath: res.detailFile,
             validationFile: res.validationFile

@@ -573,6 +573,13 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
           if (!(lastD !== null && lastK !== null && lastD < lastK)) isLong = false;
         }
         
+        // Stoch K Limit (StochK < X)
+        if (rule.long.stochKLimitEnabled || rule.long.useStochKLimit) {
+          activeLongCondCount++;
+          const threshold = parseFloat(rule.long.stochKThreshold !== undefined ? rule.long.stochKThreshold : 80);
+          if (!(lastK !== null && lastK < threshold)) isLong = false;
+        }
+        
         // MACD Sig Diff (|MACD-Sig| > X) - mainly for 1D
         if (rule.long.macdHistEnabled) {
           activeLongCondCount++;
@@ -613,6 +620,13 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
         if (rule.short.stochCrossEnabled) {
           activeShortCondCount++;
           if (!(lastD !== null && lastK !== null && lastD > lastK)) isShort = false;
+        }
+        
+        // Stoch K Limit (StochK < X)
+        if (rule.short.stochKLimitEnabled || rule.short.useStochKLimit) {
+          activeShortCondCount++;
+          const threshold = parseFloat(rule.short.stochKThreshold !== undefined ? rule.short.stochKThreshold : 80);
+          if (!(lastK !== null && lastK < threshold)) isShort = false;
         }
         
         // MACD Sig Diff

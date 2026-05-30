@@ -2,6 +2,7 @@ const ccxt = require('ccxt');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
+const { buildRulesFromEnv, ensureEnvTemplate } = require('./lib/rules_helper.cjs');
 
 // .env 로드 (시작 시)
 dotenv.config();
@@ -135,7 +136,28 @@ async function checkMarkets() {
         const indicators = strategy.indicators_logic(klines);
         const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
 
-        const overrideRules = fs.existsSync(RULES_FILE) ? JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')) : null;
+        let overrideRules = null;
+        const envRules = buildRulesFromEnv();
+        if (envRules) {
+            overrideRules = envRules;
+            console.log(`[OVERRIDE] Rules applied from .env file (1st Priority)!`);
+        } else if (fs.existsSync(RULES_FILE)) {
+            overrideRules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+            console.log(`[OVERRIDE] Rules applied from live_rules.json!`);
+        }
+
+        if (overrideRules && overrideRules.global) {
+            const g = overrideRules.global;
+            if (g.leverage !== undefined) strategy.config.LEVERAGE = g.leverage;
+            if (g.entryWaitMin !== undefined) strategy.config.ENTRY_WAIT_MIN = g.entryWaitMin;
+            if (g.exitWaitMin !== undefined) strategy.config.EXIT_WAIT_MIN = g.exitWaitMin;
+            if (g.targetRoi !== undefined) strategy.config.TARGET_NET_ROI = g.targetRoi;
+            if (g.slRoi !== undefined) strategy.config.SL_ROI = g.slRoi;
+            if (g.reduceTpWaitMin !== undefined) strategy.config.reduceTpWaitMin = g.reduceTpWaitMin;
+            if (g.reducedTargetRoi !== undefined) strategy.config.reducedTargetRoi = g.reducedTargetRoi;
+            if (g.orderAmount !== undefined) strategy.config.orderAmount = g.orderAmount;
+            console.log(`[OVERRIDE] Global config overrides applied!`);
+        }
 
         // [RESCUE] IDLE 상태라 하더라도 실제 거래소에 포지션이나 미체결 주문이 있는지 최종 확인
         if (liveState.status === 'IDLE') {
@@ -230,9 +252,11 @@ async function handleEntry(side, price, klines, skipNotify = false) {
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
         
-        // .env에서 ORDER_AMOUNT, AMOUNT 또는 INITIAL_BALANCE 읽기 (없으면 100)
-        const envAmount = parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100;
-        const leverage = parseFloat(process.env.LEVERAGE) || 5;
+        // 동적 로드된 orderAmount가 있다면 1순위로 활용하고, 없으면 .env 또는 100$ 기본값 사용
+        const envAmount = strategy.config.orderAmount !== undefined 
+            ? strategy.config.orderAmount 
+            : (parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100);
+        const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
 
         // 실제 가용 잔고와 설정 금액 중 작은 값 선택
         const finalAmount = Math.min(envAmount, availableBalance);
@@ -335,7 +359,7 @@ async function handleEntry(side, price, klines, skipNotify = false) {
 async function monitorPosition(currentPrice) {
     const entry = liveState.entryPrice;
     const side = liveState.position;
-    const leverage = parseFloat(process.env.LEVERAGE) || 5;
+    const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
 
     // WAITING 상태이면 체결 확인만 수행
     if (liveState.status === 'WAITING') {
@@ -349,7 +373,14 @@ async function monitorPosition(currentPrice) {
     const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
     console.log(`[MONITOR] ${side} | ROE: ${(roe * 100).toFixed(2)}% | Time: ${durationMin}m`);
 
-    const target = strategy.config.TARGET_NET_ROI || 0.03;
+    let target = strategy.config.TARGET_NET_ROI || 0.03;
+    const reduceTpWaitMin = strategy.config.reduceTpWaitMin || 60; // 기본값 60분
+    const reducedTargetRoi = strategy.config.reducedTargetRoi !== undefined ? strategy.config.reducedTargetRoi : 0.01; // 기본값 1%
+
+    if (reduceTpWaitMin > 0 && durationMin >= reduceTpWaitMin) {
+        target = reducedTargetRoi;
+    }
+
     const sl = strategy.config.SL_ROI || 0.15;
     const exitWait = strategy.config.EXIT_WAIT_MIN || 2000;
 
@@ -373,7 +404,28 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         const pos = positions.find(p => isSymbolMatch(p.symbol, symbol) && parseFloat(p.contracts) > 0);
 
         if (!pos) {
-            liveState.status = 'IDLE'; saveState(); return;
+            // [강력한 보완] 거래소에 이미 포지션이 없더라도 봇이 수량을 들고 있었다면 
+            // 거래소 자체 TP/SL 또는 수동 청산으로 간주하고 알림을 보냅니다.
+            if (liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
+                const finalRoe = (roe * 100).toFixed(2);
+                const profitAmount = side === 'LONG' 
+                    ? (currentPrice - liveState.entryPrice) * liveState.quantity 
+                    : (liveState.entryPrice - currentPrice) * liveState.quantity;
+
+                const msg = `🏁 <b>[BYBIT EXIT (Exchange Cleared)] ${symbol} ${side}</b>\n` +
+                            `• Reason: ${reason} (Already Cleared on Bybit)\n` +
+                            `• Est. Price: $${currentPrice.toLocaleString()}\n` +
+                            `• Quantity: ${liveState.quantity} BTC\n` +
+                            `• <b>Final ROE: ${finalRoe}%</b>\n` +
+                            `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n` +
+                            `• Duration: ${durationMin}m`;
+
+                await sendTelegram(msg);
+                updateTradeLog('EXIT', {
+                    side, reason: reason + '_EXCHANGE_CLEARED', price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
+                });
+            }
+            liveState.status = 'IDLE'; liveState.position = null; liveState.quantity = 0; liveState.totalAmount = 0; saveState(); return;
         }
 
         const contracts = parseFloat(pos.contracts);
@@ -381,7 +433,7 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         await exchange.createOrder(symbol, 'market', orderSide, contracts, undefined, { reduceOnly: true });
 
         const finalRoe = (roe * 100).toFixed(2);
-        const leverage = parseFloat(process.env.LEVERAGE) || 5;
+        const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
         const profitAmount = side === 'LONG' 
             ? (currentPrice - liveState.entryPrice) * liveState.quantity 
             : (liveState.entryPrice - currentPrice) * liveState.quantity;
@@ -424,7 +476,7 @@ async function syncExchangeTPSL(leverage) {
                 liveState.totalAmount = liveState.entryPrice * liveState.quantity;
                 
                 // TP/SL 확인 (거래소 데이터 우선, 없으면 전략 기반 계산)
-                const leverage = parseFloat(process.env.LEVERAGE) || 5;
+                const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
                 const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
                 const slRoi = strategy.config.SL_ROI || 0.15;
 
@@ -479,21 +531,52 @@ async function syncExchangeTPSL(leverage) {
                 }
             }
 
-            if (!pos.takeProfit || !pos.stopLoss || parseFloat(pos.takeProfit) === 0 || parseFloat(pos.stopLoss) === 0) {
-                const entry = parseFloat(pos.entryPrice || pos.avgPrice);
-                const tpPrice = correctSide === 'LONG' ? parseFloat((entry * (1 + 0.03/leverage)).toFixed(2)) : parseFloat((entry * (1 - 0.03/leverage)).toFixed(2));
-                const slPrice = correctSide === 'LONG' ? parseFloat((entry * (1 - 0.15/leverage)).toFixed(2)) : parseFloat((entry * (1 + 0.15/leverage)).toFixed(2));
+            // [DYNAMIC TP REDUCTION FOR EXCHANGE]
+            const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
+            const reduceTpWaitMin = strategy.config.reduceTpWaitMin || 60;
+            const reducedTargetRoi = strategy.config.reducedTargetRoi !== undefined ? strategy.config.reducedTargetRoi : 0.01;
+            const originalTargetRoi = strategy.config.TARGET_NET_ROI || 0.03;
+            const slRoi = strategy.config.SL_ROI || 0.15;
+            const entry = parseFloat(pos.entryPrice || pos.avgPrice || liveState.entryPrice);
 
-                console.log(`[TPSL SYNC] Setting TP: ${tpPrice}, SL: ${slPrice}`);
+            let expectedTargetRoi = originalTargetRoi;
+            let expectedReason = "NORMAL";
+            if (reduceTpWaitMin > 0 && durationMin >= reduceTpWaitMin) {
+                expectedTargetRoi = reducedTargetRoi;
+                expectedReason = "REDUCED";
+            }
+
+            const expectedTpPrice = correctSide === 'LONG' 
+                ? parseFloat((entry * (1 + expectedTargetRoi / leverage)).toFixed(2))
+                : parseFloat((entry * (1 - expectedTargetRoi / leverage)).toFixed(2));
+            const expectedSlPrice = correctSide === 'LONG'
+                ? parseFloat((entry * (1 - slRoi / leverage)).toFixed(2))
+                : parseFloat((entry * (1 + slRoi / leverage)).toFixed(2));
+
+            const currentExchangeTp = parseFloat(pos.takeProfit || pos.info?.takeProfit || 0);
+
+            // 거래소에 TP가 없거나, 상태가 REDUCED인데 거래소 TP가 expectedTpPrice와 차이가 있는 경우 정정 수행
+            const needsUpdate = currentExchangeTp === 0 || 
+                (expectedReason === "REDUCED" && Math.abs(currentExchangeTp - expectedTpPrice) > 1.0);
+
+            if (needsUpdate) {
+                console.log(`[TPSL SYNC] Updating Exchange TP/SL (Reason: ${expectedReason}) | Curr TP: ${currentExchangeTp} -> Target TP: ${expectedTpPrice}`);
                 
                 const tpslParams = {
                     'category': 'linear', 'symbol': symbol,
-                    'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                    'takeProfit': expectedTpPrice.toString(), 'stopLoss': expectedSlPrice.toString(),
                     'tpOrderType': 'Market', 'slOrderType': 'Market', 'tpslMode': 'Full'
                 };
 
-                await exchange.privatePostV5PositionTradingStop(tpslParams);
-                console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange`);
+                try {
+                    await exchange.privatePostV5PositionTradingStop(tpslParams);
+                    console.log(`✅ [TPSL SYNC SUCCESS] TP/SL Updated on Exchange | TP: ${expectedTpPrice}`);
+                    liveState.tpPrice = expectedTpPrice;
+                    liveState.slPrice = expectedSlPrice;
+                    saveState();
+                } catch (apiErr) {
+                    console.error("❌ [TPSL SYNC API ERR]", apiErr.message);
+                }
             }
         } else {
             // [SYNC] 거래소에 포지션이 없는데 봇이 IN_POSITION 또는 WAITING인 경우
@@ -501,7 +584,41 @@ async function syncExchangeTPSL(leverage) {
                 const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
                 const entryWait = strategy.config.ENTRY_WAIT_MIN || 180;
 
-                // 1. 미체결 주문이 있는지 확인
+                // [강력한 보완] 봇이 실제로 포지션을 들고 있었던 경우 (수량이 등록된 상태)라면 
+                // 주문 ID의 잔존 여부와 무관하게 거래소 청산으로 즉시 간주하여 알림 발송!
+                if (liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
+                    const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
+                    const currentPrice = liveState.lastPrice || 0;
+                    const roe = liveState.position === 'LONG' 
+                        ? (currentPrice - liveState.entryPrice) / liveState.entryPrice * leverage 
+                        : (liveState.entryPrice - currentPrice) / liveState.entryPrice * leverage;
+                    const profitAmount = liveState.position === 'LONG' 
+                        ? (currentPrice - liveState.entryPrice) * liveState.quantity 
+                        : (liveState.entryPrice - currentPrice) * liveState.quantity;
+
+                    const msg = `🏁 <b>[EXCHANGE EXIT]</b>\n` +
+                                `• ${liveState.position} closed on Bybit (TP/SL or Manual).\n` +
+                                `• Est. Price: $${currentPrice.toLocaleString()}\n` +
+                                `• Quantity: ${liveState.quantity} BTC\n` +
+                                `• Est. ROE: ${(roe * 100).toFixed(2)}%\n` +
+                                `• Est. Profit: $${profitAmount.toFixed(2)}`;
+
+                    console.log(`🏁 [SYNC] Position closed on exchange. Resetting to IDLE.`);
+                    await sendTelegram(msg);
+                    updateTradeLog('EXCHANGE_EXIT', {
+                        side: liveState.position, price: currentPrice, quantity: liveState.quantity, roe: (roe * 100).toFixed(2), profit: profitAmount
+                    });
+
+                    liveState.status = 'IDLE';
+                    liveState.position = null;
+                    liveState.orderId = null;
+                    liveState.quantity = 0;
+                    liveState.totalAmount = 0;
+                    saveState();
+                    return; // 즉시 종료
+                }
+
+                // 이하 포지션 수량이 0이었던 경우 (단순 진입 대기 WAITING 단계 또는 주문 상태 체크)
                 if (liveState.orderId) {
                     try {
                         const order = await exchange.fetchOrder(liveState.orderId, symbol, { acknowledged: true });
@@ -533,7 +650,6 @@ async function syncExchangeTPSL(leverage) {
                         }
                     } catch (e) {
                         console.error("[FETCH ORDER ERROR]", e.message);
-                        // 네트워크 에러 등 일시적 오류일 수 있으므로 IDLE로 성급하게 리셋하지 않음
                         if (e.message.includes('not found') || e.message.includes('Order does not exist')) {
                             liveState.status = 'IDLE';
                             liveState.orderId = null;
@@ -541,34 +657,11 @@ async function syncExchangeTPSL(leverage) {
                         }
                     }
                 } else {
-                    // orderId가 없는데 포지션도 없는 경우 -> 거래소에서 TP/SL 등으로 종료됨
+                    // orderId도 없고 수량도 없는 진짜 빈 WAITING 상태 (오류 방지 리셋)
                     if (liveState.status === 'WAITING') {
                          console.log(`⚠️ [SYNC] Order ${liveState.orderId} disappeared without fill. Resetting to IDLE.`);
                          liveState.status = 'IDLE'; liveState.orderId = null; saveState(); return;
                     }
-                    
-                    const leverage = parseFloat(process.env.LEVERAGE) || 5;
-                    const currentPrice = liveState.lastPrice || 0;
-                    const roe = liveState.position === 'LONG' 
-                        ? (currentPrice - liveState.entryPrice) / liveState.entryPrice * leverage 
-                        : (liveState.entryPrice - currentPrice) / liveState.entryPrice * leverage;
-                    const profitAmount = liveState.position === 'LONG' 
-                        ? (currentPrice - liveState.entryPrice) * liveState.quantity 
-                        : (liveState.entryPrice - currentPrice) * liveState.quantity;
-
-                    const msg = `🏁 <b>[EXCHANGE EXIT]</b>\n` +
-                                `• ${liveState.position || 'Position'} closed on Bybit (TP/SL or Manual).\n` +
-                                `• Est. Price: $${currentPrice.toLocaleString()}\n` +
-                                `• Quantity: ${liveState.quantity} BTC\n` +
-                                `• Est. ROE: ${(roe * 100).toFixed(2)}%\n` +
-                                `• Est. Profit: $${profitAmount.toFixed(2)}`;
-
-                    console.log(`🏁 [SYNC] Position closed on exchange. Resetting to IDLE.`);
-                    await sendTelegram(msg);
-                    updateTradeLog('EXCHANGE_EXIT', {
-                        side: liveState.position, price: currentPrice, quantity: liveState.quantity, roe: (roe * 100).toFixed(2), profit: profitAmount
-                    });
-
                     liveState.status = 'IDLE';
                     liveState.position = null;
                     liveState.orderId = null;
@@ -607,7 +700,7 @@ async function checkStatusNotification() {
                   `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`;
         
         if (liveState.status === 'IN_POSITION' && liveState.entryPrice && liveState.lastPrice) {
-            const leverage = parseFloat(process.env.LEVERAGE) || 5;
+            const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
             const entry = liveState.entryPrice;
             const current = liveState.lastPrice;
             const side = liveState.position;
@@ -630,9 +723,10 @@ async function checkStatusNotification() {
 }
 
 async function init() {
+    ensureEnvTemplate();
     loadState();
     console.log(`\n🤖 [Antigravity ${strategyVersion}] Bybit Live Bot Starting...`);
-    const leverage = parseFloat(process.env.LEVERAGE) || 5;
+    const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
     
     // 시작 시 텔레그램 알림 추가
     await sendTelegram(`🤖 <b>[v7.0.3 LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}`);

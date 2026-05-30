@@ -24,19 +24,24 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: -10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    '1h': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    '1d': { macdValueEnabled: false, macdValue: -100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 10, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    '1h': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30 },
-    '1d': { macdValueEnabled: false, macdValue: 100, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 }
   },
   global: {
     entryWaitMin: 180,
-    exitWaitMin: 2000,
-    leverage: 5
+    exitWaitMin: 1500,
+    leverage: 5,
+    targetRoi: 0.03,
+    slRoi: 0.15,
+    reduceTpWaitMin: 0,
+    reducedTargetRoi: 0.02,
+    orderAmount: 100
   }
 };
 
@@ -54,15 +59,15 @@ const Dashboard = () => {
   const prevSignalRef = useRef(null);
 
   const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules_v7');
+    const saved = localStorage.getItem('trading_rules_v12');
     if (!saved) return DEFAULT_RULES;
     
     try {
-      const parsed = JSON.parse(saved);
+      let parsed = JSON.parse(saved);
       // [MIGRATION LOGIC] Check if it's the old structure (has '5m' at top level)
       if (parsed['5m'] && !parsed.long) {
         console.log('[DASHBOARD] Migrating old rules structure to new side-first pattern...');
-        return {
+        parsed = {
           long: {
             '5m': parsed['5m']?.long || DEFAULT_RULES.long['5m'],
             '1h': parsed['1h']?.long || DEFAULT_RULES.long['1h'],
@@ -76,6 +81,35 @@ const Dashboard = () => {
           global: parsed.global || DEFAULT_RULES.global
         };
       }
+
+      // Ensure stochKLimitEnabled and stochKThreshold exist in all intervals for both sides
+      ['long', 'short'].forEach(side => {
+        if (!parsed[side]) parsed[side] = { ...DEFAULT_RULES[side] };
+        ['5m', '1h', '1d'].forEach(tf => {
+          if (!parsed[side][tf]) {
+            parsed[side][tf] = { ...DEFAULT_RULES[side][tf] };
+          } else {
+            if (parsed[side][tf].stochKLimitEnabled === undefined) {
+              parsed[side][tf].stochKLimitEnabled = DEFAULT_RULES[side][tf].stochKLimitEnabled;
+            }
+            if (parsed[side][tf].stochKThreshold === undefined) {
+              parsed[side][tf].stochKThreshold = DEFAULT_RULES[side][tf].stochKThreshold;
+            }
+          }
+        });
+      });
+
+      // Ensure global variables are set safely
+      if (!parsed.global) {
+        parsed.global = { ...DEFAULT_RULES.global };
+      } else {
+        ['entryWaitMin', 'exitWaitMin', 'leverage', 'targetRoi', 'slRoi', 'reduceTpWaitMin', 'reducedTargetRoi', 'orderAmount'].forEach(field => {
+          if (parsed.global[field] === undefined) {
+            parsed.global[field] = DEFAULT_RULES.global[field];
+          }
+        });
+      }
+
       return parsed;
     } catch (e) {
       console.error('[DASHBOARD] Failed to parse saved rules, resetting to default.');
@@ -86,7 +120,7 @@ const Dashboard = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules_v7', JSON.stringify(rules));
+    localStorage.setItem('trading_rules_v12', JSON.stringify(rules));
   }, [rules]);
 
   React.useEffect(() => {

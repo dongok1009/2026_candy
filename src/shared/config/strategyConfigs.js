@@ -4,6 +4,66 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
+    version: 'Logic.v8.1.0',
+    name: 'Logic.v8.1.0 (Optimization Enabled)',
+    description: 'v8.0.0 기반의 신규 로직 버전 및 대규모 다차원 최적화 튜닝 모델',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: false, stochKThreshold: 98 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: false, stochKThreshold: 98 }
+      }
+    }
+  },
+  {
+    version: 'Logic.v8.0.0',
+    name: 'Logic.v8.0.0 (Base copied from v7.0.4)',
+    description: 'v7.0.4 기반의 신규 로직 버전 (기능 추가용)',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: false, stochKThreshold: 98 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1h': { useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98 },
+        '1d': { useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: false, stochKThreshold: 98 }
+      }
+    }
+  },
+  {
     version: 'Logic.v7.0.4',
     name: 'Logic.v7.0.4 (Adjustable ROI/SL)',
     description: '익절률(Target ROI)과 손절률(SL ROI)을 UI에서 직접 입력하여 테스트할 수 있는 버전',
@@ -12,6 +72,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1000,
       roi: '0.0%',
       winRate: '-',
+      mdd: '-',
       trades: 0,
       wins: 0,
       losses: 0,
@@ -41,6 +102,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1000,
       roi: '0.0%',
       winRate: '-',
+      mdd: '-',
       trades: 0,
       wins: 0,
       losses: 0,
@@ -70,6 +132,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1000,
       roi: '0.0%',
       winRate: '-',
+      mdd: '-',
       trades: 0,
       wins: 0,
       losses: 0,
@@ -99,6 +162,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1000,
       roi: '0.0%',
       winRate: '-',
+      mdd: '-',
       trades: 0,
       wins: 0,
       losses: 0,
@@ -128,6 +192,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1304,
       roi: '30.4%',
       winRate: '100.0%',
+      mdd: '-',
       trades: 9,
       wins: 9,
       losses: 0,
@@ -157,6 +222,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 23430,
       roi: '134.3%',
       winRate: '91.9%',
+      mdd: '-',
       trades: 62,
       wins: 57,
       losses: 5,
@@ -184,6 +250,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 301030,
       roi: '2910.3%',
       winRate: '87.5%',
+      mdd: '-',
       trades: 774,
       wins: 677,
       losses: 97,
@@ -211,6 +278,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 11270,
       roi: '1027.9%',
       winRate: '87.9%',
+      mdd: '-',
       trades: 455,
       wins: 400,
       losses: 55,
@@ -238,6 +306,7 @@ export const OFFICIAL_STRATEGIES = [
       finalBalance: 1274,
       roi: '27.4%',
       winRate: '90.9%',
+      mdd: '-',
       trades: 23,
       wins: 21,
       losses: 2,
