@@ -4,10 +4,13 @@ const fs = require('fs');
 const path = require('path');
 const { fileURLToPath } = require('url');
 
-// v7.0.3 전략 모듈 로드
-const strategy = require('../strategies/Logic.v7.0.3.cjs');
-
+// .env 로드
 dotenv.config();
+
+// 전략 모듈 동적 로드 (기본값 v7.0.3)
+const strategyVersion = process.env.STRATEGY_VERSION || 'Logic.v7.0.3.cjs';
+const strategy = require('../strategies/' + strategyVersion);
+const displayVersion = (strategy.name || strategyVersion).replace('Logic.', '').replace('.cjs', '');
 
 // __dirname 대응 (ESM/CJS 혼용 시)
 const _dirname = path.resolve();
@@ -90,7 +93,7 @@ let lastSignal = 'hold';
 let lastNotifiedPrice = 0;
 
 async function runLiveCycle() {
-  console.log(`[v7.0.3 Persistent Monitor] Starting...`);
+  console.log(`[${displayVersion} Persistent Monitor] Starting...`);
   
   let isFirstScan = true;
   let errorSent = false;
@@ -148,7 +151,7 @@ async function runLiveCycle() {
 
         let message = '';
         if (currentSig !== 'hold') {
-          message = `🚀 <b>[v7.0.3 LIVE] 신호 발생!</b>\n\n` +
+          message = `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>\n\n` +
             `⌚ <b>체크 시간</b>: ${checkTime}\n` +
             `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
             `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
@@ -157,7 +160,7 @@ async function runLiveCycle() {
             `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
             `📡 레버리지 ${lev}배 기준 계산됨`;
         } else if (lastSignal !== 'hold') {
-          message = `💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
+          message = `💤 <b>[${displayVersion} LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
         }
 
         if (message) await sendTelegram(message);
@@ -166,15 +169,15 @@ async function runLiveCycle() {
 
       // 2. 12시간 상세 하트비트
       if (Date.now() > nextHeartbeat) {
-        await sendTelegram(`📡 <b>[v7.0.3 Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
+        await sendTelegram(`📡 <b>[${displayVersion} Summary]</b>\n시스템 정상 감시 중\n• 현재가: $${currentPrice.toLocaleString()}\n• 신호: ${currentSig.toUpperCase()}`);
         nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000);
       }
       
       isFirstScan = false;
     } catch (e) {
-      console.error('v7.0.3 Loop Error:', e.message);
+      console.error(`${displayVersion} Loop Error:`, e.message);
       if (!errorSent) {
-        await sendTelegram(`⚠️ <b>[v7.0.3 LIVE Error]</b>\n오류 발생: ${e.message}`);
+        await sendTelegram(`⚠️ <b>[${displayVersion} LIVE Error]</b>\n오류 발생: ${e.message}`);
         errorSent = true;
       }
     }
