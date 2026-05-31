@@ -185,8 +185,8 @@ async function runLiveCycle() {
     const now = Date.now();
     const nextMinute = Math.ceil(now / 60000) * 60000;
     const delay = nextMinute - now;
-    // 다음 분(00초) 정각에서 2초 뒤에 실행되도록 동기화 (시간 밀림 방지)
-    await new Promise(resolve => setTimeout(resolve, delay + 2000));
+    // 매 분 정각 30초 뒤에 실행되도록 동기화 (매매 봇과의 Bybit API 호출 충돌 및 Rate Limit 완벽 방지)
+    await new Promise(resolve => setTimeout(resolve, delay + 30000));
   }
 }
 
