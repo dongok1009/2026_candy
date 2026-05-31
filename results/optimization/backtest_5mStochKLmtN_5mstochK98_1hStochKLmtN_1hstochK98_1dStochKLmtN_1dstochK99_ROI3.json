@@ -1,0 +1,105 @@
+{
+  "filename": "backtest_5mStochKLmtN_5mstochK98_1hStochKLmtN_1hstochK98_1dStochKLmtN_1dstochK99_ROI3.json",
+  "config": {
+    "version": "Logic.v8.1.0",
+    "symbol": "BTCUSDT",
+    "start": "2026-01-01",
+    "end": "2026-03-01",
+    "leverage": 5,
+    "balance": 1000,
+    "entryWaitMin": 180,
+    "exitWaitMin": 1500,
+    "m5_useADX": true,
+    "m5_adxThreshold": 30,
+    "m5_useMacdBeyondSig": false,
+    "m5_useStochCross": true,
+    "m5_useStochKLimit": false,
+    "m5_stochKThreshold": 98,
+    "h1_useADX": false,
+    "h1_adxThreshold": 30,
+    "h1_useMacdBeyondSig": true,
+    "h1_useStochCross": true,
+    "h1_useStochKLimit": false,
+    "h1_stochKThreshold": 98,
+    "d1_useADX": false,
+    "d1_adxThreshold": 15,
+    "d1_useMacdBeyondSig": true,
+    "d1_useStochCross": false,
+    "d1_useStochKLimit": false,
+    "d1_stochKThreshold": 99,
+    "targetRoi": 0.03,
+    "slRoi": 0.15
+  },
+  "rules": {
+    "long": {
+      "5m": {
+        "useMacdVal": false,
+        "macdVal": 0,
+        "useMacdBeyondSig": false,
+        "useStochCross": true,
+        "useADX": true,
+        "adxThreshold": 30,
+        "useStochKLimit": false,
+        "stochKThreshold": 98
+      },
+      "1h": {
+        "useMacdBeyondSig": true,
+        "useStochCross": true,
+        "useADX": false,
+        "adxThreshold": 30,
+        "useStochKLimit": false,
+        "stochKThreshold": 98
+      },
+      "1d": {
+        "useMacdBeyondSig": true,
+        "useStochCross": false,
+        "useMacdSigDiff": false,
+        "macdSigDiff": 0,
+        "useADX": false,
+        "adxThreshold": 15,
+        "useStochKLimit": false,
+        "stochKThreshold": 99
+      }
+    },
+    "short": {
+      "5m": {
+        "useMacdVal": false,
+        "macdVal": 0,
+        "useMacdBeyondSig": false,
+        "useStochCross": true,
+        "useADX": true,
+        "adxThreshold": 30,
+        "useStochKLimit": false,
+        "stochKThreshold": 98
+      },
+      "1h": {
+        "useMacdBeyondSig": true,
+        "useStochCross": true,
+        "useADX": false,
+        "adxThreshold": 30,
+        "useStochKLimit": false,
+        "stochKThreshold": 98
+      },
+      "1d": {
+        "useMacdBeyondSig": true,
+        "useStochCross": false,
+        "useMacdSigDiff": false,
+        "macdSigDiff": 0,
+        "useADX": false,
+        "adxThreshold": 15,
+        "useStochKLimit": false,
+        "stochKThreshold": 99
+      }
+    }
+  },
+  "stats": {
+    "roi": "483.49",
+    "winRate": "90.4%",
+    "mdd": "29.80",
+    "trades": 104,
+    "wins": 94,
+    "losses": 10,
+    "finalBalance": 5834.886856993051
+  },
+  "detailFile": "c:\\dev\\2026_candy\\results\\result_Logic.v8.1.0_1780128616856.csv"
+}

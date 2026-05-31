@@ -502,7 +502,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       if (adxSeriesRef.current && typeof adxSeriesRef.current.setMarkers === 'function') adxSeriesRef.current.setMarkers([]);
     }
 
-    evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx], adxValues[targetIdx]);
+    evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx], adxValues[targetIdx], rsiValues[targetIdx]);
   }, [dataLoaded, lastCandle, inspectTime]);
 
   // Sync Vertical Inspection Line (Enhanced Visibility & Accuracy)
@@ -542,7 +542,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
     };
   }, [dataLoaded, inspectTime, interval]);
 
-  const evaluateSignal = (lastM, lastS, lastK, lastD, lastADX) => {
+  const evaluateSignal = (lastM, lastS, lastK, lastD, lastADX, lastRSI) => {
     let isLong = true;
     let isShort = true;
 
@@ -578,6 +578,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
           activeLongCondCount++;
           const threshold = parseFloat(rule.long.stochKThreshold !== undefined ? rule.long.stochKThreshold : 80);
           if (!(lastK !== null && lastK < threshold)) isLong = false;
+        }
+
+        // RSI Limit (New v8.2.0)
+        if (rule.long.rsiEnabled || rule.long.useRSI) {
+          activeLongCondCount++;
+          const low = parseFloat(rule.long.rsiLow !== undefined ? rule.long.rsiLow : 5);
+          const high = parseFloat(rule.long.rsiHigh !== undefined ? rule.long.rsiHigh : 95);
+          if (!(lastRSI !== null && lastRSI !== undefined && lastRSI > low && lastRSI < high)) isLong = false;
         }
         
         // MACD Sig Diff (|MACD-Sig| > X) - mainly for 1D
@@ -627,6 +635,14 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
           activeShortCondCount++;
           const threshold = parseFloat(rule.short.stochKThreshold !== undefined ? rule.short.stochKThreshold : 80);
           if (!(lastK !== null && lastK < threshold)) isShort = false;
+        }
+
+        // RSI Limit (New v8.2.0)
+        if (rule.short.rsiEnabled || rule.short.useRSI) {
+          activeShortCondCount++;
+          const low = parseFloat(rule.short.rsiLow !== undefined ? rule.short.rsiLow : 5);
+          const high = parseFloat(rule.short.rsiHigh !== undefined ? rule.short.rsiHigh : 95);
+          if (!(lastRSI !== null && lastRSI !== undefined && lastRSI > low && lastRSI < high)) isShort = false;
         }
         
         // MACD Sig Diff

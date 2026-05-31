@@ -43,7 +43,10 @@ const SignalSettings = ({
         macdSigDiff: 'macdHistEnabled',
         macdSigDiffNum: 'macdHistValue',
         stochKLimit: 'stochKLimitEnabled',
-        stochKLimitVal: 'stochKThreshold'
+        stochKLimitVal: 'stochKThreshold',
+        rsiLimit: 'rsiEnabled',
+        rsiLow: 'rsiLow',
+        rsiHigh: 'rsiHigh'
     };
 
     return (
@@ -81,9 +84,26 @@ const SignalSettings = ({
           <input type="checkbox" checked={getRuleValue(iv, side, fields.stochKLimit)} onChange={e => updateRule(iv, side, fields.stochKLimit, e.target.checked)} />
           <span style={{ color: '#eaebed', fontSize: '12px' }}>StochK &lt;</span>
           <input type="number" 
-            style={{ width: '50px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} 
+            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
             value={getRuleNum(iv, side, fields.stochKLimitVal)} 
             onChange={e => updateRule(iv, side, fields.stochKLimitVal, parseFloat(e.target.value))} 
+          />
+          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
+        </div>
+
+        {/* RSI Limit (New v8.2.0) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <input type="checkbox" checked={getRuleValue(iv, side, fields.rsiLimit)} onChange={e => updateRule(iv, side, fields.rsiLimit, e.target.checked)} />
+          <input type="number" 
+            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
+            value={getRuleNum(iv, side, fields.rsiLow)} 
+            onChange={e => updateRule(iv, side, fields.rsiLow, parseFloat(e.target.value))} 
+          />
+          <span style={{ color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+          <input type="number" 
+            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
+            value={getRuleNum(iv, side, fields.rsiHigh)} 
+            onChange={e => updateRule(iv, side, fields.rsiHigh, parseFloat(e.target.value))} 
           />
           {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>}
         </div>
@@ -94,7 +114,7 @@ const SignalSettings = ({
             <input type="checkbox" checked={getRuleValue(iv, side, fields.macdSigDiff)} onChange={e => updateRule(iv, side, fields.macdSigDiff, e.target.checked)} />
             <span style={{ color: '#eaebed', fontSize: '12px' }}>|MACD-Sig| &gt;</span>
             <input type="number" 
-                style={{ width: '60px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} 
+                style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
                 value={getRuleNum(iv, side, fields.macdSigDiffNum)} 
                 onChange={e => updateRule(iv, side, fields.macdSigDiffNum, parseFloat(e.target.value))} 
             />
@@ -107,7 +127,7 @@ const SignalSettings = ({
             <input type="checkbox" checked={getRuleValue(iv, side, fields.macdVal)} onChange={e => updateRule(iv, side, fields.macdVal, e.target.checked)} />
             <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD {isLong ? '<' : '>'}</span>
             <input type="number" 
-                style={{ width: '60px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} 
+                style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
                 value={getRuleNum(iv, side, fields.macdValNum)} 
                 onChange={e => updateRule(iv, side, fields.macdValNum, parseFloat(e.target.value))} 
             />

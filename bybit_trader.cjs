@@ -374,7 +374,7 @@ async function monitorPosition(currentPrice) {
     console.log(`[MONITOR] ${side} | ROE: ${(roe * 100).toFixed(2)}% | Time: ${durationMin}m`);
 
     let target = strategy.config.TARGET_NET_ROI || 0.03;
-    const reduceTpWaitMin = strategy.config.reduceTpWaitMin || 60; // 기본값 60분
+    const reduceTpWaitMin = strategy.config.reduceTpWaitMin !== undefined ? Number(strategy.config.reduceTpWaitMin) : 60; // 0일 때 비활성화 보장
     const reducedTargetRoi = strategy.config.reducedTargetRoi !== undefined ? strategy.config.reducedTargetRoi : 0.01; // 기본값 1%
 
     if (reduceTpWaitMin > 0 && durationMin >= reduceTpWaitMin) {
@@ -531,9 +531,8 @@ async function syncExchangeTPSL(leverage) {
                 }
             }
 
-            // [DYNAMIC TP REDUCTION FOR EXCHANGE]
             const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
-            const reduceTpWaitMin = strategy.config.reduceTpWaitMin || 60;
+            const reduceTpWaitMin = strategy.config.reduceTpWaitMin !== undefined ? Number(strategy.config.reduceTpWaitMin) : 60; // 0일 때 비활성화 보장
             const reducedTargetRoi = strategy.config.reducedTargetRoi !== undefined ? strategy.config.reducedTargetRoi : 0.01;
             const originalTargetRoi = strategy.config.TARGET_NET_ROI || 0.03;
             const slRoi = strategy.config.SL_ROI || 0.15;

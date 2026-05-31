@@ -24,20 +24,20 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: true, stochKThreshold: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 15, stochKLimitEnabled: true, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: true, stochKThreshold: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 15, stochKLimitEnabled: true, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   global: {
     entryWaitMin: 180,
     exitWaitMin: 1500,
     leverage: 5,
-    targetRoi: 0.03,
+    targetRoi: 0.04,
     slRoi: 0.15,
     reduceTpWaitMin: 0,
     reducedTargetRoi: 0.02,
@@ -59,7 +59,7 @@ const Dashboard = () => {
   const prevSignalRef = useRef(null);
 
   const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules_v12');
+    const saved = localStorage.getItem('trading_rules_v14');
     if (!saved) return DEFAULT_RULES;
     
     try {
@@ -95,6 +95,18 @@ const Dashboard = () => {
             if (parsed[side][tf].stochKThreshold === undefined) {
               parsed[side][tf].stochKThreshold = DEFAULT_RULES[side][tf].stochKThreshold;
             }
+            if (parsed[side][tf].rsiEnabled === undefined) {
+              parsed[side][tf].rsiEnabled = DEFAULT_RULES[side][tf].rsiEnabled;
+            }
+            if (parsed[side][tf].rsiLow === undefined) {
+              parsed[side][tf].rsiLow = DEFAULT_RULES[side][tf].rsiLow;
+            }
+            if (parsed[side][tf].rsiHigh === undefined) {
+              parsed[side][tf].rsiHigh = DEFAULT_RULES[side][tf].rsiHigh;
+            }
+            if (parsed[side][tf].adxThreshold === undefined) {
+              parsed[side][tf].adxThreshold = DEFAULT_RULES[side][tf].adxThreshold;
+            }
           }
         });
       });
@@ -120,7 +132,7 @@ const Dashboard = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules_v12', JSON.stringify(rules));
+    localStorage.setItem('trading_rules_v14', JSON.stringify(rules));
   }, [rules]);
 
   React.useEffect(() => {
