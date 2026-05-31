@@ -10,6 +10,7 @@ dotenv.config();
 // 전략 로직 모듈 동적 로드 (기본값 v7.0.3)
 const strategyVersion = process.env.STRATEGY_VERSION || 'Logic.v7.0.3.cjs';
 const strategy = require('./strategies/' + strategyVersion);
+const displayVersion = (strategy.name || strategyVersion).replace('Logic.', '').replace('.cjs', '');
 
 const STATE_FILE = path.join(__dirname, 'bybit_live_state.json');
 const RULES_FILE = path.join(__dirname, 'live_rules.json');
@@ -121,7 +122,7 @@ async function checkMarkets() {
     const config = strategy.config;
     // 한국 시간(KST)으로 로그 시간 표시
     const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').substring(11, 19);
-    console.log(`\n[${nowKST}] --- BYBIT SCANNING (v7.0.3 Mode) ---`);
+    console.log(`\n[${nowKST}] --- BYBIT SCANNING (${displayVersion} Mode) ---`);
 
     try {
         const [m5, h1, d1] = await Promise.all([
@@ -224,7 +225,7 @@ async function checkMarkets() {
                     liveState.lastNotifiedSignalTime = now;
                 }
             } else if (finalSignal === 'HOLD' && lastSignal !== 'HOLD' && liveState.status === 'IDLE') {
-                await sendTelegram(`💤 <b>[v7.0.3 LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간:</b> ${new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toLocaleString('ko-KR')}\n💰 <b>가격:</b> $${m5[m5.length - 1].close.toLocaleString()}`);
+                await sendTelegram(`💤 <b>[${displayVersion} LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간:</b> ${new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toLocaleString('ko-KR')}\n💰 <b>가격:</b> $${m5[m5.length - 1].close.toLocaleString()}`);
             }
 
             liveState.lastSignal = finalSignal.toUpperCase();
@@ -337,7 +338,7 @@ async function handleEntry(side, price, klines, skipNotify = false) {
         const displayHour = kstDate.getUTCHours() % 12 || 12;
         const timeStr = `${kstDate.getUTCFullYear()}. ${kstDate.getUTCMonth() + 1}. ${kstDate.getUTCDate()}. ${ampm} ${displayHour}:${kstDate.getUTCMinutes().toString().padStart(2, '0')}:${kstDate.getUTCSeconds().toString().padStart(2, '0')}`;
 
-        const msg = `🚀 <b>[v7.0.3 LIVE] 신호 발생!</b>\n\n` +
+        const msg = `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>\n\n` +
                     `⌚ <b>체크 시간:</b> ${timeStr}\n` +
                     `💰 <b>현재 가격:</b> $${price.toLocaleString()}\n\n` +
                     `📌 <b>포지션:</b> ${side}\n` +
@@ -515,7 +516,7 @@ async function syncExchangeTPSL(leverage) {
                 }
 
                 if (isFullFill) {
-                    const msg = `✅ <b>[v7.0.3 LIVE] 주문 전량 체결 완료!</b>\n\n` +
+                    const msg = `✅ <b>[${displayVersion} LIVE] 주문 전량 체결 완료!</b>\n\n` +
                                 `📌 <b>포지션:</b> ${liveState.position}\n` +
                                 `💵 <b>진입가:</b> $${liveState.entryPrice.toLocaleString()}\n` +
                                 `📦 <b>수량:</b> ${liveState.quantity} BTC\n` +
@@ -693,7 +694,7 @@ async function checkStatusNotification() {
     
     if (targetHours.includes(kstHour) && lastStatusSentHour !== kstHour) {
         const timeStr = kstDate.toISOString().replace('T', ' ').substring(0, 19);
-        let msg = `🔔 <b>[v7.0.3 LIVE] 시스템 가동 중</b>\n` +
+        let msg = `🔔 <b>[${displayVersion} LIVE] 시스템 가동 중</b>\n` +
                   `• 체크 시간: ${timeStr} (KST)\n` +
                   `• 봇 상태: ${liveState.status}\n` +
                   `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`;
@@ -728,7 +729,7 @@ async function init() {
     const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
     
     // 시작 시 텔레그램 알림 추가
-    await sendTelegram(`🤖 <b>[v7.0.3 LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}`);
+    await sendTelegram(`🤖 <b>[${displayVersion} LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}`);
     
     await syncExchangeTPSL(leverage);
     while(true) {
