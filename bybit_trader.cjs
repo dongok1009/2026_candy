@@ -431,15 +431,24 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
 
         const contracts = parseFloat(pos.contracts);
         const orderSide = pos.side.toLowerCase() === 'long' || pos.side.toLowerCase() === 'buy' ? 'sell' : 'buy';
-        await exchange.createOrder(symbol, 'market', orderSide, contracts, undefined, { reduceOnly: true });
+        
+        // 실제 API 주문은 별도의 try-catch로 감싸서, 주문이 실패하더라도 알림 및 상태 초기화는 보장한다!
+        let orderSuccess = true;
+        try {
+            await exchange.createOrder(symbol, 'market', orderSide, contracts, undefined, { reduceOnly: true });
+            console.log(`✅ [BYBIT EXIT ORDER SUCCESS] Market order sent for ${contracts} BTC.`);
+        } catch (orderErr) {
+            console.error("❌ [BYBIT EXIT ORDER API FAIL] Failed to send close order:", orderErr.message);
+            orderSuccess = false;
+        }
 
         const finalRoe = (roe * 100).toFixed(2);
-        const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
         const profitAmount = side === 'LONG' 
             ? (currentPrice - liveState.entryPrice) * liveState.quantity 
             : (liveState.entryPrice - currentPrice) * liveState.quantity;
 
-        const msg = `🏁 <b>[BYBIT EXIT] ${symbol} ${side}</b>\n` +
+        const statusLabel = orderSuccess ? 'BYBIT EXIT' : 'BYBIT EXIT (API FAILED - STATE RESET)';
+        const msg = `🏁 <b>[${statusLabel}] ${symbol} ${side}</b>\n` +
                     `• Reason: ${reason}\n` +
                     `• Price: $${currentPrice.toLocaleString()}\n` +
                     `• Quantity: ${liveState.quantity} BTC\n` +
@@ -449,12 +458,23 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         
         await sendTelegram(msg);
         updateTradeLog('EXIT', {
-            side, reason, price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
+            side, reason: reason + (orderSuccess ? '' : '_API_FAIL'), price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
         });
         
-        liveState.status = 'IDLE'; liveState.position = null; liveState.quantity = 0; liveState.totalAmount = 0; saveState();
+        // 무조건 상태 초기화 및 보존
+        liveState.status = 'IDLE'; 
+        liveState.position = null; 
+        liveState.quantity = 0; 
+        liveState.totalAmount = 0; 
+        saveState();
     } catch (err) {
         console.error("[BYBIT EXIT ERROR]", err.message);
+        // 최후의 안전장치: 루트 catch에서도 상태 강제 초기화하여 봇이 먹통이 되는 버그 방지!
+        liveState.status = 'IDLE'; 
+        liveState.position = null; 
+        liveState.quantity = 0; 
+        liveState.totalAmount = 0; 
+        saveState();
     }
 }
 
