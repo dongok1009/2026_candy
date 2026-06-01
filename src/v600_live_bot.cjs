@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const { fileURLToPath } = require('url');
+const { buildRulesFromEnv } = require('../lib/rules_helper.cjs');
 
 // .env 로드
 dotenv.config();
@@ -57,12 +58,12 @@ async function fetchOHLCV(interval, limit = 1000) {
   const bybitInterval = interval === '1h' ? '60' : (interval === '5m' ? '5' : 'D');
   
   const urls = [
-    // 1순위: 바이낸스 공식 (지연 최소)
-    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-    // 2순위: 바이낸스 비전 (규제 우회용)
-    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
-    // 3순위: 바이비트 (바이낸스 차단 시 강력한 대안)
+    // 1순위: 바이비트 (매매 봇과의 지표 및 판정 100% 일치를 위해 최우선 사용)
     `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=${bybitInterval}&limit=${limit}`,
+    // 2순위: 바이낸스 공식 (지연 최소)
+    `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+    // 3순위: 바이낸스 비전 (규제 우회용)
+    `https://data-api.binance.vision/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
     // 4순위: MEXC (백업용)
     `https://api.mexc.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
   ];
@@ -98,6 +99,7 @@ async function runLiveCycle() {
   let isFirstScan = true;
   let errorSent = false;
   let nextHeartbeat = Date.now() + (12 * 60 * 60 * 1000); // 상세 하트비트는 12시간마다
+  const STATE_FILE = path.join(path.resolve(), 'bybit_live_state.json');
 
   while (true) {
     try {
@@ -109,9 +111,37 @@ async function runLiveCycle() {
         fetchOHLCV('1d')
       ]);
 
-      // 최신 규칙 로드
-      if (fs.existsSync(RULES_FILE)) {
-        liveRules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+      // 최신 규칙 로드 및 .env 1순위 오버라이드 반영
+      let overrideRules = null;
+      const envRules = buildRulesFromEnv();
+      if (envRules) {
+        overrideRules = envRules;
+        liveRules = envRules;
+        console.log(`[OVERRIDE] Rules applied from .env file (1st Priority)!`);
+      } else if (fs.existsSync(RULES_FILE)) {
+        overrideRules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+        liveRules = overrideRules;
+        console.log(`[OVERRIDE] Rules applied from live_rules.json!`);
+      }
+
+      // 글로벌 설정 (.env) 덮어쓰기
+      if (overrideRules && overrideRules.global) {
+        const g = overrideRules.global;
+        if (g.leverage !== undefined) strategy.config.LEVERAGE = g.leverage;
+        if (g.targetRoi !== undefined) strategy.config.TARGET_NET_ROI = g.targetRoi;
+        if (g.slRoi !== undefined) strategy.config.SL_ROI = g.slRoi;
+      }
+
+      // 실전 매매 봇 상태 확인 (waiting, in position일 때는 노이즈 알림 차단용)
+      let traderStatus = 'IDLE';
+      if (fs.existsSync(STATE_FILE)) {
+        try {
+          const stateData = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+          traderStatus = stateData.status || 'IDLE';
+          console.log(`[STATE] Live Trader Status: ${traderStatus}`);
+        } catch (err) {
+          console.error("⚠️ Failed to parse trader status:", err.message);
+        }
       }
 
       const indicators = strategy.indicators_logic({ m5, h1, d1 });
@@ -131,39 +161,43 @@ async function runLiveCycle() {
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
       if (isSignalChanged || (isFirstScan && currentSig !== 'hold')) {
-        const entryPrice = currentSig === 'long' ? completedM5.low : (currentSig === 'short' ? completedM5.high : completedM5.close);
-        
-        // [DYNAMIC] Leverage-aware TP/SL calculation (UI First)
-        let lev = 10; // Default fallback
-        if (liveRules?.global?.leverage) {
-          lev = liveRules.global.leverage;
-        } else if (liveRules?.long?.['5m']?.leverage) { // Support legacy or mixed structures
-          lev = liveRules.long['5m'].leverage;
+        if (traderStatus !== 'IDLE') {
+          console.log(`ℹ️ [SKIP TELEGRAM] Trader is currently ${traderStatus}. Skipping duplicate signal notification.`);
         } else {
-          lev = strategy.config.LEVERAGE || 10;
+          const entryPrice = currentSig === 'long' ? completedM5.low : (currentSig === 'short' ? completedM5.high : completedM5.close);
+          
+          // [DYNAMIC] Leverage-aware TP/SL calculation (UI First)
+          let lev = 10; // Default fallback
+          if (liveRules?.global?.leverage) {
+            lev = liveRules.global.leverage;
+          } else if (liveRules?.long?.['5m']?.leverage) { // Support legacy or mixed structures
+            lev = liveRules.long['5m'].leverage;
+          } else {
+            lev = strategy.config.LEVERAGE || 10;
+          }
+
+          const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
+          const slRoi = strategy.config.SL_ROI || 0.15;
+          
+          const tpPrice = entryPrice * (currentSig === 'long' ? (1 + targetRoi / lev) : (1 - targetRoi / lev));
+          const slPrice = entryPrice * (currentSig === 'long' ? (1 - slRoi / lev) : (1 + slRoi / lev));
+
+          let message = '';
+          if (currentSig !== 'hold') {
+            message = `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>\n\n` +
+              `⌚ <b>체크 시간</b>: ${checkTime}\n` +
+              `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
+              `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
+              `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
+              `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${(targetRoi*100).toFixed(1)}%)\n` +
+              `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
+              `📡 레버리지 ${lev}배 기준 계산됨`;
+          } else if (lastSignal !== 'hold') {
+            message = `💤 <b>[${displayVersion} LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
+          }
+
+          if (message) await sendTelegram(message);
         }
-
-        const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
-        const slRoi = strategy.config.SL_ROI || 0.15;
-        
-        const tpPrice = entryPrice * (currentSig === 'long' ? (1 + targetRoi / lev) : (1 - targetRoi / lev));
-        const slPrice = entryPrice * (currentSig === 'long' ? (1 - slRoi / lev) : (1 + slRoi / lev));
-
-        let message = '';
-        if (currentSig !== 'hold') {
-          message = `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>\n\n` +
-            `⌚ <b>체크 시간</b>: ${checkTime}\n` +
-            `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
-            `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
-            `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
-            `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${(targetRoi*100).toFixed(1)}%)\n` +
-            `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
-            `📡 레버리지 ${lev}배 기준 계산됨`;
-        } else if (lastSignal !== 'hold') {
-          message = `💤 <b>[${displayVersion} LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
-        }
-
-        if (message) await sendTelegram(message);
         lastSignal = currentSig;
       }
 
