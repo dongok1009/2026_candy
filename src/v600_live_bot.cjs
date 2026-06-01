@@ -5,8 +5,8 @@ const path = require('path');
 const { fileURLToPath } = require('url');
 const { buildRulesFromEnv } = require('../lib/rules_helper.cjs');
 
-// .env 로드
-dotenv.config();
+// .env 로드 (루트 디렉토리 명시적 지정으로 구동 CWD 경로 격차 완벽 극복)
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 // 전략 모듈 동적 로드 (기본값 v7.0.3)
 const strategyVersion = process.env.STRATEGY_VERSION || 'Logic.v7.0.3.cjs';
