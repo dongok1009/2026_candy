@@ -1,10 +1,6 @@
 name: LiveSignalBotV600
 on:
-  push:
-    branches: [ main ]
-  schedule:
-    - cron: '0 * * * *' # Every hour
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # 오직 수동 테스트 실행 시에만 버튼 클릭으로 1회성 가동 허용 (자동 스케줄 영구 정지)
 
 concurrency:
   group: global-live-bot
