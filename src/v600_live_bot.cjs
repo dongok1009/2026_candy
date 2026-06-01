@@ -92,6 +92,8 @@ async function fetchOHLCV(interval, limit = 1000) {
 
 let lastSignal = 'hold';
 let lastNotifiedPrice = 0;
+let lastEntryPrice = 0;
+let lastEntryTime = 0;
 
 async function runLiveCycle() {
   console.log(`[${displayVersion} Persistent Monitor] Starting...`);
@@ -192,8 +194,28 @@ async function runLiveCycle() {
               `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${(targetRoi*100).toFixed(1)}%)\n` +
               `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
               `📡 레버리지 ${lev}배 기준 계산됨`;
+            
+            // 진입 정보 보존
+            lastEntryPrice = entryPrice;
+            lastEntryTime = Date.now();
           } else if (lastSignal !== 'hold') {
-            message = `💤 <b>[${displayVersion} LIVE]</b>\n\n신호가 종료되었습니다. (포지션: HOLD)\n⌚ <b>시간</b>: ${checkTime}\n💰 <b>가격</b>: $${currentPrice.toLocaleString()}`;
+            // 신호 종료 시 가상 수익률 계산
+            const roe = lastSignal === 'long'
+              ? (currentPrice - lastEntryPrice) / lastEntryPrice * lev
+              : (lastEntryPrice - currentPrice) / lastEntryPrice * lev;
+            const roePercent = (roe * 100).toFixed(2);
+            const durationMin = Math.floor((Date.now() - lastEntryTime) / 60000);
+            
+            const resultIcon = roe >= 0 ? '🟢 Profit' : '🔴 Loss';
+
+            message = `💤 <b>[${displayVersion} LIVE] 신호 종료! (HOLD)</b>\n\n` +
+              `⌚ <b>종료 시간</b>: ${checkTime}\n` +
+              `💰 <b>종료 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
+              `📌 <b>이전 포지션</b>: ${lastSignal.toUpperCase()}\n` +
+              `💵 <b>진입 희망가</b>: $${lastEntryPrice.toLocaleString()}\n` +
+              `📈 <b>예상 수익률(ROE)</b>: <b>${roePercent}%</b> (${resultIcon})\n` +
+              `⏱️ <b>유지 시간</b>: ${durationMin}분\n\n` +
+              `📡 레버리지 ${lev}배 기준 계산됨`;
           }
 
           if (message) await sendTelegram(message);
