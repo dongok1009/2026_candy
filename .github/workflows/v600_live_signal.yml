@@ -25,4 +25,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+          STRATEGY_VERSION: 'Logic.v8.2.0.cjs'
+          TARGET_NET_ROI: '0.04'
+          LEVERAGE: '5'
         run: node src/v600_live_bot.cjs
