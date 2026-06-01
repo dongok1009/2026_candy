@@ -259,8 +259,8 @@ async function handleEntry(side, price, klines, skipNotify = false) {
             : (parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100);
         const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
 
-        // 실제 가용 잔고와 설정 금액 중 작은 값 선택
-        const finalAmount = Math.min(envAmount, availableBalance);
+        // 실제 가용 잔고와 설정 금액 중 작은 값 선택 (수수료 및 증거금 버퍼 확보를 위해 가용 잔고의 95%만 활용하도록 핫픽스)
+        const finalAmount = Math.min(envAmount, availableBalance * 0.95);
         
         console.log(`[DEBUG] ENV_AMOUNT:$${envAmount}, BYBIT_FREE:$${availableBalance.toFixed(2)}, FINAL_MARGIN:$${finalAmount}`);
         updateTradeLog('DEBUG_AMOUNT', { envAmount, availableBalance, finalAmount });
