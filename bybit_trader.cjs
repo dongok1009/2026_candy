@@ -405,9 +405,9 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
         const pos = positions.find(p => isSymbolMatch(p.symbol, symbol) && parseFloat(p.contracts) > 0);
 
         if (!pos) {
-            // [강력한 보완] 거래소에 이미 포지션이 없더라도 봇이 수량을 들고 있었다면 
+            // [강력한 보완] 거래소에 이미 포지션이 없더라도 봇이 수량을 들고 있었고 상태가 IN_POSITION인 경우에만 
             // 거래소 자체 TP/SL 또는 수동 청산으로 간주하고 알림을 보냅니다.
-            if (liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
+            if (liveState.status === 'IN_POSITION' && liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
                 const finalRoe = (roe * 100).toFixed(2);
                 const profitAmount = side === 'LONG' 
                     ? (currentPrice - liveState.entryPrice) * liveState.quantity 
@@ -604,9 +604,9 @@ async function syncExchangeTPSL(leverage) {
                 const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
                 const entryWait = strategy.config.ENTRY_WAIT_MIN || 180;
 
-                // [강력한 보완] 봇이 실제로 포지션을 들고 있었던 경우 (수량이 등록된 상태)라면 
+                // [강력한 보완] 봇이 실제로 포지션을 들고 있었던 경우 (수량이 등록된 상태이며 상태가 IN_POSITION인 경우)라면 
                 // 주문 ID의 잔존 여부와 무관하게 거래소 청산으로 즉시 간주하여 알림 발송!
-                if (liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
+                if (liveState.status === 'IN_POSITION' && liveState.quantity > 0 && (liveState.position === 'LONG' || liveState.position === 'SHORT')) {
                     const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
                     const currentPrice = liveState.lastPrice || 0;
                     const roe = liveState.position === 'LONG' 
