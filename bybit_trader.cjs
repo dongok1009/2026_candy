@@ -174,8 +174,8 @@ async function checkMarkets() {
             } else {
                 const openOrders = await exchange.fetchOpenOrders(config.SYMBOL);
                 if (openOrders.length > 0) {
-                    console.log(`⚠️ [RESCUE] Open orders found on exchange. Syncing status to IN_POSITION.`);
-                    liveState.status = 'IN_POSITION';
+                    console.log(`⚠️ [RESCUE] Open orders found on exchange. Syncing status to WAITING.`);
+                    liveState.status = 'WAITING';
                     liveState.orderId = openOrders[0].id;
                     liveState.entryTime = liveState.entryTime || Date.now();
                     saveState();
