@@ -10,38 +10,28 @@ const SignalSettings = ({
   setTelegramChatId, 
   onTestTelegram,
   isTesting,
-  botName,
-  debugLogs
+  botName
 }) => {
 
-  // Helper to bridge data structure differences
-  const getRuleValue = (iv, side, field) => {
-    // [UNIFIED] rules[side][iv] pattern
+  const getRuleValue = (side, iv, field) => {
+    if (side === 'global') return rules.global ? rules.global[iv] : false;
     return rules[side] && rules[side][iv] ? rules[side][iv][field] : false;
   };
 
-  const getRuleNum = (iv, side, field) => {
-      if (iv === 'global' || !side) {
-          return rules[iv] ? rules[iv][field] : 0;
-      }
-      const v = rules[side] && rules[side][iv] ? rules[side][iv][field] : 0;
-      return v || 0;
+  const getRuleNum = (side, iv, field) => {
+    if (side === 'global') return rules.global ? rules.global[iv] : 0;
+    return rules[side] && rules[side][iv] ? rules[side][iv][field] : 0;
   };
 
-  const renderIntervalRow = (side, iv) => {
-    const isLong = side === 'long';
-    const color = isLong ? '#26a69a' : '#ef5350';
-    
-    // Mapping internal field names
+  const renderIntervalCards = (side) => {
     const fields = {
         adx: 'adxEnabled',
-        adxVal: 'adxThreshold',
+        adxLow: 'adxLow',
+        adxHigh: 'adxHigh',
         macdCross: 'macdCrossEnabled',
         stochCross: 'stochCrossEnabled',
         macdVal: 'macdValueEnabled',
         macdValNum: 'macdValue',
-        macdSigDiff: 'macdHistEnabled',
-        macdSigDiffNum: 'macdHistValue',
         stochKLimit: 'stochKLimitEnabled',
         stochKLimitVal: 'stochKThreshold',
         rsiLimit: 'rsiEnabled',
@@ -49,90 +39,119 @@ const SignalSettings = ({
         rsiHigh: 'rsiHigh'
     };
 
+    const isLong = side === 'long';
+    const sideColor = isLong ? '#26a69a' : '#ef5350';
+    const sideText = isLong ? 'LONG' : 'SHORT';
+
     return (
-      <div key={iv} className="interval-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', flexWrap: 'wrap' }}>
-        <span style={{ color: '#f3ba2f', fontSize: '14px', fontWeight: 'bold', width: '35px' }}>{iv}:</span>
-        
-        {/* ADX */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <input type="checkbox" checked={getRuleValue(iv, side, fields.adx)} onChange={e => updateRule(iv, side, fields.adx, e.target.checked)} />
-          <span style={{ color: '#eaebed', fontSize: '12px' }}>ADX &gt;</span>
-          <input type="number" 
-            style={{ width: '50px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} 
-            value={getRuleNum(iv, side, fields.adxVal)} 
-            onChange={e => updateRule(iv, side, fields.adxVal, parseFloat(e.target.value))} 
-          />
-          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
+      <div key={side} style={{ marginBottom: isLong ? '30px' : '0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <h4 style={{ color: sideColor, fontSize: '15px', fontWeight: '900', margin: 0, borderLeft: `4px solid ${sideColor}`, paddingLeft: '10px' }}>
+            {sideText} CONDITIONS
+          </h4>
+          {isLong && (
+            <button 
+              onClick={() => {
+                if (window.confirm('롱 설정을 숏 설정에 그대로 복사하시겠습니까?')) {
+                  ['5m', '1h', '1d'].forEach(tf => {
+                    Object.keys(rules.long[tf] || {}).forEach(key => {
+                      updateRule(tf, 'short', key, rules.long[tf][key]);
+                    });
+                  });
+                  alert('롱 설정이 숏 설정에 복사되었습니다.');
+                }
+              }}
+              style={{
+                padding: '6px 12px',
+                background: '#1e2329',
+                color: '#26a69a',
+                border: '1px solid #26a69a',
+                borderRadius: '6px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              COPY LONG TO SHORT
+            </button>
+          )}
         </div>
 
-        {/* MACD Cross */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <input type="checkbox" checked={getRuleValue(iv, side, fields.macdCross)} onChange={e => updateRule(iv, side, fields.macdCross, e.target.checked)} />
-          <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD {isLong ? '>' : '<'} Signal</span>
-          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+          {['5m', '1h', '1d'].map((iv) => {
+            let isFirst = true;
+            const renderAnd = () => {
+                if (isFirst) {
+                    isFirst = false;
+                    return <span style={{ width: '26px', marginRight: '6px', display: 'inline-block' }}></span>;
+                }
+                return <span style={{ color: '#848e9c', fontWeight: 'bold', marginRight: '6px', fontSize: '11px', width: '26px', display: 'inline-block', textAlign: 'right' }}>AND</span>;
+            };
+
+            const hasStochKLimit = rules?.[side]?.[iv]?.stochKThreshold !== undefined || iv === '5m' || iv === '1h' || iv === '1d';
+
+            return (
+              <div key={iv} style={{ background: '#0b0e11', padding: '16px', borderRadius: '8px', border: '1px solid #2b3139', flex: '1', minWidth: '260px' }}>
+                <h5 style={{ color: sideColor, fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{iv}:</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* ADX Range */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.adx)} onChange={e => updateRule(iv, side, fields.adx, e.target.checked)} />
+                    <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>ADX</span>
+                    <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.adxLow) ?? (iv === '1d' ? 15 : 30)} onChange={e => updateRule(iv, side, fields.adxLow, parseFloat(e.target.value))} />
+                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
+                    <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.adxHigh) ?? 99} onChange={e => updateRule(iv, side, fields.adxHigh, parseFloat(e.target.value))} />
+                  </div>
+
+                  {/* Stoch K Limit */}
+                  {hasStochKLimit && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      {renderAnd()}
+                      <input type="checkbox" checked={getRuleValue(side, iv, fields.stochKLimit)} onChange={e => updateRule(iv, side, fields.stochKLimit, e.target.checked)} />
+                      <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>StochK</span>
+                      <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, 'stochKLow') ?? 0} onChange={e => updateRule(iv, side, 'stochKLow', parseFloat(e.target.value))} />
+                      <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
+                      <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, 'stochKHigh') ?? (getRuleNum(side, iv, fields.stochKLimitVal) || 99)} onChange={e => updateRule(iv, side, 'stochKHigh', parseFloat(e.target.value))} />
+                    </div>
+                  )}
+
+                  {/* RSI Limit */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.rsiLimit)} onChange={e => updateRule(iv, side, fields.rsiLimit, e.target.checked)} />
+                    <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>RSI</span>
+                    <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.rsiLow) ?? 5} onChange={e => updateRule(iv, side, fields.rsiLow, parseFloat(e.target.value))} />
+                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+                    <input type="number" style={{ width: '45px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.rsiHigh) ?? 95} onChange={e => updateRule(iv, side, fields.rsiHigh, parseFloat(e.target.value))} />
+                  </div>
+
+                  {/* MACD Value */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.macdVal)} onChange={e => updateRule(iv, side, fields.macdVal, e.target.checked)} />
+                    <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>|MACD| &lt;</span>
+                    <input type="number" style={{ width: '60px', background: '#1e2329', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.macdValNum) ?? 0} onChange={e => updateRule(iv, side, fields.macdValNum, parseFloat(e.target.value))} />
+                  </div>
+
+                  {/* MACD Cross */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.macdCross)} onChange={e => updateRule(iv, side, fields.macdCross, e.target.checked)} />
+                    <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>MACD Cross ({isLong ? 'Long: >' : 'Short: <'})</span>
+                  </div>
+
+                  {/* Stoch Cross */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.stochCross)} onChange={e => updateRule(iv, side, fields.stochCross, e.target.checked)} />
+                    <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross ({isLong ? 'Long: K > D' : 'Short: K < D'})</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
-
-        {/* Stoch Cross */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <input type="checkbox" checked={getRuleValue(iv, side, fields.stochCross)} onChange={e => updateRule(iv, side, fields.stochCross, e.target.checked)} />
-          <span style={{ color: '#eaebed', fontSize: '12px' }}>Stoch D {isLong ? '<' : '>'} Stoch K</span>
-          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
-        </div>
-
-        {/* Stoch K Limit (Added for Backtest Engine Alignment) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <input type="checkbox" checked={getRuleValue(iv, side, fields.stochKLimit)} onChange={e => updateRule(iv, side, fields.stochKLimit, e.target.checked)} />
-          <span style={{ color: '#eaebed', fontSize: '12px' }}>StochK &lt;</span>
-          <input type="number" 
-            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
-            value={getRuleNum(iv, side, fields.stochKLimitVal)} 
-            onChange={e => updateRule(iv, side, fields.stochKLimitVal, parseFloat(e.target.value))} 
-          />
-          <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>
-        </div>
-
-        {/* RSI Limit (New v8.2.0) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <input type="checkbox" checked={getRuleValue(iv, side, fields.rsiLimit)} onChange={e => updateRule(iv, side, fields.rsiLimit, e.target.checked)} />
-          <input type="number" 
-            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
-            value={getRuleNum(iv, side, fields.rsiLow)} 
-            onChange={e => updateRule(iv, side, fields.rsiLow, parseFloat(e.target.value))} 
-          />
-          <span style={{ color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
-          <input type="number" 
-            style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
-            value={getRuleNum(iv, side, fields.rsiHigh)} 
-            onChange={e => updateRule(iv, side, fields.rsiHigh, parseFloat(e.target.value))} 
-          />
-          {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 5px', fontSize: '11px' }}>AND</span>}
-        </div>
-
-        {/* Extra: MACD Diff (1d) */}
-        {iv === '1d' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input type="checkbox" checked={getRuleValue(iv, side, fields.macdSigDiff)} onChange={e => updateRule(iv, side, fields.macdSigDiff, e.target.checked)} />
-            <span style={{ color: '#eaebed', fontSize: '12px' }}>|MACD-Sig| &gt;</span>
-            <input type="number" 
-                style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
-                value={getRuleNum(iv, side, fields.macdSigDiffNum)} 
-                onChange={e => updateRule(iv, side, fields.macdSigDiffNum, parseFloat(e.target.value))} 
-            />
-          </div>
-        )}
-
-        {/* Extra: MACD Val (5m) */}
-        {iv === '5m' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <input type="checkbox" checked={getRuleValue(iv, side, fields.macdVal)} onChange={e => updateRule(iv, side, fields.macdVal, e.target.checked)} />
-            <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD {isLong ? '<' : '>'}</span>
-            <input type="number" 
-                style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} 
-                value={getRuleNum(iv, side, fields.macdValNum)} 
-                onChange={e => updateRule(iv, side, fields.macdValNum, parseFloat(e.target.value))} 
-            />
-          </div>
-        )}
       </div>
     );
   };
@@ -141,76 +160,17 @@ const SignalSettings = ({
     <section className="conditions-footer" style={{ marginTop: '40px' }}>
       <div className="footer-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
         <Info size={20} color="#f3ba2f" />
-        <h2 style={{ margin: 0, fontSize: '18px', color: '#eaebed' }}>Interactive Signal Settings</h2>
-      </div>
-      
-      <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
-        <h3 style={{ fontSize: '16px', color: '#eaebed', marginBottom: '25px', fontWeight: '800' }}>1. Individual Chart Border Conditions (Check to Enable)</h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            {/* LONG */}
-            <div>
-                <h4 style={{ color: '#26a69a', fontSize: '14px', fontWeight: '900', marginBottom: '20px', borderLeft: '4px solid #26a69a', paddingLeft: '10px' }}>LONG (GREEN BORDER)</h4>
-                {['5m', '1h', '1d'].map(iv => renderIntervalRow('long', iv))}
-            </div>
-
-            {/* SHORT */}
-            <div>
-                <h4 style={{ color: '#ef5350', fontSize: '14px', fontWeight: '900', marginBottom: '20px', borderLeft: '4px solid #ef5350', paddingLeft: '10px' }}>SHORT (RED BORDER)</h4>
-                {['5m', '1h', '1d'].map(iv => renderIntervalRow('short', iv))}
-            </div>
-
-            {/* HOLDING */}
-            <div style={{ borderTop: '1px solid #2b3139', paddingTop: '20px' }}>
-                <h4 style={{ color: '#f3ba2f', fontSize: '14px', fontWeight: '900', marginBottom: '10px' }}>HOLDING (ORANGE BORDER)</h4>
-                <p style={{ color: '#848e9c', fontSize: '12px' }}>
-                    Occurs when the selected conditions above are not fully met (or if all active conditions evaluate to false).
-                </p>
-            </div>
-        </div>
+        <h2 style={{ margin: 0, fontSize: '18px', color: '#eaebed' }}>1. Entry & Exit Strategy (Order Execution)</h2>
       </div>
 
-      <div style={{ margin: '40px 0', borderBottom: '1px solid #2b3139' }}></div>
-
-      <div className="footer-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
-        <Info size={20} color="#f3ba2f" />
-        <h2 style={{ margin: 0, fontSize: '18px', color: '#eaebed' }}>2. Entry & Exit Strategy (Order Execution)</h2>
-      </div>
-
-      <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
-          {/* Row 1: Entry Wait & Exit Wait */}
+      <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139', marginBottom: '40px' }}>
+          {/* Row 1: Target ROI & Stop Loss ROI */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div className="input-group">
-                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                      <input type="number" 
-                        value={getRuleNum('global', null, 'entryWaitMin')} 
-                        onChange={e => updateRule('global', null, 'entryWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
-                      />
-                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 실패</span>
-                  </div>
-              </div>
-              <div className="input-group">
-                  <label style={{ display: 'block', color: '#ff4d4d', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                      <input type="number" 
-                        value={getRuleNum('global', null, 'exitWaitMin')} 
-                        onChange={e => updateRule('global', null, 'exitWaitMin', parseInt(e.target.value))} 
-                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
-                      />
-                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 강제</span>
-                  </div>
-              </div>
-          </div>
-
-          {/* Row 2: Target ROI & Stop Loss ROI */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
               <div className="input-group">
                   <label style={{ display: 'block', color: '#26a69a', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Target ROI (e.g. 0.03 = 3%)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" step="0.005"
-                        value={getRuleNum('global', null, 'targetRoi')} 
+                        value={getRuleNum('global', 'targetRoi')} 
                         onChange={e => updateRule('global', null, 'targetRoi', parseFloat(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
@@ -221,11 +181,37 @@ const SignalSettings = ({
                   <label style={{ display: 'block', color: '#ef5350', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Stop Loss ROI (e.g. 0.15 = 15%)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" step="0.01"
-                        value={getRuleNum('global', null, 'slRoi')} 
+                        value={getRuleNum('global', 'slRoi')} 
                         onChange={e => updateRule('global', null, 'slRoi', parseFloat(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
                       <span style={{ color: '#848e9c', fontSize: '12px' }}>손절 기준율</span>
+                  </div>
+              </div>
+          </div>
+
+          {/* Row 2: Entry Wait & Exit Wait */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" 
+                        value={getRuleNum('global', 'entryWaitMin')} 
+                        onChange={e => updateRule('global', null, 'entryWaitMin', parseInt(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 실패</span>
+                  </div>
+              </div>
+              <div className="input-group">
+                  <label style={{ display: 'block', color: '#ff4d4d', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                      <input type="number" 
+                        value={getRuleNum('global', 'exitWaitMin')} 
+                        onChange={e => updateRule('global', null, 'exitWaitMin', parseInt(e.target.value))} 
+                        style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
+                      />
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 강제</span>
                   </div>
               </div>
           </div>
@@ -236,18 +222,18 @@ const SignalSettings = ({
                   <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>TP Reduction Wait (min)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
-                        value={getRuleNum('global', null, 'reduceTpWaitMin')} 
+                        value={getRuleNum('global', 'reduceTpWaitMin')} 
                         onChange={e => updateRule('global', null, 'reduceTpWaitMin', parseInt(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
-                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 뒤 익절 하향</span>
+                      <span style={{ color: '#848e9c', fontSize: '12px' }}>분 뒤 익절 하향 (0이면 비활성)</span>
                   </div>
               </div>
               <div className="input-group">
                   <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Reduced Target ROI (e.g. 0.01)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" step="0.005"
-                        value={getRuleNum('global', null, 'reducedTargetRoi')} 
+                        value={getRuleNum('global', 'reducedTargetRoi')} 
                         onChange={e => updateRule('global', null, 'reducedTargetRoi', parseFloat(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
@@ -262,7 +248,7 @@ const SignalSettings = ({
                   <label style={{ display: 'block', color: '#26a69a', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Trading Leverage (x)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
-                        value={getRuleNum('global', null, 'leverage')} 
+                        value={getRuleNum('global', 'leverage')} 
                         onChange={e => updateRule('global', null, 'leverage', parseInt(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
@@ -273,7 +259,7 @@ const SignalSettings = ({
                   <label style={{ display: 'block', color: '#f3ba2f', fontSize: '12px', marginBottom: '8px', fontWeight: 'bold' }}>Max Order Amount ($)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                       <input type="number" 
-                        value={getRuleNum('global', null, 'orderAmount')} 
+                        value={getRuleNum('global', 'orderAmount')} 
                         onChange={e => updateRule('global', null, 'orderAmount', parseFloat(e.target.value))} 
                         style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} 
                       />
@@ -283,7 +269,28 @@ const SignalSettings = ({
           </div>
       </div>
 
-      <div style={{ margin: '40px 0', borderBottom: '1px solid #2b3139' }}></div>
+      <div className="footer-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+        <Info size={20} color="#f3ba2f" />
+        <h2 style={{ margin: 0, fontSize: '18px', color: '#eaebed' }}>2. Trading Indicator Conditions (Short evaluated symmetrically)</h2>
+      </div>
+      
+      <div style={{ background: '#161a1e', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+            {/* Unified Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {renderIntervalCards('long')}
+                {renderIntervalCards('short')}
+            </div>
+
+            {/* HOLDING */}
+            <div style={{ borderTop: '1px solid #2b3139', paddingTop: '20px' }}>
+                <h4 style={{ color: '#f3ba2f', fontSize: '14px', fontWeight: '900', marginBottom: '10px' }}>HOLDING STATUS</h4>
+                <p style={{ color: '#848e9c', fontSize: '12px' }}>
+                    Occurs when the selected conditions above are not fully met (or if all active conditions evaluate to false).
+                </p>
+            </div>
+        </div>
+      </div>
 
       <div className="footer-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
         <BellRing size={20} color="#f3ba2f" />

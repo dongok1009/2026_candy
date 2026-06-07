@@ -9,9 +9,12 @@
 
 | 버전 | 특징 | TP / SL | 승률 | 최종 수익률 | 상태 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **v8.2.3** | **대칭적 지표 검증 구조 개선 & 글로벌 변수 및 UI 싱크 최적화** | 가변(UI) | 82.5% | **최대 +1845.88%** | **최신 로직 (v8.2.3)** |
+| **v8.2.2** | **ADX 범위 필터(ADX Low~High) UI 및 엔진 연동** | 가변(UI) | 84.9% | **+920.11%** | 검증 완료 |
+| **v8.2.1** | **MACD 필터 절대값 비교 통합 및 1h/1d 범위 확장** | 가변(UI) | 77.9% | **최대 +2604.99%** | 검증 완료 |
 | **v8.2.0-Patch** | **Signal Bot 30초 오프셋 지연 패치 (API Rate Limit 충돌 방지)** | - | - | **배포 완료** | **인프라 패치 완료** |
-| **v8.2.0** | **RSI AND 필터 조건 UI/엔진 연동 & 진입 시점 지표 보장** | 가변(UI) | - | **배포 완료** | **최신 로직 (v8.2.0)** |
-| **v7.0.6** | **12시간봉(12h) 추세 필터 강화 모델** | 3% / 15% | - | **검증 대기** | **최신 로직** |
+| **v8.2.0** | **RSI AND 필터 조건 UI/엔진 연동 & 진입 시점 지표 보장** | 가변(UI) | 84.4% | **+1013.01%** | 로직 안정화 |
+| **v7.0.6** | **12시간봉(12h) 추세 필터 강화 모델** | 3% / 15% | - | **검증 대기** | 구 버전 |
 | **v7.0.5** | **Oracle Cloud 무중단 배포 & 실전 매매 엔진** | 3% / 15% | - | **가동 중** | **최신 실전 가동** |
 | **v7.0.4** | **UI 연동 익절/손절 가변 설정 모델** | 가변(UI) | - | **검증 완료** | 로직 최적화 |
 | **v7.0.1** | **확정봉(T-1) 시그널 & T+1 진입 원칙** | 3% / 15% | - | **대기 중** | 로직 확정 |
@@ -24,6 +27,33 @@
 ## 📘 2. 버전별 상세 지표 조건 및 실행 결과 (Detailed Version Logs)
 
  모든 신호는 **확정봉(Wait-on-Close)** 기준으로 판정합니다.
+
+### **[v8.2.3] 대칭적 지표 검증 구조 개선 & 글로벌 변수 및 UI 싱크 최적화 (v8.2.3)**
+- **주요 변경 사항**:
+    - **Logic.v8.2.3.cjs 생성**: 로직 내 조건 판정 주석 및 규칙 번호를 ADX 필터(2), MACD Cross(3), Stoch Cross(4), MACD Value(5), Stoch K Limit(6), RSI Range(7) 순으로 체계적으로 재정비.
+    - **bybit_trader.cjs 상태 동기화 및 텔레그램 연동 안정화**:
+        - 오픈 주문 구조 핫픽스: `[RESCUE]` 블록에서 오픈 주문 감지 시 기존 `IN_POSITION` 대신 `WAITING`으로 상태를 일치시킴으로써 대기 상태의 신뢰성 확보.
+        - Bybit API 주문 실패(110007 balance error) 방지: 실제 가용 잔고 계산 시 95% 안전 마진 버퍼(`availableBalance * 0.95`)를 강제 적용하여 자금 부족 오류 방지.
+        - 청산 시 예외 처리 강화: `closePosition` 시 API 호출이 에러나더라도 알림 및 봇 내부 포지션 상태를 강제로 `IDLE`로 초기화하여 봇 먹통 방지.
+    - **src/v600_live_bot.cjs 알림 봇 최적화**:
+        - `.env` 설정 1순위 오버라이드 및 글로벌 지표 동기화 지원.
+        - 실전 트레이더의 상태가 `WAITING` / `IN_POSITION`일 때 노이즈(중복 신호) 알림 차단.
+        - 신호 종료(`HOLD`) 시 예상 수익률(ROE) 및 유지 시간을 자동 계산하여 텔레그램에 전송하도록 고도화.
+    - **rules_helper.cjs 구조 개편**: 롱/숏 분리에 의한 변수 충돌 방지를 위해 `.env` 환경 변수 구조 개편 및 동적 동기화 구현.
+- **상태**: 2026-06-03 빌드 및 실전 배포 완료.
+
+### **[v8.2.2] ADX 범위 필터(ADX Low~High) UI 및 엔진 연동 (v8.2.2)**
+- **주요 변경 사항**:
+    - **Logic.v8.2.2.cjs 생성**: ADX 필터를 단순 임계치 초과(`ADX_THRESHOLD: 30`) 방식에서 상하한 범위 지정 방식(`adxLow` ~ `adxHigh`)으로 개편.
+    - **UI 연동 고도화**: 대시보드 UI(Dashboard 및 SignalSettings)에서 ADX 범위(기본 30~99)를 슬라이더 및 입력 필드로 설정 가능하도록 백엔드 엔진 연동 완료.
+    - **rules_helper.cjs 확장**: .env 파일에 `5M_ADX_LOW`, `5M_ADX_HIGH` 등 범위 기반의 변수를 파싱하고 양방향 동기화할 수 있도록 지원.
+- **상태**: 검증 완료 및 테스트 적용.
+
+### **[v8.2.1] MACD 필터 절대값 비교 통합 및 1h/1d 범위 확장 (v8.2.1)**
+- **주요 변경 사항**:
+    - **Logic.v8.2.1.cjs 생성**: MACD 필터 적용 시 롱/숏 개별 임계치 비교를 절대값 비교(`Math.abs(m) >= threshold`)로 통합.
+    - **1h/1d 지표 범위 설정 최적화**: 1시간봉(1h) 및 1일봉(1d) 타임프레임의 RSI/MACD 변수 한도를 확장하여 중장기 필터링 효율 향상.
+- **상태**: 로직 검증 완료.
 
 ### **[v8.2.0-Patch] 깃버전 알림 봇 30초 오프셋 지연 패치 (API Rate Limit 방지)**
 - **주요 변경 사항**:
@@ -518,4 +548,269 @@
 ### 📊 Official Record: Record.8.2.0.2
 - ROI: 994.03% | MDD: 31.16% | 196W/22L
 - Params: BTCUSDT 5x | 1000 -> 10940.310876815027
+---
+
+### 📊 Official Record: Record.8.2.1.1
+- ROI: 729.76% | MDD: 27.78% | 78W/11L
+- Params: BTCUSDT 5x | 1000 -> 8297.612189836327
+---
+
+### 📊 Official Record: Record.8.2.1.2
+- ROI: 70.14% | MDD: 27.78% | 26W/6L
+- Params: BTCUSDT 5x | 1000 -> 1701.3753497361758
+---
+
+### 📊 Official Record: Record.8.2.1.3
+- ROI: 2604.99% | MDD: 55.32% | 311W/88L
+- Params: BTCUSDT 5x | 1000 -> 27049.93627104609
+---
+
+### 📊 Official Record: Record.8.2.1.4
+- ROI: 2604.99% | MDD: 55.32% | 311W/88L
+- Params: BTCUSDT 5x | 1000 -> 27049.93627104609
+---
+
+### 📊 Official Record: Record.8.2.1.4
+- ROI: 683.80% | MDD: 66.55% | 256W/82L
+- Params: BTCUSDT 5x | 1000 -> 7837.989114920762
+---
+
+### 📊 Official Record: Record.8.1.0.30
+- ROI: 920.11% | MDD: 35.20% | 180W/32L
+- Params: BTCUSDT 5x | 1000 -> 10201.127507507046
+---
+
+### 📊 Official Record: Record.8.2.0.3
+- ROI: 920.11% | MDD: 35.20% | 180W/32L
+- Params: BTCUSDT 5x | 1000 -> 10201.127507507046
+---
+
+### 📊 Official Record: Record.8.2.3.1
+- ROI: 415.81% | MDD: 37.69% | 145W/28L
+- Params: BTCUSDT 5x | 1000 -> 5158.068287762833
+---
+
+### 📊 Official Record: Record.8.2.2.1
+- ROI: 920.11% | MDD: 35.20% | 180W/32L
+- Params: BTCUSDT 5x | 1000 -> 10201.127507507046
+---
+
+### 📊 Official Record: Record.8.2.1.4
+- ROI: 920.11% | MDD: 35.20% | 180W/32L
+- Params: BTCUSDT 5x | 1000 -> 10201.127507507046
+---
+
+### 📊 Official Record: Record.8.2.3.2
+- ROI: 1359.16% | MDD: 35.20% | 174W/29L
+- Params: BTCUSDT 5x | 1000 -> 14591.60666259097
+---
+
+### 📊 Official Record: Record.8.2.2.2
+- ROI: 920.11% | MDD: 35.20% | 180W/32L
+- Params: BTCUSDT 5x | 1000 -> 10201.127507507046
+---
+
+### 📊 Official Record: Record.8.2.3.3
+- ROI: 1645.77% | MDD: 30.79% | 158W/33L
+- Params: BTCUSDT 5x | 1000 -> 17457.71072009284
+---
+
+### 📊 Official Record: Record.8.2.3.4
+- ROI: 1645.77% | MDD: 30.79% | 158W/33L
+- Params: BTCUSDT 5x | 1000 -> 17457.71072009284
+---
+
+### 📊 Official Record: Record.8.2.3.5
+- ROI: 1655.50% | MDD: 41.13% | 136W/37L
+- Params: BTCUSDT 5x | 1000 -> 17555.041492589102
+---
+
+### 📊 Official Record: Record.8.2.3.6
+- ROI: 1845.88% | MDD: 29.96% | 161W/34L
+- Params: BTCUSDT 5x | 1000 -> 19458.75690238405
+---
+
+### 📊 Official Record: Record.8.2.3.7
+- ROI: 1392.05% | MDD: 55.94% | 309W/96L
+- Params: BTCUSDT 5x | 1000 -> 14920.536601400276
+---
+
+### 📊 Official Record: Record.8.2.3.8
+- ROI: 2604.99% | MDD: 55.32% | 311W/88L
+- Params: BTCUSDT 5x | 1000 -> 27049.93627104609
+---
+
+### 📊 Official Record: Record.8.2.3.9
+- ROI: 1845.88% | MDD: 29.96% | 161W/34L
+- Params: BTCUSDT 5x | 1000 -> 19458.75690238405
+---
+
+### 📊 Official Record: Record.8.2.3.10
+- ROI: 1392.05% | MDD: 55.94% | 309W/96L
+- Params: BTCUSDT 5x | 1000 -> 14920.536601400276
+---
+
+### 📊 Official Record: Record.8.2.3.11
+- ROI: 872.39% | MDD: 34.82% | 133W/30L
+- Params: BTCUSDT 5x | 1000 -> 9723.899360406303
+---
+
+### 📊 Official Record: Record.8.2.3.12
+- ROI: 729.76% | MDD: 27.78% | 78W/11L
+- Params: BTCUSDT 5x | 1000 -> 8297.612189836327
+---
+
+### 📊 Official Record: Record.8.2.3.13
+- ROI: 2832.43% | MDD: 30.79% | 178W/36L
+- Params: BTCUSDT 5x | 1000 -> 29324.29711396926
+---
+
+### 📊 Official Record: Record.8.2.3.14
+- ROI: 2471.61% | MDD: 30.79% | 168W/34L
+- Params: BTCUSDT 5x | 1000 -> 25716.14413715672
+---
+
+### 📊 Official Record: Record.8.2.3.15
+- ROI: 1484.72% | MDD: 31.19% | 154W/34L
+- Params: BTCUSDT 5x | 1000 -> 15847.228004056129
+---
+
+### 📊 Official Record: Record.8.2.3.16
+- ROI: 1786.35% | MDD: 32.53% | 171W/37L
+- Params: BTCUSDT 5x | 1000 -> 18863.453180976972
+---
+
+### 📊 Official Record: Record.8.2.3.17
+- ROI: 2832.43% | MDD: 30.79% | 178W/36L
+- Params: BTCUSDT 5x | 1000 -> 29324.29711396926
+---
+
+### 📊 Official Record: Record.8.2.3.18
+- ROI: 2604.99% | MDD: 55.32% | 311W/88L
+- Params: BTCUSDT 5x | 1000 -> 27049.93627104609
+---
+
+### 📊 Official Record: Record.8.2.3.19
+- ROI: 1691.96% | MDD: 49.65% | 290W/70L
+- Params: BTCUSDT 5x | 1000 -> 17919.603232629383
+---
+
+### 📊 Official Record: Record.8.2.3.20
+- ROI: 2224.63% | MDD: 33.89% | 211W/30L
+- Params: BTCUSDT 5x | 1000 -> 23246.313262441843
+---
+
+### 📊 Official Record: Record.8.2.3.21
+- ROI: 3099.28% | MDD: 41.13% | 154W/41L
+- Params: BTCUSDT 5x | 1000 -> 31992.780693614048
+---
+
+### 📊 Official Record: Record.8.2.3.22
+- ROI: 842.59% | MDD: 54.93% | 254W/102L
+- Params: BTCUSDT 5x | 1000 -> 9425.888682595683
+---
+
+### 📊 Official Record: Record.8.2.3.23
+- ROI: 1162.26% | MDD: 47.50% | 470W/69L
+- Params: BTCUSDT 5x | 1000 -> 12622.585115683161
+---
+
+### 📊 Official Record: Record.8.2.3.24
+- ROI: 3207.22% | MDD: 35.04% | 185W/36L
+- Params: BTCUSDT 5x | 1000 -> 33072.19053026631
+---
+
+### 📊 Official Record: Record.8.2.3.25
+- ROI: 3198.58% | MDD: 30.79% | 181W/36L
+- Params: BTCUSDT 5x | 1000 -> 32985.84614880792
+---
+
+### 📊 Official Record: Record.8.2.3.26
+- ROI: 729.76% | MDD: 27.78% | 78W/11L
+- Params: BTCUSDT 5x | 1000 -> 8297.612189836327
+---
+
+### 📊 Official Record: Record.8.2.3.27
+- ROI: 2429.17% | MDD: 53.44% | 324W/94L
+- Params: BTCUSDT 5x | 1000 -> 25291.697067152563
+---
+
+### 📊 Official Record: Record.8.2.3.28
+- ROI: 4289.95% | MDD: 36.01% | 162W/26L
+- Params: BTCUSDT 5x | 1000 -> 43899.53150625726
+---
+
+### 📊 Official Record: Record.8.2.3.29
+- ROI: 1459.59% | MDD: 48.70% | 259W/73L
+- Params: BTCUSDT 5x | 1000 -> 15595.919237476135
+---
+
+### 📊 Official Record: Record.8.2.3.30
+- ROI: 1995.15% | MDD: 48.65% | 319W/78L
+- Params: BTCUSDT 5x | 1000 -> 20951.462458679638
+---
+
+### 📊 Official Record: Record.8.2.3.31
+- ROI: 124.18% | MDD: 75.16% | 233W/98L
+- Params: BTCUSDT 5x | 1000 -> 2241.84773982225
+---
+
+### 📊 Official Record: Record.8.2.3.32
+- ROI: -22.32% | MDD: 81.51% | 418W/129L
+- Params: BTCUSDT 5x | 1000 -> 776.780510641489
+---
+
+### 📊 Official Record: Record.8.2.3.33
+- ROI: 118.19% | MDD: 82.75% | 285W/118L
+- Params: BTCUSDT 5x | 1000 -> 2181.9435009528893
+---
+
+### 📊 Official Record: Record.8.2.3.34
+- ROI: 4610.12% | MDD: 47.30% | 393W/94L
+- Params: BTCUSDT 5x | 1000 -> 47101.24733836387
+---
+
+### 📊 Official Record: Record.8.2.3.35
+- ROI: 4610.12% | MDD: 47.30% | 393W/94L
+- Params: BTCUSDT 5x | 1000 -> 47101.24733836387
+---
+
+### 📊 Official Record: Record.8.2.3.36
+- ROI: 1772.56% | MDD: 55.32% | 286W/83L
+- Params: BTCUSDT 5x | 1000 -> 18725.57391457507
+---
+
+### 📊 Official Record: Record.8.2.3.37
+- ROI: 1164.22% | MDD: 30.79% | 151W/33L
+- Params: BTCUSDT 5x | 1000 -> 12642.19829478164
+---
+
+### 📊 Official Record: Record.8.2.3.37
+- ROI: 2920.10% | MDD: 30.79% | 183W/37L
+- Params: ETHUSDT 5x | 1000 -> 30200.996296187124
+---
+
+### 📊 Official Record: Record.8.2.3.38
+- ROI: 2456.51% | MDD: 30.79% | 183W/38L
+- Params: ETHUSDT 5x | 1000 -> 25565.1433647224
+---
+
+### 📊 Official Record: Record.8.2.3.39
+- ROI: 2825.85% | MDD: 41.13% | 159W/43L
+- Params: ETHUSDT 5x | 1000 -> 29258.523708149172
+---
+
+### 📊 Official Record: Record.8.2.3.40
+- ROI: 842.59% | MDD: 54.93% | 254W/102L
+- Params: ETHUSDT 5x | 1000 -> 9425.888682595683
+---
+
+### 📊 Official Record: Record.8.2.3.41
+- ROI: 2604.99% | MDD: 55.32% | 311W/88L
+- Params: ETHUSDT 5x | 1000 -> 27049.93627104609
+---
+
+### 📊 Official Record: Record.8.2.3.36
+- ROI: 1858.81% | MDD: 59.70% | 323W/96L
+- Params: BTCUSDT 5x | 1000 -> 19588.118265214758
 ---

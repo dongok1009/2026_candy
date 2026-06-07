@@ -1,11 +1,11 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v8.0.0.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v8.2.3.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
-    name: 'Logic.v8.0.0',
-    description: 'v8.0.0 (Base version copied from v7.0.4)',
-    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX",
+    name: 'Logic.v8.2.3',
+    description: 'v8.2.3 (Integrated Rules & Global Parameters Repositioned)',
+    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,M5_RSI,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX,D1_RSI",
 
     config: {
         SYMBOL: 'BTCUSDT',
@@ -23,7 +23,6 @@ const strategy = {
         TARGET_NET_ROI: 0.03,
         SL_ROI: 0.15,
 
-        ADX_THRESHOLD: 30, // Default fallback
         ENTRY_WAIT_MIN: 180,
         EXIT_WAIT_MIN: 2000
     },
@@ -32,16 +31,19 @@ const strategy = {
         return {
             m5: {
                 macd: calculateMACD(klines.m5.map(k => k.close)),
+                rsi: calculateRSI(klines.m5.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
                 adx: calculateADX(klines.m5)
             },
             h1: {
                 macd: calculateMACD(klines.h1.map(k => k.close)),
+                rsi: calculateRSI(klines.h1.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))),
                 adx: calculateADX(klines.h1)
             },
             d1: {
                 macd: calculateMACD(klines.d1.map(k => k.close)),
+                rsi: calculateRSI(klines.d1.map(k => k.close)),
                 stoch: calculateStochRSI(calculateRSI(klines.d1.map(k => k.close))),
                 adx: calculateADX(klines.d1)
             }
@@ -104,14 +106,16 @@ const strategy = {
                 return true;
             }
 
-            // 2. If rules provided (Interactive Mode from UI)
+            // 2. ADX Filter (Same for Long & Short)
             if (chk('adxEnabled') || chk('useADX')) {
-                const threshold = rules.adxThreshold || 30;
+                const low = rules.adxLow !== undefined ? parseFloat(rules.adxLow) : 30;
+                const high = rules.adxHigh !== undefined ? parseFloat(rules.adxHigh) : 99;
                 const val = data.adx[idx];
-                logDetail += `ADX:${val.toFixed(1)}>${threshold} `;
-                if (val < threshold) match = false;
+                logDetail += `ADX:${val.toFixed(1)} (${low}~${high}) `;
+                if (val < low || val > high) match = false;
             }
 
+            // 3. MACD Cross (Symmetric)
             if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig')) && data.macd) {
                 const m = data.macd.m[idx], s = data.macd.s[idx];
                 logDetail += `MACD:${side === 'long' ? (m > s ? 'OK' : 'NO') : (m < s ? 'OK' : 'NO')} `;
@@ -119,6 +123,7 @@ const strategy = {
                 if (side === 'short' && m >= s) match = false;
             }
 
+            // 4. Stoch Cross (Symmetric)
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
                 logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')} `;
@@ -126,21 +131,32 @@ const strategy = {
                 if (side === 'short' && k >= d) match = false;
             }
 
+            // 5. MACD Value (Absolute value comparison - same for both)
             if ((chk('macdValueEnabled') || chk('useMacdVal')) && data.macd) {
                 const m = data.macd.m[idx];
                 const threshold = rules.macdValue || rules.macdVal;
-                if (side === 'long' && m >= threshold) match = false;
-                if (side === 'short' && m <= threshold) match = false;
+                if (Math.abs(m) >= threshold) match = false;
             }
 
+            // 6. Stoch K Limit (0 < Stoch K < 99 형태로 변경)
             if ((chk('stochKLimitEnabled') || chk('useStochKLimit')) && data.stoch) {
-                const threshold = rules.stochKThreshold !== undefined ? rules.stochKThreshold : 80;
+                const low = rules.stochKLow !== undefined ? parseFloat(rules.stochKLow) : 0;
+                const high = rules.stochKHigh !== undefined ? parseFloat(rules.stochKHigh) : (rules.stochKThreshold !== undefined ? parseFloat(rules.stochKThreshold) : 99);
                 const val = data.stoch.k[idx];
-                logDetail += `${interval.toUpperCase()}-StochK:${val !== null ? val.toFixed(1) : 'null'}<${threshold} `;
-                if (val !== null && val >= threshold) match = false;
+                logDetail += `${interval.toUpperCase()}-StochK:${val !== null ? val.toFixed(1) : 'null'} (${low}~${high}) `;
+                if (val !== null && (val < low || val > high)) match = false;
             }
 
-            if (match) console.log(`${side.toUpperCase()} ${logDetail} -> PASS`);
+            // 7. RSI Range (Non-Symmetric, matching v8.2.2)
+            if ((chk('rsiEnabled') || chk('useRSI')) && data.rsi) {
+                const low = rules.rsiLow !== undefined ? parseFloat(rules.rsiLow) : 5;
+                const high = rules.rsiHigh !== undefined ? parseFloat(rules.rsiHigh) : 95;
+                const val = data.rsi[idx];
+                logDetail += `RSI:${val !== null && val !== undefined ? val.toFixed(1) : 'null'} (${low}~${high}) `;
+                if (val !== null && val !== undefined && (val <= low || val >= high)) match = false;
+            }
+
+            // if (match) console.log(`${side.toUpperCase()} ${logDetail} -> PASS`);
             return match;
         };
 
@@ -171,7 +187,7 @@ const strategy = {
 
         const waitLimit = (config && config.ENTRY_WAIT_MIN) || 180;
 
-        // [Latest Logic] Better Price Hybrid Entry
+        // Better Price Hybrid Entry
         if (sig === 'long' && signalPrice <= targetPrice) {
             finalEntryPrice = signalPrice;
             executed = true;

@@ -34,7 +34,15 @@ const BacktestForm = () => {
         reducedTargetRoi: 0.02
     });
 
-    const [rules, setRules] = useState(OFFICIAL_STRATEGIES[0].rules);
+    const [rules, setRules] = useState(() => {
+        // OFFICIAL_STRATEGIES[0]이 아직 로드되지 않았을 경우의 예외 처리를 담아 정규화 적용
+        return OFFICIAL_STRATEGIES[0] ? {
+            long: OFFICIAL_STRATEGIES[0].rules.long || {},
+            short: OFFICIAL_STRATEGIES[0].rules.short || {},
+            global: OFFICIAL_STRATEGIES[0].rules.global || {}
+        } : {};
+    });
+    const [activeDirectionTab, setActiveDirectionTab] = useState('long');
     const [history, setHistory] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -47,38 +55,125 @@ const BacktestForm = () => {
     const [showIndicators, setShowIndicators] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
 
-    // 최적화 변수 상태값 정의 (콤마 구분자 형태 문자열)
+    // 최적화 변수 상태값 정의 (콤마 구분자 형태 문자열 & boolean 배열)
     const [optParams, setOptParams] = useState({
-        // 5분봉 세부
-        m5_useADX: 'true',
-        m5_adxThreshold: '30',
-        m5_useMacdBeyondSig: 'false',
-        m5_useStochCross: 'true',
-        m5_useStochKLimit: 'true',
-        m5_stochKThreshold: '75, 80',
+        long: {
+            m5_useADX: [true],
+            m5_adxLow: '30',
+            m5_adxHigh: '99',
+            m5_useMacdBeyondSig: [false],
+            m5_useStochCross: [true],
+            m5_useStochKLimit: [true],
+            m5_stochKThreshold: '75, 80',
+            m5_useRSI: [false],
+            m5_rsiLow: '5',
+            m5_rsiHigh: '95',
+            m5_useMacdVal: [false],
+            m5_macdVal: '0',
 
-        // 1시간봉 세부
-        h1_useADX: 'false',
-        h1_adxThreshold: '30',
-        h1_useMacdBeyondSig: 'true',
-        h1_useStochCross: 'true',
-        h1_useStochKLimit: 'false',
-        h1_stochKThreshold: '80',
+            h1_useADX: [false],
+            h1_adxLow: '30',
+            h1_adxHigh: '99',
+            h1_useMacdBeyondSig: [true],
+            h1_useStochCross: [true],
+            h1_useStochKLimit: [false],
+            h1_stochKThreshold: '80',
+            h1_useRSI: [false],
+            h1_rsiLow: '5',
+            h1_rsiHigh: '95',
+            h1_useMacdVal: [false],
+            h1_macdVal: '0',
 
-        // 1일봉 세부
-        d1_useADX: 'false',
-        d1_adxThreshold: '15',
-        d1_useMacdBeyondSig: 'true',
-        d1_useStochCross: 'false',
-        d1_useStochKLimit: 'false, true',
-        d1_stochKThreshold: '80',
+            d1_useADX: [false],
+            d1_adxLow: '15',
+            d1_adxHigh: '99',
+            d1_useMacdBeyondSig: [true],
+            d1_useStochCross: [false],
+            d1_useStochKLimit: [true],
+            d1_stochKThreshold: '80',
+            d1_useRSI: [false],
+            d1_rsiLow: '5',
+            d1_rsiHigh: '95',
+            d1_useMacdVal: [false],
+            d1_macdVal: '0'
+        },
+        short: {
+            m5_useADX: [true],
+            m5_adxLow: '30',
+            m5_adxHigh: '99',
+            m5_useMacdBeyondSig: [false],
+            m5_useStochCross: [true],
+            m5_useStochKLimit: [true],
+            m5_stochKThreshold: '75, 80',
+            m5_useRSI: [false],
+            m5_rsiLow: '5',
+            m5_rsiHigh: '95',
+            m5_useMacdVal: [false],
+            m5_macdVal: '0',
 
-        // 글로벌 변수
+            h1_useADX: [false],
+            h1_adxLow: '30',
+            h1_adxHigh: '99',
+            h1_useMacdBeyondSig: [true],
+            h1_useStochCross: [true],
+            h1_useStochKLimit: [false],
+            h1_stochKThreshold: '80',
+            h1_useRSI: [false],
+            h1_rsiLow: '5',
+            h1_rsiHigh: '95',
+            h1_useMacdVal: [false],
+            h1_macdVal: '0',
+
+            d1_useADX: [false],
+            d1_adxLow: '15',
+            d1_adxHigh: '99',
+            d1_useMacdBeyondSig: [true],
+            d1_useStochCross: [false],
+            d1_useStochKLimit: [true],
+            d1_stochKThreshold: '80',
+            d1_useRSI: [false],
+            d1_rsiLow: '5',
+            d1_rsiHigh: '95',
+            d1_useMacdVal: [false],
+            d1_macdVal: '0'
+        },
         targetRoi: '0.03, 0.04',
         slRoi: '0.15'
     });
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optRankings, setOptRankings] = useState([]);
+
+    const handleOptCheckboxChange = (side, key, val, checked) => {
+        setOptParams(prev => {
+            if (side === 'global') {
+                const current = prev[key] || [];
+                let next;
+                if (checked) {
+                    if (!current.includes(val)) next = [...current, val];
+                    else next = current;
+                } else {
+                    next = current.filter(v => v !== val);
+                }
+                return { ...prev, [key]: next };
+            } else {
+                const current = prev[side][key] || [];
+                let next;
+                if (checked) {
+                    if (!current.includes(val)) next = [...current, val];
+                    else next = current;
+                } else {
+                    next = current.filter(v => v !== val);
+                }
+                return {
+                    ...prev,
+                    [side]: {
+                        ...prev[side],
+                        [key]: next
+                    }
+                };
+            }
+        });
+    };
 
     useEffect(() => {
         const savedHistory = localStorage.getItem('backtest_history');
@@ -101,7 +196,7 @@ const BacktestForm = () => {
         if (name === 'version') {
             const found = OFFICIAL_STRATEGIES.find(s => s.version === value);
             if (found) { 
-                setRules(found.rules); 
+                setRules(normalizeAndMapRules(found.rules)); 
                 setDisplayStats(null); 
                 // 해당 전략의 기본 대기 시간도 함께 로드
                 if (found.rules.entryWaitMin) {
@@ -111,6 +206,54 @@ const BacktestForm = () => {
             setResultsTrades([]); // 버전 전환 시 이전 결과 초기화
             setSelectedRecordId('');
         }
+    };
+
+    const normalizeAndMapRules = (rawRules) => {
+        if (!rawRules) return null;
+        
+        const timeframes = ['5m', '1h', '1d'];
+        const mapped = { long: {}, short: {} };
+
+        const hasLongShort = rawRules.long && (rawRules.long['5m'] || rawRules.long.adxEnabled !== undefined || rawRules.long.useADX !== undefined);
+        
+        const mapTf = (srcTfRules, tf) => {
+            if (!srcTfRules) srcTfRules = {};
+            return {
+                useADX: srcTfRules.adxEnabled !== undefined ? srcTfRules.adxEnabled : (srcTfRules.useADX !== undefined ? srcTfRules.useADX : false),
+                adxLow: srcTfRules.adxLow !== undefined ? srcTfRules.adxLow : (srcTfRules.adxThreshold !== undefined ? srcTfRules.adxThreshold : (tf === '1d' ? 15 : 30)),
+                adxHigh: srcTfRules.adxHigh !== undefined ? srcTfRules.adxHigh : 99,
+                useMacdBeyondSig: srcTfRules.macdCrossEnabled !== undefined ? srcTfRules.macdCrossEnabled : (srcTfRules.useMacdBeyondSig !== undefined ? srcTfRules.useMacdBeyondSig : false),
+                useStochCross: srcTfRules.stochCrossEnabled !== undefined ? srcTfRules.stochCrossEnabled : (srcTfRules.useStochCross !== undefined ? srcTfRules.useStochCross : false),
+                useStochKLimit: srcTfRules.stochKLimitEnabled !== undefined ? srcTfRules.stochKLimitEnabled : (srcTfRules.useStochKLimit !== undefined ? srcTfRules.useStochKLimit : false),
+                stochKThreshold: srcTfRules.stochKThreshold !== undefined ? srcTfRules.stochKThreshold : 80,
+                useRSI: srcTfRules.rsiEnabled !== undefined ? srcTfRules.rsiEnabled : (srcTfRules.useRSI !== undefined ? srcTfRules.useRSI : false),
+                rsiLow: srcTfRules.rsiLow !== undefined ? srcTfRules.rsiLow : 5,
+                rsiHigh: srcTfRules.rsiHigh !== undefined ? srcTfRules.rsiHigh : 95,
+                useMacdVal: srcTfRules.macdValueEnabled !== undefined ? srcTfRules.macdValueEnabled : (srcTfRules.useMacdVal !== undefined ? srcTfRules.useMacdVal : false),
+                macdVal: srcTfRules.macdValue !== undefined ? srcTfRules.macdValue : (srcTfRules.macdVal !== undefined ? srcTfRules.macdVal : 0)
+            };
+        };
+
+        if (hasLongShort) {
+            timeframes.forEach(tf => {
+                mapped.long[tf] = mapTf(rawRules.long[tf], tf);
+                mapped.short[tf] = mapTf(rawRules.short[tf], tf);
+            });
+        } else {
+            timeframes.forEach(tf => {
+                const srcRules = rawRules[tf] || {};
+                mapped.long[tf] = mapTf(srcRules, tf);
+                mapped.short[tf] = mapTf({ ...srcRules }, tf);
+            });
+        }
+
+        Object.keys(rawRules).forEach(k => {
+            if (!timeframes.includes(k) && k !== 'long' && k !== 'short') {
+                mapped[k] = rawRules[k];
+            }
+        });
+
+        return mapped;
     };
 
     const handleRecordSelect = (e) => {
@@ -124,15 +267,22 @@ const BacktestForm = () => {
             setResultsTrades(record.tradesLog || []);
             setLatestResult(record); // 다운로드 경로(detailFile) 포함하여 상태 업데이트
             const baseStrategy = OFFICIAL_STRATEGIES.find(s => s.version === record.baseVersion);
-            if (record.rules) setRules(record.rules);
-            else if (baseStrategy) setRules(baseStrategy.rules);
+            if (record.rules) setRules(normalizeAndMapRules(record.rules));
+            else if (baseStrategy) setRules(normalizeAndMapRules(baseStrategy.rules));
         }
     };
 
     const handleRuleChange = (side, interval, field, value) => {
+        const targetSide = side || activeDirectionTab;
         setRules(prev => ({
             ...prev,
-            [side]: { ...prev[side], [interval]: { ...prev[side][interval], [field]: value } }
+            [targetSide]: {
+                ...prev[targetSide],
+                [interval]: {
+                    ...prev[targetSide][interval],
+                    [field]: value
+                }
+            }
         }));
     };
 
@@ -194,6 +344,7 @@ const BacktestForm = () => {
         try {
             // Helper to parse strings to arrays of appropriate types
             const parseParam = (str, type = 'number') => {
+                if (!str) return [];
                 return str.split(',').map(s => {
                     const trimmed = s.trim();
                     if (type === 'boolean') {
@@ -203,32 +354,33 @@ const BacktestForm = () => {
                 }).filter(v => !isNaN(v) || type === 'boolean');
             };
 
+            const buildSideSpace = (side) => {
+                const sideParams = optParams[side];
+                const prefixMap = { m5: 'm5_', h1: 'h1_', d1: 'd1_' };
+                const space = {};
+                
+                ['m5', 'h1', 'd1'].forEach(tf => {
+                    const prefix = prefixMap[tf];
+                    space[`${prefix}useADX`] = sideParams[`${prefix}useADX`]?.length > 0 ? sideParams[`${prefix}useADX`] : [false];
+                    space[`${prefix}adxLow`] = parseParam(sideParams[`${prefix}adxLow`] || '');
+                    space[`${prefix}adxHigh`] = parseParam(sideParams[`${prefix}adxHigh`] || '');
+                    space[`${prefix}useMacdBeyondSig`] = sideParams[`${prefix}useMacdBeyondSig`]?.length > 0 ? sideParams[`${prefix}useMacdBeyondSig`] : [false];
+                    space[`${prefix}useStochCross`] = sideParams[`${prefix}useStochCross`]?.length > 0 ? sideParams[`${prefix}useStochCross`] : [false];
+                    space[`${prefix}useStochKLimit`] = sideParams[`${prefix}useStochKLimit`]?.length > 0 ? sideParams[`${prefix}useStochKLimit`] : [false];
+                    space[`${prefix}stochKLow`] = parseParam(sideParams[`${prefix}stochKLow`] || '');
+                    space[`${prefix}stochKHigh`] = parseParam(sideParams[`${prefix}stochKHigh`] || '');
+                    space[`${prefix}useRSI`] = sideParams[`${prefix}useRSI`]?.length > 0 ? sideParams[`${prefix}useRSI`] : [false];
+                    space[`${prefix}rsiLow`] = parseParam(sideParams[`${prefix}rsiLow`] || '');
+                    space[`${prefix}rsiHigh`] = parseParam(sideParams[`${prefix}rsiHigh`] || '');
+                    space[`${prefix}useMacdVal`] = sideParams[`${prefix}useMacdVal`]?.length > 0 ? sideParams[`${prefix}useMacdVal`] : [false];
+                    space[`${prefix}macdVal`] = parseParam(sideParams[`${prefix}macdVal`] || '');
+                });
+                return space;
+            };
+
             const searchSpace = {
-                // 5m Space
-                m5_useADX: parseParam(optParams.m5_useADX, 'boolean'),
-                m5_adxThreshold: parseParam(optParams.m5_adxThreshold),
-                m5_useMacdBeyondSig: parseParam(optParams.m5_useMacdBeyondSig, 'boolean'),
-                m5_useStochCross: parseParam(optParams.m5_useStochCross, 'boolean'),
-                m5_useStochKLimit: parseParam(optParams.m5_useStochKLimit, 'boolean'),
-                m5_stochKThreshold: parseParam(optParams.m5_stochKThreshold),
-
-                // 1h Space
-                h1_useADX: parseParam(optParams.h1_useADX, 'boolean'),
-                h1_adxThreshold: parseParam(optParams.h1_adxThreshold),
-                h1_useMacdBeyondSig: parseParam(optParams.h1_useMacdBeyondSig, 'boolean'),
-                h1_useStochCross: parseParam(optParams.h1_useStochCross, 'boolean'),
-                h1_useStochKLimit: parseParam(optParams.h1_useStochKLimit, 'boolean'),
-                h1_stochKThreshold: parseParam(optParams.h1_stochKThreshold),
-
-                // 1d Space
-                d1_useADX: parseParam(optParams.d1_useADX, 'boolean'),
-                d1_adxThreshold: parseParam(optParams.d1_adxThreshold),
-                d1_useMacdBeyondSig: parseParam(optParams.d1_useMacdBeyondSig, 'boolean'),
-                d1_useStochCross: parseParam(optParams.d1_useStochCross, 'boolean'),
-                d1_useStochKLimit: parseParam(optParams.d1_useStochKLimit, 'boolean'),
-                d1_stochKThreshold: parseParam(optParams.d1_stochKThreshold),
-
-                // Global Space
+                long: buildSideSpace('long'),
+                short: buildSideSpace('short'),
                 targetRoi: parseParam(optParams.targetRoi),
                 slRoi: parseParam(optParams.slRoi)
             };
@@ -241,7 +393,9 @@ const BacktestForm = () => {
                 leverage: config.leverage,
                 balance: config.initialBalance,
                 entryWaitMin: config.entryWaitMin,
-                exitWaitMin: config.exitWaitMin
+                exitWaitMin: config.exitWaitMin,
+                reduceTpWaitMin: config.reduceTpWaitMin,
+                reducedTargetRoi: config.reducedTargetRoi
             };
 
             console.log("[OPTIMIZE] Sending searchSpace:", searchSpace);
@@ -276,7 +430,7 @@ const BacktestForm = () => {
             slRoi: rankItem.config.slRoi ?? prev.slRoi
         }));
         
-        setRules(rankItem.rules);
+        setRules(normalizeAndMapRules(rankItem.rules));
         alert(`선택하신 파라미터 조합이 대시보드 폼에 성공적으로 적용되었습니다!\n- 수익률: ${rankItem.stats.roi} | MDD: ${rankItem.stats.mdd}%`);
     };
 
@@ -377,6 +531,139 @@ const BacktestForm = () => {
         const e = new Date(end);
         const diff = Math.floor((e - s) / (1000 * 60));
         return diff >= 0 ? `${diff}m` : '-';
+    };
+
+    const renderOptIntervalCards = (side) => {
+        const isLong = side === 'long';
+        const sideColor = isLong ? '#26a69a' : '#ef5350';
+        const sideText = isLong ? 'LONG' : 'SHORT';
+        const sideParams = optParams[side] || {};
+
+        const tfs = [
+            { id: 'm5', label: '5m' },
+            { id: 'h1', label: '1h' },
+            { id: 'd1', label: '1d' }
+        ];
+
+        return (
+            <div key={`opt-${side}`} style={{ marginBottom: '24px' }}>
+                <h4 style={{ color: sideColor, fontSize: '14px', fontWeight: '900', margin: '0 0 14px 0', borderLeft: `4px solid ${sideColor}`, paddingLeft: '10px' }}>
+                    {sideText} OPTIMIZATION SPACE
+                </h4>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                    {tfs.map(({ id, label }) => {
+                        const getChecked = (key, val) => (sideParams[`${id}_${key}`] || []).includes(val);
+                        const getValue = (key) => sideParams[`${id}_${key}`] || '';
+                        const handleTextChange = (key, val) => {
+                            setOptParams(prev => ({
+                                ...prev,
+                                [side]: {
+                                    ...prev[side],
+                                    [`${id}_${key}`]: val
+                                }
+                            }));
+                        };
+
+                        return (
+                            <div key={`opt-${side}-${id}`} style={{ background: '#1e2329', padding: '16px', borderRadius: '8px', border: '1px solid #2b3139', flex: '1', minWidth: '280px' }}>
+                                <h5 style={{ color: sideColor, fontSize: '14px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{label} Timeframe</h5>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {/* ADX */}
+                                    <div style={{ borderBottom: '1px solid #2b3139', paddingBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>Use ADX:</span>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useADX', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useADX`, true, e.target.checked)} /> True
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useADX', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useADX`, false, e.target.checked)} /> False
+                                            </label>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <input type="text" placeholder="Low (e.g. 30)" value={getValue('adxLow')} onChange={e => handleTextChange('adxLow', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                            <span style={{ color: '#848e9c', fontSize: '11px' }}>~</span>
+                                            <input type="text" placeholder="High (e.g. 99)" value={getValue('adxHigh')} onChange={e => handleTextChange('adxHigh', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Stoch K Limit */}
+                                    <div style={{ borderBottom: '1px solid #2b3139', paddingBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>StochK Limit:</span>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useStochKLimit', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useStochKLimit`, true, e.target.checked)} /> True
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useStochKLimit', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useStochKLimit`, false, e.target.checked)} /> False
+                                            </label>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <input type="text" placeholder="Lows (e.g. 0)" value={getValue('stochKLow')} onChange={e => handleTextChange('stochKLow', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                            <span style={{ color: '#848e9c', fontSize: '11px' }}>~</span>
+                                            <input type="text" placeholder="Highs (e.g. 99)" value={getValue('stochKHigh')} onChange={e => handleTextChange('stochKHigh', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* RSI */}
+                                    <div style={{ borderBottom: '1px solid #2b3139', paddingBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>Use RSI:</span>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useRSI', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useRSI`, true, e.target.checked)} /> True
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useRSI', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useRSI`, false, e.target.checked)} /> False
+                                            </label>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <input type="text" placeholder="Low (e.g. 5)" value={getValue('rsiLow')} onChange={e => handleTextChange('rsiLow', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                            <span style={{ color: '#848e9c', fontSize: '11px' }}>~</span>
+                                            <input type="text" placeholder="High (e.g. 95)" value={getValue('rsiHigh')} onChange={e => handleTextChange('rsiHigh', e.target.value)} style={{ width: '45%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* MACD Value */}
+                                    <div style={{ borderBottom: '1px solid #2b3139', paddingBottom: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>|MACD| &lt;:</span>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useMacdVal', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useMacdVal`, true, e.target.checked)} /> True
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                                <input type="checkbox" checked={getChecked('useMacdVal', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useMacdVal`, false, e.target.checked)} /> False
+                                            </label>
+                                        </div>
+                                        <input type="text" placeholder="Threshold (e.g. 0)" value={getValue('macdVal')} onChange={e => handleTextChange('macdVal', e.target.value)} style={{ width: '95%', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '11px' }} />
+                                    </div>
+
+                                    {/* MACD Cross */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #2b3139', paddingBottom: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>MACD Cross:</span>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                            <input type="checkbox" checked={getChecked('useMacdBeyondSig', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useMacdBeyondSig`, true, e.target.checked)} /> True
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                            <input type="checkbox" checked={getChecked('useMacdBeyondSig', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useMacdBeyondSig`, false, e.target.checked)} /> False
+                                        </label>
+                                    </div>
+
+                                    {/* Stoch Cross */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: '#eaebed', fontWeight: 'bold', width: '105px', flexShrink: 0 }}>Stoch Cross:</span>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                            <input type="checkbox" checked={getChecked('useStochCross', true)} onChange={e => handleOptCheckboxChange(side, `${id}_useStochCross`, true, e.target.checked)} /> True
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '11px', color: '#848e9c', cursor: 'pointer', margin: 0 }}>
+                                            <input type="checkbox" checked={getChecked('useStochCross', false)} onChange={e => handleOptCheckboxChange(side, `${id}_useStochCross`, false, e.target.checked)} /> False
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
 
@@ -617,175 +904,241 @@ const BacktestForm = () => {
                 <h3 style={{ color: '#eaebed', fontSize: '16px', fontWeight: '800', marginBottom: '24px' }}>
                     1. Individual Chart Border Conditions (Check to Enable)
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                    <div>
-                        <h4 style={{ color: '#26a69a', fontSize: '14px', fontWeight: '900', marginBottom: '20px' }}>LONG (GREEN BORDER)</h4>
-                        {Object.keys(rules.long || {}).map((iv, idx, arr) => (
-                            <div key={iv} className="interval-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px', flexWrap: 'wrap' }}>
-                                <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', fontWeight: 'bold', width: '35px' }}>{iv}:</span>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.long?.[iv]?.useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>ADX &gt;</span>
-                                    <input type="number" style={{ width: '50px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} value={rules.long?.[iv]?.adxThreshold} onChange={e => handleRuleChange('long', iv, 'adxThreshold', parseFloat(e.target.value))} />
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.long?.[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('long', iv, 'useMacdBeyondSig', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD &gt; Signal</span>
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.long?.[iv]?.useStochCross} onChange={e => handleRuleChange('long', iv, 'useStochCross', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>Stoch D &lt; Stoch K</span>
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                {rules.long?.[iv]?.stochKThreshold !== undefined && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.long?.[iv]?.useStochKLimit} onChange={e => handleRuleChange('long', iv, 'useStochKLimit', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>StochK &lt;</span>
-                                        <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.long?.[iv]?.stochKThreshold} onChange={e => handleRuleChange('long', iv, 'stochKThreshold', parseFloat(e.target.value))} />
-                                        <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                    </div>
-                                )}
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.long?.[iv]?.useRSI} onChange={e => handleRuleChange('long', iv, 'useRSI', e.target.checked)} />
-                                    <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.long?.[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('long', iv, 'rsiLow', parseFloat(e.target.value))} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
-                                    <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.long?.[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('long', iv, 'rsiHigh', parseFloat(e.target.value))} />
-                                    {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>}
-                                </div>
-                                {iv === '1d' && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.long?.[iv]?.useMacdSigDiff} onChange={e => handleRuleChange('long', iv, 'useMacdSigDiff', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>|MACD-Sig| &gt;</span>
-                                        <input type="number" style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.long?.[iv]?.macdSigDiff} onChange={e => handleRuleChange('long', iv, 'macdSigDiff', parseFloat(e.target.value))} />
-                                    </div>
-                                )}
-                                {iv === '5m' && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.long?.[iv]?.useMacdVal} onChange={e => handleRuleChange('long', iv, 'useMacdVal', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD &lt;</span>
-                                        <input type="number" style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.long?.[iv]?.macdVal} onChange={e => handleRuleChange('long', iv, 'macdVal', parseFloat(e.target.value))} />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                
+                {/* 2번에서 이동한 익절률, 손절률 및 글로벌 매개변수 입력 필드 */}
+                <div style={{ background: '#0b0e11', padding: '20px', borderRadius: '12px', border: '1px solid #2b3139', marginBottom: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div className="input-group">
+                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Target ROI (Decimal, e.g. 0.03 = 3%)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" step="0.005" name="targetRoi" value={config.targetRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>목표 수익률 (Net ROI)</span>
+                        </div>
                     </div>
+                    <div className="input-group">
+                        <label style={{ color: '#ef5350', fontSize: '13px', fontWeight: 'bold' }}>Stop Loss ROI (Decimal, e.g. 0.15 = 15%)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" step="0.001" name="slRoi" value={config.slRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>최대 허용 손실률</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" name="entryWaitMin" value={config.entryWaitMin || 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 진입 실패 처리</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#ff4d4d', fontSize: '13px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" name="exitWaitMin" value={config.exitWaitMin || 2000} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 시장가 청산 강제</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Reduce TP Wait Time (min, 0 to disable)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" name="reduceTpWaitMin" value={config.reduceTpWaitMin ?? 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 뒤 익절 하향 (0이면 비활성)</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Reduced Target ROI (Decimal, e.g. 0.01 = 1%)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" step="0.005" name="reducedTargetRoi" value={config.reducedTargetRoi ?? 0.01} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>조정된 목표 수익률 (Net ROI)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    {/* LONG CONDITIONS */}
                     <div>
-                        <h4 style={{ color: '#ff4d4d', fontSize: '14px', fontWeight: '900', marginBottom: '20px' }}>SHORT (RED BORDER)</h4>
-                        {Object.keys(rules.short || {}).map((iv, idx, arr) => (
-                            <div key={iv} className="interval-row" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px', flexWrap: 'wrap' }}>
-                                <span className="interval-tag" style={{ color: '#f3ba2f', fontSize: '14px', fontWeight: 'bold', width: '35px' }}>{iv}:</span>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.short?.[iv]?.useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>ADX &gt;</span>
-                                    <input type="number" style={{ width: '50px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '2px 5px', borderRadius: '4px' }} value={rules.short?.[iv]?.adxThreshold} onChange={e => handleRuleChange('short', iv, 'adxThreshold', parseFloat(e.target.value))} />
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.short?.[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('short', iv, 'useMacdBeyondSig', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD &lt; Signal</span>
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.short?.[iv]?.useStochCross} onChange={e => handleRuleChange('short', iv, 'useStochCross', e.target.checked)} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>Stoch D &gt; Stoch K</span>
-                                    <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
-                                </div>
-                                {rules.short?.[iv]?.stochKThreshold !== undefined && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.short?.[iv]?.useStochKLimit} onChange={e => handleRuleChange('short', iv, 'useStochKLimit', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>StochK &lt;</span>
-                                        <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.short?.[iv]?.stochKThreshold} onChange={e => handleRuleChange('short', iv, 'stochKThreshold', parseFloat(e.target.value))} />
-                                        <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                            <h4 style={{ color: '#26a69a', fontSize: '14px', fontWeight: '900', margin: 0, borderLeft: '4px solid #26a69a', paddingLeft: '10px' }}>LONG CONDITIONS</h4>
+                            <button 
+                                onClick={() => {
+                                    if (window.confirm('롱 설정을 숏 설정에 그대로 복사하시겠습니까?')) {
+                                        ['5m', '1h', '1d'].forEach(tf => {
+                                            Object.keys(rules.long[tf] || {}).forEach(key => {
+                                                handleRuleChange('short', tf, key, rules.long[tf][key]);
+                                            });
+                                        });
+                                        alert('롱 설정이 숏 설정에 복사되었습니다.');
+                                    }
+                                }}
+                                style={{
+                                    padding: '6px 12px',
+                                    background: '#1e2329',
+                                    color: '#26a69a',
+                                    border: '1px solid #26a69a',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    fontSize: '12px'
+                                }}
+                            >
+                                COPY LONG TO SHORT
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                            {['5m', '1h', '1d'].map((iv) => {
+                                let isFirst = true;
+                                const renderAnd = () => {
+                                    if (isFirst) {
+                                        isFirst = false;
+                                        return <span style={{ width: '26px', marginRight: '6px', display: 'inline-block' }}></span>;
+                                    }
+                                    return <span style={{ color: '#848e9c', fontWeight: 'bold', marginRight: '6px', fontSize: '11px', width: '26px', display: 'inline-block', textAlign: 'right' }}>AND</span>;
+                                };
+                                const targetRules = rules.long || {};
+                                return (
+                                    <div key={`long-${iv}`} style={{ background: '#1e2329', padding: '16px', borderRadius: '8px', border: '1px solid #2b3139', flex: '1', minWidth: '260px' }}>
+                                        <h5 style={{ color: '#26a69a', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{iv}:</h5>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {/* ADX Range */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>ADX</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxLow ?? 30} onChange={e => handleRuleChange('long', iv, 'adxLow', parseFloat(e.target.value))} />
+                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxHigh ?? 99} onChange={e => handleRuleChange('long', iv, 'adxHigh', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* Stoch K Limit */}
+                                            {(targetRules[iv]?.stochKThreshold !== undefined || targetRules[iv]?.stochKHigh !== undefined) && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useStochKLimit} onChange={e => handleRuleChange('long', iv, 'useStochKLimit', e.target.checked)} />
+                                                    <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>StochK</span>
+                                                    <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKLow ?? 0} onChange={e => handleRuleChange('long', iv, 'stochKLow', parseFloat(e.target.value))} />
+                                                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
+                                                    <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKHigh ?? (targetRules[iv]?.stochKThreshold || 99)} onChange={e => handleRuleChange('long', iv, 'stochKHigh', parseFloat(e.target.value))} />
+                                                </div>
+                                            )}
+
+                                            {/* RSI Limit */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useRSI} onChange={e => handleRuleChange('long', iv, 'useRSI', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>RSI</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('long', iv, 'rsiLow', parseFloat(e.target.value))} />
+                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('long', iv, 'rsiHigh', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* MACD Value */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useMacdVal} onChange={e => handleRuleChange('long', iv, 'useMacdVal', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>|MACD| &lt;</span>
+                                                <input type="number" style={{ width: '60px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.macdVal ?? 0} onChange={e => handleRuleChange('long', iv, 'macdVal', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* MACD Cross */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('long', iv, 'useMacdBeyondSig', e.target.checked)} />
+                                                <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>MACD Cross (Long: &gt;)</span>
+                                            </div>
+
+                                            {/* Stoch Cross */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useStochCross} onChange={e => handleRuleChange('long', iv, 'useStochCross', e.target.checked)} />
+                                                <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross (Long: K &gt; D)</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                    <input type="checkbox" checked={rules.short?.[iv]?.useRSI} onChange={e => handleRuleChange('short', iv, 'useRSI', e.target.checked)} />
-                                    <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.short?.[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('short', iv, 'rsiLow', parseFloat(e.target.value))} />
-                                    <span style={{ color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
-                                    <input type="number" style={{ width: '55px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.short?.[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('short', iv, 'rsiHigh', parseFloat(e.target.value))} />
-                                    {(iv === '1d' || iv === '5m') && <span style={{ color: '#848e9c', fontWeight: 'bold', margin: '0 3px', fontSize: '11px' }}>AND</span>}
-                                </div>
-                                {iv === '1d' && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.short?.[iv]?.useMacdSigDiff} onChange={e => handleRuleChange('short', iv, 'useMacdSigDiff', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>|MACD-Sig| &gt;</span>
-                                        <input type="number" style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.short?.[iv]?.macdSigDiff} onChange={e => handleRuleChange('short', iv, 'macdSigDiff', parseFloat(e.target.value))} />
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* SHORT CONDITIONS */}
+                    <div style={{ marginTop: '10px' }}>
+                        <h4 style={{ color: '#ef5350', fontSize: '14px', fontWeight: '900', marginBottom: '20px', borderLeft: '4px solid #ef5350', paddingLeft: '10px' }}>SHORT CONDITIONS</h4>
+
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                            {['5m', '1h', '1d'].map((iv) => {
+                                let isFirst = true;
+                                const renderAnd = () => {
+                                    if (isFirst) {
+                                        isFirst = false;
+                                        return <span style={{ width: '26px', marginRight: '6px', display: 'inline-block' }}></span>;
+                                    }
+                                    return <span style={{ color: '#848e9c', fontWeight: 'bold', marginRight: '6px', fontSize: '11px', width: '26px', display: 'inline-block', textAlign: 'right' }}>AND</span>;
+                                };
+                                const targetRules = rules.short || {};
+                                return (
+                                    <div key={`short-${iv}`} style={{ background: '#1e2329', padding: '16px', borderRadius: '8px', border: '1px solid #2b3139', flex: '1', minWidth: '260px' }}>
+                                        <h5 style={{ color: '#ef5350', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{iv}:</h5>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {/* ADX Range */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>ADX</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxLow ?? 30} onChange={e => handleRuleChange('short', iv, 'adxLow', parseFloat(e.target.value))} />
+                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxHigh ?? 99} onChange={e => handleRuleChange('short', iv, 'adxHigh', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* Stoch K Limit */}
+                                            {(targetRules[iv]?.stochKThreshold !== undefined || targetRules[iv]?.stochKHigh !== undefined) && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useStochKLimit} onChange={e => handleRuleChange('short', iv, 'useStochKLimit', e.target.checked)} />
+                                                    <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>StochK</span>
+                                                    <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKLow ?? 0} onChange={e => handleRuleChange('short', iv, 'stochKLow', parseFloat(e.target.value))} />
+                                                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
+                                                    <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKHigh ?? (targetRules[iv]?.stochKThreshold || 99)} onChange={e => handleRuleChange('short', iv, 'stochKHigh', parseFloat(e.target.value))} />
+                                                </div>
+                                            )}
+
+                                            {/* RSI Limit */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useRSI} onChange={e => handleRuleChange('short', iv, 'useRSI', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>RSI</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('short', iv, 'rsiLow', parseFloat(e.target.value))} />
+                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+                                                <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('short', iv, 'rsiHigh', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* MACD Value */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useMacdVal} onChange={e => handleRuleChange('short', iv, 'useMacdVal', e.target.checked)} />
+                                                <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>|MACD| &lt;</span>
+                                                <input type="number" style={{ width: '60px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.macdVal ?? 0} onChange={e => handleRuleChange('short', iv, 'macdVal', parseFloat(e.target.value))} />
+                                            </div>
+
+                                            {/* MACD Cross */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useMacdBeyondSig} onChange={e => handleRuleChange('short', iv, 'useMacdBeyondSig', e.target.checked)} />
+                                                <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>MACD Cross (Short: &lt;)</span>
+                                            </div>
+
+                                            {/* Stoch Cross */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useStochCross} onChange={e => handleRuleChange('short', iv, 'useStochCross', e.target.checked)} />
+                                                <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross (Short: K &lt; D)</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                                {iv === '5m' && (
-                                    <div className="cond-item" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                        <input type="checkbox" checked={rules.short?.[iv]?.useMacdVal} onChange={e => handleRuleChange('short', iv, 'useMacdVal', e.target.checked)} />
-                                        <span style={{ color: '#eaebed', fontSize: '12px' }}>MACD &gt;</span>
-                                        <input type="number" style={{ width: '66px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 6px', borderRadius: '4px' }} value={rules.short?.[iv]?.macdVal} onChange={e => handleRuleChange('short', iv, 'macdVal', parseFloat(e.target.value))} />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* 2. Entry & Exit Strategy 섹션 */}
-            <section className="config-section" style={{ marginTop: '24px' }}>
-                <div style={{ position: 'fixed', bottom: '10px', right: '10px', fontSize: '0.7rem', color: '#444' }}>
-                    v7.0.0.2 Backtest Engine [Modularized System]
-                </div>
-                <h3 style={{ color: '#eaebed', fontSize: '16px', fontWeight: '800', marginBottom: '24px' }}>
-                    2. Entry & Exit Strategy (Order Execution)
-                </h3>
-                <div style={{ background: '#0b0e11', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                        <div className="input-group">
-                            <label style={{ color: '#f3ba2f' }}>Entry Wait Limit (min)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" name="entryWaitMin" value={config.entryWaitMin || 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 진입 실패 처리</span>
-                            </div>
-                        </div>
-                        <div className="input-group">
-                            <label style={{ color: '#ff4d4d' }}>Exit Wait Limit (min)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" name="exitWaitMin" value={config.exitWaitMin || 2000} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 시장가 청산 강제</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                        <div className="input-group">
-                            <label style={{ color: '#26a69a' }}>Target ROI (Decimal, e.g. 0.03 = 3%)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" step="0.005" name="targetRoi" value={config.targetRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>목표 수익률 (Net ROI)</span>
-                            </div>
-                        </div>
-                        <div className="input-group">
-                            <label style={{ color: '#ef5350' }}>Stop Loss ROI (Decimal, e.g. 0.15 = 15%)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" step="0.001" name="slRoi" value={config.slRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>최대 허용 손실률</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
-                        <div className="input-group">
-                            <label style={{ color: '#f3ba2f' }}>Reduce TP Wait Time (min, 0 to disable)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" name="reduceTpWaitMin" value={config.reduceTpWaitMin ?? 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 목표수익률 강제 인하 (0이면 비활성)</span>
-                            </div>
-                        </div>
-                        <div className="input-group">
-                            <label style={{ color: '#26a69a' }}>Reduced Target ROI (Decimal, e.g. 0.01 = 1%)</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#0b0e11', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                                <input type="number" step="0.005" name="reducedTargetRoi" value={config.reducedTargetRoi ?? 0.01} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '12px' }}>조정된 목표 수익률 (Net ROI)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+
 
             {/* 3. 전략 다차원 최적화 (Parameter Optimization Grid) 섹션 */}
             <section className="config-section" style={{ marginTop: '24px' }}>
@@ -794,106 +1147,29 @@ const BacktestForm = () => {
                 </h3>
                 <div style={{ background: '#0b0e11', padding: '24px', borderRadius: '12px', border: '1px solid #2b3139' }}>
                     <p style={{ color: '#848e9c', fontSize: '12px', marginTop: '0', marginBottom: '20px' }}>
-                        탐색할 지표들의 기준값을 콤마(<code>,</code>)로 구분하여 여러 개 나열하면, 최적화 에이전트가 모든 조합 경우의 수를 자동 시뮬레이션합니다. (예: <code>30, 35</code>)
+                        탐색할 지표들의 기준값을 콤마(<code>,</code>)로 구분하여 여러 개 나열하면, 최적화 에이전트가 모든 조합 경우의 수를 자동 시뮬레이션합니다. (예: <code>30, 35</code>)<br />
+                        True/False 선택 체크박스는 둘 다 체크할 경우 켰을 때와 껐을 때(True/False) 둘 다 탐색 범위에 포함하여 시뮬레이션합니다.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                        {/* 5M Card */}
-                        <div style={{ background: '#1e2329', padding: '14px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <h4 style={{ color: '#f3ba2f', fontSize: '13px', margin: '0 0 14px 0', borderBottom: '1px solid #2b3139', paddingBottom: '6px' }}>5M Timeframe Space</h4>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use ADX (true/false)</label>
-                                <input type="text" value={optParams.m5_useADX} onChange={e => setOptParams(prev => ({ ...prev, m5_useADX: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>ADX Thresholds</label>
-                                <input type="text" value={optParams.m5_adxThreshold} onChange={e => setOptParams(prev => ({ ...prev, m5_adxThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>MACD &gt; Signal (true/false)</label>
-                                <input type="text" value={optParams.m5_useMacdBeyondSig} onChange={e => setOptParams(prev => ({ ...prev, m5_useMacdBeyondSig: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch D &lt; Stoch K (true/false)</label>
-                                <input type="text" value={optParams.m5_useStochCross} onChange={e => setOptParams(prev => ({ ...prev, m5_useStochCross: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use Stoch K Limit (true/false)</label>
-                                <input type="text" value={optParams.m5_useStochKLimit} onChange={e => setOptParams(prev => ({ ...prev, m5_useStochKLimit: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group">
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch K Limits</label>
-                                <input type="text" value={optParams.m5_stochKThreshold} onChange={e => setOptParams(prev => ({ ...prev, m5_stochKThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                        </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {/* 롱 조건 최적화 공간 */}
+                        {renderOptIntervalCards('long')}
 
-                        {/* 1H Card */}
-                        <div style={{ background: '#1e2329', padding: '14px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <h4 style={{ color: '#f3ba2f', fontSize: '13px', margin: '0 0 14px 0', borderBottom: '1px solid #2b3139', paddingBottom: '6px' }}>1H Timeframe Space</h4>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use ADX (true/false)</label>
-                                <input type="text" value={optParams.h1_useADX} onChange={e => setOptParams(prev => ({ ...prev, h1_useADX: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>ADX Thresholds</label>
-                                <input type="text" value={optParams.h1_adxThreshold} onChange={e => setOptParams(prev => ({ ...prev, h1_adxThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>MACD &gt; Signal (true/false)</label>
-                                <input type="text" value={optParams.h1_useMacdBeyondSig} onChange={e => setOptParams(prev => ({ ...prev, h1_useMacdBeyondSig: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch D &lt; Stoch K (true/false)</label>
-                                <input type="text" value={optParams.h1_useStochCross} onChange={e => setOptParams(prev => ({ ...prev, h1_useStochCross: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use Stoch K Limit (true/false)</label>
-                                <input type="text" value={optParams.h1_useStochKLimit} onChange={e => setOptParams(prev => ({ ...prev, h1_useStochKLimit: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group">
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch K Limits</label>
-                                <input type="text" value={optParams.h1_stochKThreshold} onChange={e => setOptParams(prev => ({ ...prev, h1_stochKThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                        </div>
+                        {/* 숏 조건 최적화 공간 */}
+                        {renderOptIntervalCards('short')}
 
-                        {/* 1D Card */}
-                        <div style={{ background: '#1e2329', padding: '14px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <h4 style={{ color: '#26a69a', fontSize: '13px', margin: '0 0 14px 0', borderBottom: '1px solid #2b3139', paddingBottom: '6px' }}>1D Timeframe Space</h4>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use ADX (true/false)</label>
-                                <input type="text" value={optParams.d1_useADX} onChange={e => setOptParams(prev => ({ ...prev, d1_useADX: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>ADX Thresholds</label>
-                                <input type="text" value={optParams.d1_adxThreshold} onChange={e => setOptParams(prev => ({ ...prev, d1_adxThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>MACD &gt; Signal (true/false)</label>
-                                <input type="text" value={optParams.d1_useMacdBeyondSig} onChange={e => setOptParams(prev => ({ ...prev, d1_useMacdBeyondSig: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch D &lt; Stoch K (true/false)</label>
-                                <input type="text" value={optParams.d1_useStochCross} onChange={e => setOptParams(prev => ({ ...prev, d1_useStochCross: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Use Stoch K Limit (true/false)</label>
-                                <input type="text" value={optParams.d1_useStochKLimit} onChange={e => setOptParams(prev => ({ ...prev, d1_useStochKLimit: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group">
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stoch K Limits</label>
-                                <input type="text" value={optParams.d1_stochKThreshold} onChange={e => setOptParams(prev => ({ ...prev, d1_stochKThreshold: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                        </div>
-
-                        {/* Global Card */}
+                        {/* 글로벌 스페이스 */}
                         <div style={{ background: '#1e2329', padding: '14px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                             <h4 style={{ color: '#eaebed', fontSize: '13px', margin: '0 0 14px 0', borderBottom: '1px solid #2b3139', paddingBottom: '6px' }}>Global Space</h4>
-                            <div className="input-group" style={{ marginBottom: '10px' }}>
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Target ROI (Decimal: 0.03, 0.04)</label>
-                                <input type="text" value={optParams.targetRoi} onChange={e => setOptParams(prev => ({ ...prev, targetRoi: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
-                            </div>
-                            <div className="input-group">
-                                <label style={{ fontSize: '10px', color: '#848e9c' }}>Stop Loss ROI (Decimal: 0.12, 0.15)</label>
-                                <input type="text" value={optParams.slRoi} onChange={e => setOptParams(prev => ({ ...prev, slRoi: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div className="input-group">
+                                    <label style={{ fontSize: '10px', color: '#848e9c' }}>Target ROI (Decimal: 0.03, 0.04)</label>
+                                    <input type="text" value={optParams.targetRoi} onChange={e => setOptParams(prev => ({ ...prev, targetRoi: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
+                                </div>
+                                <div className="input-group">
+                                    <label style={{ fontSize: '10px', color: '#848e9c' }}>Stop Loss ROI (Decimal: 0.12, 0.15)</label>
+                                    <input type="text" value={optParams.slRoi} onChange={e => setOptParams(prev => ({ ...prev, slRoi: e.target.value }))} style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '6px', borderRadius: '4px', width: '100%', fontSize: '12px' }} />
+                                </div>
                             </div>
                         </div>
                     </div>

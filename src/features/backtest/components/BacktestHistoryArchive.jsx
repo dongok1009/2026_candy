@@ -1,8 +1,70 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { History, Play, Trash2, Download, ExternalLink, TrendingUp, Calendar, Activity } from 'lucide-react';
 import './BacktestHistoryArchive.css';
 
 const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
+    const [expandedVersions, setExpandedVersions] = useState({});
+
+    const toggleRules = (version) => {
+        setExpandedVersions(prev => ({
+            ...prev,
+            [version]: !prev[version]
+        }));
+    };
+
+    const renderRulesForSide = (sideRules, side) => {
+        if (!sideRules) return <div className="no-rules">설정된 조건이 없습니다.</div>;
+        
+        const tfRows = Object.entries(sideRules).map(([tf, tfRules]) => {
+            const activeRules = [];
+            
+            if (tfRules.useMacdVal) {
+                activeRules.push(`|MACD| < ${tfRules.macdVal ?? 0}`);
+            }
+            if (tfRules.useMacdBeyondSig) {
+                const operator = side === 'long' ? '>' : '<';
+                activeRules.push(`MACD ${operator} Signal`);
+            }
+            if (tfRules.useMacdSigDiff) {
+                activeRules.push(`MACD차이 > ${tfRules.macdSigDiff ?? 0}`);
+            }
+            if (tfRules.useStochCross) {
+                const crossText = side === 'long' ? 'K > D' : 'K < D';
+                activeRules.push(`Stoch 크로스 (${crossText})`);
+            }
+            if (tfRules.useStochKLimit) {
+                const low = tfRules.stochKLow ?? 0;
+                const high = tfRules.stochKHigh ?? tfRules.stochKThreshold ?? 80;
+                activeRules.push(`${low} < Stoch K < ${high}`);
+            }
+            if (tfRules.useADX) {
+                const low = tfRules.adxLow ?? tfRules.adxThreshold ?? 25;
+                const high = tfRules.adxHigh ?? 99;
+                activeRules.push(`${low} < ADX < ${high}`);
+            }
+            if (tfRules.useRSI) {
+                const low = tfRules.rsiLow ?? 30;
+                const high = tfRules.rsiHigh ?? 70;
+                activeRules.push(`${low} < RSI < ${high}`);
+            }
+            
+            if (activeRules.length === 0) return null;
+            
+            return (
+                <div key={tf} className="tf-rule-row">
+                    <span className="tf-badge">{tf}</span>
+                    <span className="tf-rules-text">{activeRules.join(', ')}</span>
+                </div>
+            );
+        }).filter(Boolean);
+        
+        if (tfRows.length === 0) {
+            return <div className="no-rules">활성화된 지표 필터 없음</div>;
+        }
+        
+        return <div className="tf-rules-list">{tfRows}</div>;
+    };
+
     if (!records || records.length === 0) {
         return (
             <div className="history-empty">
@@ -87,6 +149,69 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                 <span className="label">PERIOD</span>
                                 <span className="period-text">{record.stats.period}</span>
                             </div>
+
+                            {/* 지표 조건 아코디언 토글 추가 */}
+                            {(record.rules || record.config) && (
+                                <div className="rules-accordion">
+                                    <button 
+                                        type="button"
+                                        className={`rules-toggle-btn ${expandedVersions[record.version] ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            toggleRules(record.version);
+                                        }}
+                                    >
+                                        <span>지표 조건 (Rules)</span>
+                                        <span className="arrow">{expandedVersions[record.version] ? '▲' : '▼'}</span>
+                                    </button>
+                                    
+                                    {expandedVersions[record.version] && (
+                                        <div className="rules-detail-panel">
+                                            {record.rules && (
+                                                <>
+                                                    <div className="rules-section-title">⏱️ Entry / Exit Wait</div>
+                                                    <div className="rules-grid-mini">
+                                                        <div className="rule-item-mini">
+                                                            <span className="rule-lbl">Entry 대기:</span>
+                                                            <span className="rule-val">{record.rules.entryWaitMin ?? record.config?.entryWaitMin ?? 0}분</span>
+                                                        </div>
+                                                        <div className="rule-item-mini">
+                                                            <span className="rule-lbl">Exit 대기:</span>
+                                                            <span className="rule-val">{record.rules.exitWaitMin ?? record.config?.exitWaitMin ?? 0}분</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rules-section-title long-header">📈 Long Entry Conditions</div>
+                                                    {renderRulesForSide(record.rules.long, 'long')}
+
+                                                    <div className="rules-section-title short-header">📉 Short Entry Conditions</div>
+                                                    {renderRulesForSide(record.rules.short, 'short')}
+                                                </>
+                                            )}
+                                            
+                                            {record.config && (
+                                                <>
+                                                    <div className="rules-section-title config-header">⚙️ System Parameters</div>
+                                                    <div className="rules-grid-mini three-cols">
+                                                        <div className="rule-item-mini">
+                                                            <span className="rule-lbl">Target ROI:</span>
+                                                            <span className="rule-val">{record.config.targetRoi !== undefined ? `${(record.config.targetRoi * 100).toFixed(1)}%` : '-'}</span>
+                                                        </div>
+                                                        <div className="rule-item-mini">
+                                                            <span className="rule-lbl">Stop Loss:</span>
+                                                            <span className="rule-val">{record.config.slRoi !== undefined ? `${(record.config.slRoi * 100).toFixed(1)}%` : '-'}</span>
+                                                        </div>
+                                                        <div className="rule-item-mini">
+                                                            <span className="rule-lbl">레버리지:</span>
+                                                            <span className="rule-val">{record.config.leverage ? `${record.config.leverage}x` : '-'}</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="card-actions">
                                 <button className="action-btn load" onClick={() => onSelect(record.version)}>

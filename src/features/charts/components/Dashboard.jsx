@@ -24,14 +24,14 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: true, stochKThreshold: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 15, stochKLimitEnabled: true, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxThreshold: 30, stochKLimitEnabled: true, stochKThreshold: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxThreshold: 30, stochKLimitEnabled: false, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, macdHistEnabled: false, macdHistValue: 0, adxEnabled: false, adxThreshold: 15, stochKLimitEnabled: true, stochKThreshold: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   global: {
     entryWaitMin: 180,
@@ -40,8 +40,8 @@ const DEFAULT_RULES = {
     targetRoi: 0.04,
     slRoi: 0.15,
     reduceTpWaitMin: 0,
-    reducedTargetRoi: 0.02,
-    orderAmount: 100
+    reducedTargetRoi: 0.03,
+    orderAmount: 10000
   }
 };
 
@@ -58,81 +58,54 @@ const Dashboard = () => {
   const [debugLogs, setDebugLogs] = useState([]);
   const prevSignalRef = useRef(null);
 
-  const [rules, setRules] = useState(() => {
-    const saved = localStorage.getItem('trading_rules_v14');
-    if (!saved) return DEFAULT_RULES;
-    
-    try {
-      let parsed = JSON.parse(saved);
-      // [MIGRATION LOGIC] Check if it's the old structure (has '5m' at top level)
-      if (parsed['5m'] && !parsed.long) {
-        console.log('[DASHBOARD] Migrating old rules structure to new side-first pattern...');
-        parsed = {
-          long: {
-            '5m': parsed['5m']?.long || DEFAULT_RULES.long['5m'],
-            '1h': parsed['1h']?.long || DEFAULT_RULES.long['1h'],
-            '1d': parsed['1d']?.long || DEFAULT_RULES.long['1d']
-          },
-          short: {
-            '5m': parsed['5m']?.short || DEFAULT_RULES.short['5m'],
-            '1h': parsed['1h']?.short || DEFAULT_RULES.short['1h'],
-            '1d': parsed['1d']?.short || DEFAULT_RULES.short['1d']
-          },
-          global: parsed.global || DEFAULT_RULES.global
-        };
+  const isValidRules = (r) => {
+    if (!r || !r.long || !r.short || !r.global) return false;
+    const requiredGlobalKeys = ['entryWaitMin', 'exitWaitMin', 'leverage', 'targetRoi', 'slRoi', 'reduceTpWaitMin', 'reducedTargetRoi', 'orderAmount'];
+    for (const key of requiredGlobalKeys) {
+      const val = r.global[key];
+      if (val === undefined || val === null || isNaN(val) || val === '') {
+        return false;
       }
-
-      // Ensure stochKLimitEnabled and stochKThreshold exist in all intervals for both sides
-      ['long', 'short'].forEach(side => {
-        if (!parsed[side]) parsed[side] = { ...DEFAULT_RULES[side] };
-        ['5m', '1h', '1d'].forEach(tf => {
-          if (!parsed[side][tf]) {
-            parsed[side][tf] = { ...DEFAULT_RULES[side][tf] };
-          } else {
-            if (parsed[side][tf].stochKLimitEnabled === undefined) {
-              parsed[side][tf].stochKLimitEnabled = DEFAULT_RULES[side][tf].stochKLimitEnabled;
-            }
-            if (parsed[side][tf].stochKThreshold === undefined) {
-              parsed[side][tf].stochKThreshold = DEFAULT_RULES[side][tf].stochKThreshold;
-            }
-            if (parsed[side][tf].rsiEnabled === undefined) {
-              parsed[side][tf].rsiEnabled = DEFAULT_RULES[side][tf].rsiEnabled;
-            }
-            if (parsed[side][tf].rsiLow === undefined) {
-              parsed[side][tf].rsiLow = DEFAULT_RULES[side][tf].rsiLow;
-            }
-            if (parsed[side][tf].rsiHigh === undefined) {
-              parsed[side][tf].rsiHigh = DEFAULT_RULES[side][tf].rsiHigh;
-            }
-            if (parsed[side][tf].adxThreshold === undefined) {
-              parsed[side][tf].adxThreshold = DEFAULT_RULES[side][tf].adxThreshold;
-            }
-          }
-        });
-      });
-
-      // Ensure global variables are set safely
-      if (!parsed.global) {
-        parsed.global = { ...DEFAULT_RULES.global };
-      } else {
-        ['entryWaitMin', 'exitWaitMin', 'leverage', 'targetRoi', 'slRoi', 'reduceTpWaitMin', 'reducedTargetRoi', 'orderAmount'].forEach(field => {
-          if (parsed.global[field] === undefined) {
-            parsed.global[field] = DEFAULT_RULES.global[field];
-          }
-        });
-      }
-
-      return parsed;
-    } catch (e) {
-      console.error('[DASHBOARD] Failed to parse saved rules, resetting to default.');
-      return DEFAULT_RULES;
     }
+    return true;
+  };
+
+  const [rules, setRules] = useState(() => {
+    const defaultCopy = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    let saved = localStorage.getItem('trading_rules_v22');
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (isValidRules(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('[DASHBOARD] Parse error for saved rules:', e);
+      }
+    }
+
+    const oldSaved = localStorage.getItem('trading_rules_v21') || localStorage.getItem('trading_rules_v20') || localStorage.getItem('trading_rules_v19');
+    if (oldSaved) {
+      try {
+        const parsedOld = JSON.parse(oldSaved);
+        if (isValidRules(parsedOld)) {
+          return parsedOld;
+        }
+      } catch (e) {
+        console.error('[DASHBOARD] Parse error for old rules:', e);
+      }
+    }
+
+    return defaultCopy;
   });
 
   const [isTesting, setIsTesting] = useState(false);
 
   React.useEffect(() => {
-    localStorage.setItem('trading_rules_v14', JSON.stringify(rules));
+    if (isValidRules(rules)) {
+      localStorage.setItem('trading_rules_v22', JSON.stringify(rules));
+    }
   }, [rules]);
 
   React.useEffect(() => {
@@ -234,9 +207,33 @@ const Dashboard = () => {
 
   const updateRule = (interval, direction, field, value) => {
     if (interval === 'global') {
-        setRules(prev => ({ ...prev, [interval]: { ...prev[interval], [field]: value } }));
+        setRules(prev => ({ ...prev, global: { ...prev.global, [field]: value } }));
     } else {
-        setRules(prev => ({ ...prev, [direction]: { ...prev[direction], [interval]: { ...prev[direction][interval], [field]: value } } }));
+        if (direction === 'long' || direction === 'short') {
+            setRules(prev => ({
+                ...prev,
+                [direction]: {
+                    ...prev[direction],
+                    [interval]: {
+                        ...prev[direction][interval],
+                        [field]: value
+                    }
+                }
+            }));
+        } else {
+            // fallback (롱/숏 둘 다 동일하게 업데이트)
+            setRules(prev => ({
+                ...prev,
+                long: {
+                    ...prev.long,
+                    [interval]: { ...prev.long[interval], [field]: value }
+                },
+                short: {
+                    ...prev.short,
+                    [interval]: { ...prev.short[interval], [field]: value }
+                }
+            }));
+        }
     }
   };
 
@@ -480,7 +477,7 @@ const Dashboard = () => {
             </div>
             <PriceChart
               symbol={symbol} interval="5m" lastCandle={candle5m} limit={limit} 
-              rule={{ long: rules.long?.['5m'], short: rules.short?.['5m'] }}
+              rules={rules}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('5m', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('5m', data)}
@@ -493,7 +490,7 @@ const Dashboard = () => {
             </div>
             <PriceChart
               symbol={symbol} interval="1h" lastCandle={candle1h} limit={limit} 
-              rule={{ long: rules.long?.['1h'], short: rules.short?.['1h'] }}
+              rules={rules}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1h', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('1h', data)}
@@ -506,7 +503,7 @@ const Dashboard = () => {
             </div>
             <PriceChart
               symbol={symbol} interval="1d" lastCandle={candle1d} limit={limit} 
-              rule={{ long: rules.long?.['1d'], short: rules.short?.['1d'] }}
+              rules={rules}
               inspectTime={inspectTime}
               onSignalUpdate={(state) => handleSignalUpdate('1d', state)}
               onDataUpdate={(data) => handleIndicatorUpdate('1d', data)}

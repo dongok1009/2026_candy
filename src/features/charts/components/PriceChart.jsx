@@ -9,7 +9,9 @@ import {
 } from '../../../shared/utils/indicatorUtils';
 
 
-const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalUpdate, onDataUpdate, inspectTime }) => {
+const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignalUpdate, onDataUpdate, inspectTime }) => {
+  const longRule = rules?.long?.[interval];
+  const shortRule = rules?.short?.[interval];
   const priceChartContainerRef = useRef();
   const macdChartContainerRef = useRef();
   const stochChartContainerRef = useRef();
@@ -246,7 +248,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
           if (adxGhostRef.current) adxGhostRef.current.setData(ghostData);
           if (adxChartRef.current) {
             // Updated ghost and threshold for ADX
-            const adxThreshold = parseFloat(rule?.long?.adxThreshold || 30);
+            const adxThreshold = parseFloat(longRule?.adxLow || 30);
             // Threshold line sync (this is a bit hacky with lightweight-charts without keeping a ref to every single series)
             // But we can just use the ghost for adx too
           }
@@ -551,55 +553,49 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
       isShort = false;
     } else {
       // 1. LONG SIGNAL CHECK
-      if (rule?.long) {
+      if (longRule) {
         let activeLongCondCount = 0;
         
-        // ADX
-        if (rule.long.adxEnabled) {
+        // ADX Range
+        if (longRule.adxEnabled || longRule.useADX) {
           activeLongCondCount++;
-          const threshold = parseFloat(rule.long.adxThreshold || 30);
-          if (!(lastADX !== null && lastADX >= threshold)) isLong = false;
+          const adxLow = parseFloat(longRule.adxLow !== undefined ? longRule.adxLow : 30);
+          const adxHigh = parseFloat(longRule.adxHigh !== undefined ? longRule.adxHigh : 99);
+          if (!(lastADX !== null && lastADX >= adxLow && lastADX <= adxHigh)) isLong = false;
         }
         
         // MACD Cross
-        if (rule.long.macdCrossEnabled) {
+        if (longRule.macdCrossEnabled || longRule.useMacdBeyondSig) {
           activeLongCondCount++;
           if (!(lastM > lastS)) isLong = false;
         }
         
         // Stoch Cross
-        if (rule.long.stochCrossEnabled) {
+        if (longRule.stochCrossEnabled || longRule.useStochCross) {
           activeLongCondCount++;
           if (!(lastD !== null && lastK !== null && lastD < lastK)) isLong = false;
         }
         
         // Stoch K Limit (StochK < X)
-        if (rule.long.stochKLimitEnabled || rule.long.useStochKLimit) {
+        if (longRule.stochKLimitEnabled || longRule.useStochKLimit) {
           activeLongCondCount++;
-          const threshold = parseFloat(rule.long.stochKThreshold !== undefined ? rule.long.stochKThreshold : 80);
+          const threshold = parseFloat(longRule.stochKThreshold !== undefined ? longRule.stochKThreshold : 80);
           if (!(lastK !== null && lastK < threshold)) isLong = false;
         }
 
-        // RSI Limit (New v8.2.0)
-        if (rule.long.rsiEnabled || rule.long.useRSI) {
+        // RSI Limit (RSI Range)
+        if (longRule.rsiEnabled || longRule.useRSI) {
           activeLongCondCount++;
-          const low = parseFloat(rule.long.rsiLow !== undefined ? rule.long.rsiLow : 5);
-          const high = parseFloat(rule.long.rsiHigh !== undefined ? rule.long.rsiHigh : 95);
+          const low = parseFloat(longRule.rsiLow !== undefined ? longRule.rsiLow : 5);
+          const high = parseFloat(longRule.rsiHigh !== undefined ? longRule.rsiHigh : 95);
           if (!(lastRSI !== null && lastRSI !== undefined && lastRSI > low && lastRSI < high)) isLong = false;
         }
-        
-        // MACD Sig Diff (|MACD-Sig| > X) - mainly for 1D
-        if (rule.long.macdHistEnabled) {
-          activeLongCondCount++;
-          const val = parseFloat(rule.long.macdHistValue || 0);
-          if (!(Math.abs(lastM - lastS) > val)) isLong = false;
-        }
 
-        // MACD Value (MACD < X) - mainly for 5m
-        if (rule.long.macdValueEnabled) {
+        // MACD Value (|MACD| < X)
+        if (longRule.macdValueEnabled || longRule.useMacdVal) {
           activeLongCondCount++;
-          const val = parseFloat(rule.long.macdValue || 0);
-          if (!(lastM < val)) isLong = false;
+          const val = parseFloat(longRule.macdValue || longRule.macdVal || 0);
+          if (!(Math.abs(lastM) < val)) isLong = false;
         }
 
         if (activeLongCondCount === 0) isLong = false;
@@ -607,56 +603,50 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rule, onSignalU
         isLong = false;
       }
 
-      // 2. SHORT SIGNAL CHECK
-      if (rule?.short) {
+      // 2. SHORT SIGNAL CHECK (Non-symmetric: using shortRule parameters directly)
+      if (shortRule) {
         let activeShortCondCount = 0;
         
-        // ADX
-        if (rule.short.adxEnabled) {
+        // ADX Range
+        if (shortRule.adxEnabled || shortRule.useADX) {
           activeShortCondCount++;
-          const threshold = parseFloat(rule.short.adxThreshold || 30);
-          if (!(lastADX !== null && lastADX >= threshold)) isShort = false;
+          const adxLow = parseFloat(shortRule.adxLow !== undefined ? shortRule.adxLow : 30);
+          const adxHigh = parseFloat(shortRule.adxHigh !== undefined ? shortRule.adxHigh : 99);
+          if (!(lastADX !== null && lastADX >= adxLow && lastADX <= adxHigh)) isShort = false;
         }
         
-        // MACD Cross
-        if (rule.short.macdCrossEnabled) {
+        // MACD Cross (Short: MACD < Signal)
+        if (shortRule.macdCrossEnabled || shortRule.useMacdBeyondSig) {
           activeShortCondCount++;
           if (!(lastM < lastS)) isShort = false;
         }
         
-        // Stoch Cross
-        if (rule.short.stochCrossEnabled) {
+        // Stoch Cross (Short: Stoch K < Stoch D)
+        if (shortRule.stochCrossEnabled || shortRule.useStochCross) {
           activeShortCondCount++;
           if (!(lastD !== null && lastK !== null && lastD > lastK)) isShort = false;
         }
         
-        // Stoch K Limit (StochK < X)
-        if (rule.short.stochKLimitEnabled || rule.short.useStochKLimit) {
+        // Stoch K Limit (Short: StochK < threshold - Non-Symmetric)
+        if (shortRule.stochKLimitEnabled || shortRule.useStochKLimit) {
           activeShortCondCount++;
-          const threshold = parseFloat(rule.short.stochKThreshold !== undefined ? rule.short.stochKThreshold : 80);
+          const threshold = parseFloat(shortRule.stochKThreshold !== undefined ? shortRule.stochKThreshold : 80);
           if (!(lastK !== null && lastK < threshold)) isShort = false;
         }
 
-        // RSI Limit (New v8.2.0)
-        if (rule.short.rsiEnabled || rule.short.useRSI) {
+        // RSI Limit (Short: Low < RSI < High - Non-Symmetric)
+        if (shortRule.rsiEnabled || shortRule.useRSI) {
           activeShortCondCount++;
-          const low = parseFloat(rule.short.rsiLow !== undefined ? rule.short.rsiLow : 5);
-          const high = parseFloat(rule.short.rsiHigh !== undefined ? rule.short.rsiHigh : 95);
+          const low = parseFloat(shortRule.rsiLow !== undefined ? shortRule.rsiLow : 5);
+          const high = parseFloat(shortRule.rsiHigh !== undefined ? shortRule.rsiHigh : 95);
           if (!(lastRSI !== null && lastRSI !== undefined && lastRSI > low && lastRSI < high)) isShort = false;
         }
-        
-        // MACD Sig Diff
-        if (rule.short.macdHistEnabled) {
-          activeShortCondCount++;
-          const val = parseFloat(rule.short.macdHistValue || 0);
-          if (!(Math.abs(lastM - lastS) > val)) isShort = false;
-        }
 
-        // MACD Value (MACD > X)
-        if (rule.short.macdValueEnabled) {
+        // MACD Value (|MACD| < X)
+        if (shortRule.macdValueEnabled || shortRule.useMacdVal) {
           activeShortCondCount++;
-          const val = parseFloat(rule.short.macdValue || 0);
-          if (!(lastM > val)) isShort = false;
+          const val = parseFloat(shortRule.macdValue || shortRule.macdVal || 0);
+          if (!(Math.abs(lastM) < val)) isShort = false;
         }
 
         if (activeShortCondCount === 0) isShort = false;

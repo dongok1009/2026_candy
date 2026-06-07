@@ -4,6 +4,98 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
+    version: 'Logic.v8.2.3',
+    name: 'Logic.v8.2.3 (Integrated Rules & Global Parameters Repositioned)',
+    description: '글로벌 변수를 상단으로 모으고, 롱/숏을 롱 조건 기준으로 단일 통합하여 숏은 대칭 적용되게 한 리팩토링 버전',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      reduceTpWaitMin: 0,
+      reducedTargetRoi: 0.02,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      }
+    }
+  },
+  {
+    version: 'Logic.v8.2.2',
+    name: 'Logic.v8.2.2 (ADX Range & optimization UI advanced)',
+    description: 'ADX 값 범위를 설정할 수 있는 버전 (Low < ADX < High)',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      }
+    }
+  },
+  {
+    version: 'Logic.v8.2.1',
+    name: 'Logic.v8.2.1 (MACD Value Filter Extended)',
+    description: 'v8.2.0 기반으로 1시간봉 및 1일봉에도 MACD 값에 의한 진입 제한 필터를 추가로 확장 지원하는 버전',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: true, stochKThreshold: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: true, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxThreshold: 30, useStochKLimit: true, stochKThreshold: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxThreshold: 30, useStochKLimit: false, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useMacdSigDiff: false, macdSigDiff: 0, useADX: false, adxThreshold: 15, useStochKLimit: true, stochKThreshold: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      }
+    }
+  },
+  {
     version: 'Logic.v8.2.0',
     name: 'Logic.v8.2.0 (RSI Filter Added)',
     description: 'v8.1.0 기반으로 5 < RSI < 95 필터링 조건이 추가된 최신 모델 (지표 데이터 CSV 로깅 지원)',
