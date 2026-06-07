@@ -13,7 +13,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const RECORDS_FILE = path.join(__dirname, 'records.json');
 const HISTORY_MD = path.join(__dirname, 'BACKTEST_HISTORY.md');
-const LIVE_STATE_FILE = path.join(__dirname, 'live_state.json');
+const LIVE_STATE_FILE = path.join(__dirname, 'bybit_live_state.json');
 const LIVE_RULES_FILE = path.join(__dirname, 'live_rules.json');
 
 

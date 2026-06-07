@@ -12,10 +12,10 @@ const rules = [
     {
         ruleId: "Rule 1-1",
         name: "Data isolation & Strict Indexing",
-        desc: "확정봉 데이터만 사용하며 타임스탬프 기반 인덱스 탐색(findLastIndex)을 수행하는가?",
+        desc: "확정봉 데이터만 사용하며 타임스탬프 기반 인덱스 탐색(findLastIndex 또는 O(1) 매핑)을 수행하는가?",
         file: "lib/engine.cjs",
-        test: (content) => content.includes('findLastIndex') && content.includes('referenceTime'),
-        error: "Engine이 단순 Index-1 방식을 사용 중입니다. findLastIndex 기반의 절대적 인텍스 탐색이 필요합니다."
+        test: (content) => (content.includes('findLastIndex') || content.includes('Int32Array') || content.includes('map1mTo')) && content.includes('referenceTime'),
+        error: "Engine이 단순 Index-1 방식을 사용 중입니다. findLastIndex 또는 O(1) 인덱스 탐핑 매핑이 필요합니다."
     },
     {
         ruleId: "Rule 1-2",
