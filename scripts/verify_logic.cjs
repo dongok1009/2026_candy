@@ -23,7 +23,7 @@ const rules = [
         desc: "대시보드의 체크박스 설정(overrideRules)이 엔진에서 전략으로 전달되어 반영되는가?",
         file: "lib/engine.cjs",
         test: (content) => content.includes('config.overrideRules'),
-        extraFile: "strategies/Logic.v7.0.1.cjs",
+        extraFile: "strategies/Logic.v8.2.4.cjs",
         extraTest: (content) => content.includes('overrideRules[side]') || content.includes('overrideRules.long'),
         error: "UI에서 설정한 filter(overrideRules)가 무시되고 하드코딩된 로직이 작동 중일 가능성이 있습니다."
     },
@@ -31,7 +31,7 @@ const rules = [
         ruleId: "Rule 1-3",
         name: "Immediate T-Entry Timing",
         desc: "시그널 발생 즉시(T 시점) 진입을 위해 루프가 currentIndex부터 시작하는가?",
-        file: "strategies/Logic.v7.0.1.cjs",
+        file: "strategies/Logic.v8.2.4.cjs",
         test: (content) => content.includes('let j = currentIndex;'),
         error: "진입 시점이 T+1로 지연되어 있거나 잘못되었습니다. (currentIndex부터 시작해야 함)"
     },
@@ -39,7 +39,7 @@ const rules = [
         ruleId: "Rule 2-1",
         name: "Indicator Warm-up Period",
         desc: "1일봉 MACD 등의 계산을 위해 FETCH_START_TIME이 충분한 여유(최소 35일)를 확보하고 있는가?",
-        file: "strategies/Logic.v7.0.1.cjs",
+        file: "strategies/Logic.v8.2.4.cjs",
         test: (content) => {
             const fetchMatch = content.match(/FETCH_START_TIME: new Date\('(.+?)'\)/);
             const actualMatch = content.match(/ACTUAL_START_TIME: new Date\('(.+?)'\)/);

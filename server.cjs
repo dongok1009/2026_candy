@@ -93,7 +93,7 @@ app.get('/api/list-history', (req, res) => {
 // 백테스트 실행 API
 app.post('/api/backtest', (req, res) => {
     try {
-        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi, reduceTpWaitMin, reducedTargetRoi } = req.body;
+        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi, reduceTpWaitMin, reducedTargetRoi, entryMode, penetrationRate } = req.body;
         
         // 필수 필드 체크
         if (!version || !symbol || !startDate || !endDate) {
@@ -121,8 +121,10 @@ app.post('/api/backtest', (req, res) => {
         const slRoiArg = slRoi !== undefined ? `--slRoi=${slRoi}` : '';
         const reduceTpWaitMinArg = reduceTpWaitMin !== undefined ? `--reduceTpWaitMin=${reduceTpWaitMin}` : '';
         const reducedTargetRoiArg = reducedTargetRoi !== undefined ? `--reducedTargetRoi=${reducedTargetRoi}` : '';
+        const entryModeArg = entryMode !== undefined ? `--entryMode=${entryMode}` : '';
+        const penetrationRateArg = penetrationRate !== undefined ? `--penetrationRate=${penetrationRate}` : '';
 
-        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${reduceTpWaitMinArg} ${reducedTargetRoiArg} ${rulesFileArg}`;
+        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${reduceTpWaitMinArg} ${reducedTargetRoiArg} ${entryModeArg} ${penetrationRateArg} ${rulesFileArg}`;
 
         console.log(`[API] Executing: ${cmd}`);
 

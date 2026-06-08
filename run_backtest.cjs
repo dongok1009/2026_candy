@@ -59,6 +59,8 @@ try {
     if (params.slRoi) strategy.config.SL_ROI = parseFloat(params.slRoi);
     if (params.reduceTpWaitMin) strategy.config.reduceTpWaitMin = parseInt(params.reduceTpWaitMin);
     if (params.reducedTargetRoi) strategy.config.reducedTargetRoi = parseFloat(params.reducedTargetRoi);
+    if (params.entryMode) strategy.config.ENTRY_MODE = params.entryMode;
+    if (params.penetrationRate) strategy.config.PENETRATION_RATE = parseFloat(params.penetrationRate);
 
     // [New] UI에서 전달된 Override Rules 적용 (임시 파일 방식)
     if (params.rulesFile && fs.existsSync(params.rulesFile)) {

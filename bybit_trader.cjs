@@ -106,7 +106,7 @@ function updateTradeLog(event, data) {
 
 async function fetchOHLCV(interval, limit = 200) {
     const symbol = strategy.config.SYMBOL;
-    const bybitInterval = interval === '1h' ? '60' : (interval === '12h' ? '720' : (interval === '5m' ? '5' : 'D'));
+    const bybitInterval = interval === '1h' ? '60' : (interval === '12h' ? '720' : (interval === '5m' ? '5' : (interval === '10m' ? '10' : (interval === '15m' ? '15' : 'D'))));
     const ohlcv = await exchange.fetchOHLCV(symbol, bybitInterval, undefined, limit);
     return ohlcv.map(o => ({
         time: o[0],
@@ -125,15 +125,17 @@ async function checkMarkets() {
     console.log(`\n[${nowKST}] --- BYBIT SCANNING (${displayVersion} Mode) ---`);
 
     try {
-        const [m5, h1, d1] = await Promise.all([
+        const [m5, m10, m15, h1, d1] = await Promise.all([
             fetchOHLCV('5m', 1000),
+            fetchOHLCV('10m', 1000),
+            fetchOHLCV('15m', 1000),
             fetchOHLCV('1h', 1000),
             fetchOHLCV('1d', 1000)
         ]);
 
         liveState.lastPrice = m5[m5.length - 1].close;
 
-        const klines = { m5, h1, d1 };
+        const klines = { m5, m10, m15, h1, d1 };
         const indicators = strategy.indicators_logic(klines);
         const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
 
@@ -241,12 +243,25 @@ async function checkMarkets() {
 async function handleEntry(side, price, klines, skipNotify = false) {
     const config = strategy.config;
     
-    // v7.0.3 하이브리드 지정가 로직 적용
-    const m5 = klines.m5;
-    const prevM5 = m5[m5.length - 2]; // 방금 마감된 캔들
-    const targetPrice = side === 'LONG' ? prevM5.low : prevM5.high;
+    // v8.2.4 다중 진입 모드 및 돌파 필터 적용
+    const entryMode = strategy.config.ENTRY_MODE || 'HYBRID_BETTER';
     
-    console.log(`\n🚀 [ENTRY SIGNAL] ${side}`);
+    let targetPrice = 0;
+    if (entryMode === 'LIMIT_5M') {
+        const prevM5 = klines.m5[klines.m5.length - 2];
+        targetPrice = side === 'LONG' ? prevM5.low : prevM5.high;
+    } else if (entryMode === 'LIMIT_10M') {
+        const prevM10 = klines.m10[klines.m10.length - 2];
+        targetPrice = side === 'LONG' ? prevM10.low : prevM10.high;
+    } else if (entryMode === 'LIMIT_15M') {
+        const prevM15 = klines.m15[klines.m15.length - 2];
+        targetPrice = side === 'LONG' ? prevM15.low : prevM15.high;
+    } else { // HYBRID_BETTER 또는 MARKET 기본값
+        const prevM5 = klines.m5[klines.m5.length - 2];
+        targetPrice = side === 'LONG' ? prevM5.low : prevM5.high;
+    }
+    
+    console.log(`\n🚀 [ENTRY SIGNAL] ${side} (Mode: ${entryMode})`);
     console.log(`• 현재가: $${price} | 진입 희망가(Target): $${targetPrice}`);
 
     try {
@@ -265,9 +280,32 @@ async function handleEntry(side, price, klines, skipNotify = false) {
         console.log(`[DEBUG] ENV_AMOUNT:$${envAmount}, BYBIT_FREE:$${availableBalance.toFixed(2)}, FINAL_MARGIN:$${finalAmount}`);
         updateTradeLog('DEBUG_AMOUNT', { envAmount, availableBalance, finalAmount });
 
-        const entryPrice = side === 'LONG' 
-            ? (price <= targetPrice ? price : targetPrice)
-            : (price >= targetPrice ? price : targetPrice);
+        let entryPrice = 0;
+        let isMarketOrder = false;
+
+        if (entryMode === 'MARKET') {
+            entryPrice = price;
+            isMarketOrder = true;
+        } else if (entryMode === 'HYBRID_BETTER') {
+            if (side === 'LONG') {
+                if (price <= targetPrice) {
+                    entryPrice = price;
+                    isMarketOrder = true;
+                } else {
+                    entryPrice = targetPrice;
+                }
+            } else {
+                if (price >= targetPrice) {
+                    entryPrice = price;
+                    isMarketOrder = true;
+                } else {
+                    entryPrice = targetPrice;
+                }
+            }
+        } else {
+            // 일반 지정가 모드 (LIMIT_5M, LIMIT_10M, LIMIT_15M)
+            entryPrice = targetPrice;
+        }
 
         const amount = (finalAmount * leverage) / entryPrice;
         const contracts = exchange.amountToPrecision(config.SYMBOL, amount);
@@ -293,19 +331,22 @@ async function handleEntry(side, price, klines, skipNotify = false) {
             'tpslMode': 'Full'
         };
 
-        const order = await exchange.createOrder(config.SYMBOL, 'limit', orderSide, contracts, entryPrice, orderParams);
-        console.log(`✅ [BYBIT ENTRY] Limit Order Placed: ${order.id} with TP/SL`);
+        const orderType = isMarketOrder ? 'market' : 'limit';
+        const orderPrice = isMarketOrder ? undefined : entryPrice;
 
-        liveState.status = 'WAITING';
+        const order = await exchange.createOrder(config.SYMBOL, orderType, orderSide, contracts, orderPrice, orderParams);
+        console.log(`✅ [BYBIT ENTRY] ${orderType.toUpperCase()} Order Placed: ${order.id} with TP/SL`);
+
+        liveState.status = isMarketOrder ? 'IN_POSITION' : 'WAITING';
         liveState.position = side;
-        liveState.entryPrice = entryPrice;
+        liveState.entryPrice = isMarketOrder ? (parseFloat(order.price || order.average || price)) : entryPrice;
         liveState.entryTime = Date.now();
-        liveState.orderId = order.id;
+        liveState.orderId = isMarketOrder ? null : order.id;
         liveState.quantity = contracts;
         liveState.totalAmount = finalAmount * leverage;
         liveState.tpPrice = tpPrice;
         liveState.slPrice = slPrice;
-        liveState.filledNotified = false;
+        liveState.filledNotified = isMarketOrder ? true : false;
         saveState();
 
         updateTradeLog('ENTRY_ORDER', {
