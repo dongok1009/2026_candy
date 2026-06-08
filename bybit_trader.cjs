@@ -55,6 +55,7 @@ function loadState() {
 
 function saveState() {
     liveState.lastUpdate = new Date().toISOString();
+    liveState.strategyVersion = strategyVersion;
     fs.writeFileSync(STATE_FILE, JSON.stringify(liveState, null, 2));
 }
 
