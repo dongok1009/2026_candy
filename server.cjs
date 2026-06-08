@@ -20,42 +20,11 @@ const LIVE_RULES_FILE = path.join(__dirname, 'live_rules.json');
 // --- 실전 매매 (Live Trading) API ---
 app.get('/api/live-status', (req, res) => {
     try {
-        if (!fs.existsSync(LIVE_STATE_FILE)) {
-            return res.json({ status: 'OFFLINE', isAlive: false });
-        }
-        
+        if (!fs.existsSync(LIVE_STATE_FILE)) return res.json({ status: 'OFFLINE' });
         const data = JSON.parse(fs.readFileSync(LIVE_STATE_FILE, 'utf8'));
-        
-        // 최근 2분 이내에 마지막 업데이트가 있었는지 확인하여 봇의 구동 여부 판정
-        let isAlive = false;
-        if (data.lastUpdate) {
-            const diffMs = Date.now() - new Date(data.lastUpdate).getTime();
-            isAlive = diffMs < 120000; // 120초 미만 (여유있게 2분으로 설정)
-        }
-
-        // 최신 trade_log_YYYY_MM.json 파일 찾기 및 최근 로그 슬라이싱
-        const kstOffset = 9 * 60 * 60 * 1000;
-        const nowKST = new Date(Date.now() + kstOffset);
-        const monthStr = nowKST.toISOString().substring(0, 7).replace('-', '_'); // YYYY_MM
-        const logFile = path.join(__dirname, `trade_log_${monthStr}.json`);
-        
-        let logs = [];
-        if (fs.existsSync(logFile)) {
-            try {
-                const rawLogs = JSON.parse(fs.readFileSync(logFile, 'utf8'));
-                logs = rawLogs.slice(-30).reverse(); // 최근 30개 역순
-            } catch (logErr) {
-                console.error("Error parsing trade logs:", logErr.message);
-            }
-        }
-
-        res.json({
-            ...data,
-            isAlive,
-            logs
-        });
+        res.json(data);
     } catch (err) {
-        res.json({ status: 'ERROR', message: err.message, isAlive: false });
+        res.json({ status: 'ERROR', message: err.message });
     }
 });
 

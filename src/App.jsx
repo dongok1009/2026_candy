@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import Dashboard from './features/charts/components/Dashboard';
 import BacktestForm from './features/backtest/components/BacktestForm';
-import LiveMonitorPage from './features/live/components/LiveMonitorPage';
-import { Activity, Layers, Shield } from 'lucide-react';
+import { Activity, Layers } from 'lucide-react';
 import './App.css';
 
 function App() {
-  const [view, setView] = useState('live'); // 'live', 'backtest', or 'monitor'
+  const [view, setView] = useState('live'); // 'live' or 'backtest'
 
   return (
     <div className="App">
@@ -28,17 +27,11 @@ function App() {
           >
             <Layers size={18} /> Backtest Config
           </button>
-          <button 
-            className={`nav-btn ${view === 'monitor' ? 'active' : ''}`} 
-            onClick={() => setView('monitor')}
-          >
-            <Shield size={18} /> Live Bot Monitor
-          </button>
         </div>
       </nav>
 
       <main className="view-container">
-        {view === 'live' ? <Dashboard /> : (view === 'backtest' ? <BacktestForm /> : <LiveMonitorPage />)}
+        {view === 'live' ? <Dashboard /> : <BacktestForm />}
       </main>
 
       <div className="version-badge">v8.2.4 Backtest Engine [Modularized]</div>
