@@ -19,12 +19,14 @@ export const OFFICIAL_STRATEGIES = [
       period: 'New'
     },
     rules: {
+      targetRoi: 0.05,
+      slRoi: 0.14,
       entryWaitMin: 180,
       exitWaitMin: 1500,
       reduceTpWaitMin: 0,
       reducedTargetRoi: 0.02,
       penetrationRate: 0.001,
-      entryMode: 'HYBRID_BETTER',
+      entryMode: 'HYBRID_5M',
       long: {
         '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
         '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 },

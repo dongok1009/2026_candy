@@ -2,21 +2,33 @@
   "5m": {
     "long": {
       "adxEnabled": true,
-      "adxThreshold": 30,
-      "macdCrossEnabled": false,
+      "adxLow": 30,
+      "adxHigh": 99,
       "stochCrossEnabled": true,
-      "stochLimitEnabled": false,
-      "stochKThreshold": 98,
+      "stochLimitEnabled": true,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "stochKThreshold": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": false,
       "macdValueEnabled": false,
       "macdValue": 0
     },
     "short": {
       "adxEnabled": true,
-      "adxThreshold": 30,
-      "macdCrossEnabled": false,
+      "adxLow": 30,
+      "adxHigh": 99,
       "stochCrossEnabled": true,
-      "stochLimitEnabled": false,
-      "stochKThreshold": 98,
+      "stochLimitEnabled": true,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "stochKThreshold": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": false,
       "macdValueEnabled": false,
       "macdValue": 0
     }
@@ -24,41 +36,69 @@
   "1h": {
     "long": {
       "adxEnabled": false,
-      "adxThreshold": 30,
-      "macdCrossEnabled": true,
+      "adxLow": 30,
+      "adxHigh": 99,
       "stochCrossEnabled": true,
       "stochLimitEnabled": false,
-      "stochKThreshold": 98
+      "stochKLow": 0,
+      "stochKHigh": 98,
+      "stochKThreshold": 98,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": true,
+      "macdValueEnabled": false,
+      "macdValue": 0
     },
     "short": {
       "adxEnabled": false,
-      "adxThreshold": 30,
-      "macdCrossEnabled": true,
+      "adxLow": 30,
+      "adxHigh": 99,
       "stochCrossEnabled": true,
       "stochLimitEnabled": false,
-      "stochKThreshold": 98
+      "stochKLow": 0,
+      "stochKHigh": 98,
+      "stochKThreshold": 98,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": true,
+      "macdValueEnabled": false,
+      "macdValue": 0
     }
   },
   "1d": {
     "long": {
       "adxEnabled": false,
-      "adxThreshold": 30,
-      "macdCrossEnabled": true,
+      "adxLow": 15,
+      "adxHigh": 99,
       "stochCrossEnabled": false,
-      "stochLimitEnabled": false,
+      "stochLimitEnabled": true,
+      "stochKLow": 0,
+      "stochKHigh": 98,
       "stochKThreshold": 98,
-      "macdSigDiffEnabled": false,
-      "macdSigDiffThreshold": 0
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": true,
+      "macdValueEnabled": false,
+      "macdValue": 0
     },
     "short": {
       "adxEnabled": false,
-      "adxThreshold": 30,
-      "macdCrossEnabled": true,
+      "adxLow": 15,
+      "adxHigh": 99,
       "stochCrossEnabled": false,
-      "stochLimitEnabled": false,
+      "stochLimitEnabled": true,
+      "stochKLow": 0,
+      "stochKHigh": 98,
       "stochKThreshold": 98,
-      "macdSigDiffEnabled": false,
-      "macdSigDiffThreshold": 0
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "macdCrossEnabled": true,
+      "macdValueEnabled": false,
+      "macdValue": 0
     }
   },
   "global": {
@@ -66,9 +106,11 @@
     "orderAmount": 100,
     "entryWaitMin": 180,
     "exitWaitMin": 1500,
-    "targetRoi": 0.03,
-    "slRoi": 0.15,
+    "targetRoi": 0.05,
+    "slRoi": 0.14,
     "reduceTpWaitMin": 0,
-    "reducedTargetRoi": 0.02
+    "reducedTargetRoi": 0.02,
+    "penetrationRate": 0.001,
+    "entryMode": "HYBRID_5M"
   }
 }

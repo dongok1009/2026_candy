@@ -20,15 +20,15 @@ const strategy = {
         EXIT_MAKER_FEE_RATE: 0.0002,
         FUNDING_FEE_RATE: 0.0001,
 
-        TARGET_NET_ROI: 0.03,
-        SL_ROI: 0.15,
+        TARGET_NET_ROI: 0.05,
+        SL_ROI: 0.14,
 
         ENTRY_WAIT_MIN: 180,
-        EXIT_WAIT_MIN: 2000,
+        EXIT_WAIT_MIN: 1500,
 
         // [New v8.2.4 parameters]
         PENETRATION_RATE: 0.001, // 0.1% 돌파 시 체결로 판정
-        ENTRY_MODE: 'HYBRID_BETTER' // MARKET, LIMIT_5M, LIMIT_10M, LIMIT_15M, HYBRID_BETTER
+        ENTRY_MODE: 'HYBRID_5M' // MARKET, HYBRID_5M, HYBRID_10M, HYBRID_15M
     },
 
     indicators_logic: (klines) => {
@@ -181,7 +181,7 @@ const strategy = {
 
     entry_logic: (sig, k1m, k5_prev, klines1m, currentIndex, config, extraContext) => {
         const penetrationRate = (config && config.PENETRATION_RATE) !== undefined ? parseFloat(config.PENETRATION_RATE) : 0.0;
-        const entryMode = (config && config.ENTRY_MODE) || "HYBRID_BETTER";
+        const entryMode = (config && config.ENTRY_MODE) || "HYBRID_5M";
         const waitLimit = (config && config.ENTRY_WAIT_MIN) || 180;
 
         let targetPrice = 0;
@@ -191,17 +191,17 @@ const strategy = {
         let entryType = "";
 
         // 1. 진입 방식별 타겟 지정가 결정
-        if (entryMode === "LIMIT_5M") {
+        if (entryMode === "HYBRID_5M") {
             const prev5m = extraContext ? extraContext.klines5m[extraContext.idx5m] : k5_prev;
             targetPrice = sig === 'long' ? prev5m.low : prev5m.high;
-        } else if (entryMode === "LIMIT_10M" && extraContext) {
+        } else if (entryMode === "HYBRID_10M" && extraContext) {
             const prev10m = extraContext.klines10m[extraContext.idx10m];
             targetPrice = sig === 'long' ? prev10m.low : prev10m.high;
-        } else if (entryMode === "LIMIT_15M" && extraContext) {
+        } else if (entryMode === "HYBRID_15M" && extraContext) {
             const prev15m = extraContext.klines15m[extraContext.idx15m];
             targetPrice = sig === 'long' ? prev15m.low : prev15m.high;
         } else {
-            // HYBRID_BETTER 또는 MARKET용 기본 5m 타겟팅
+            // MARKET 및 기본 폴백은 5m 타겟팅
             const prev5m = extraContext ? extraContext.klines5m[extraContext.idx5m] : k5_prev;
             targetPrice = sig === 'long' ? prev5m.low : prev5m.high;
         }
@@ -212,45 +212,31 @@ const strategy = {
             finalEntryPrice = k1m.open;
             executed = true;
             entryType = "MARKET";
-        } else if (entryMode === "HYBRID_BETTER") {
-            // 시가가 지정가보다 유리하면 즉시 시장가 진입
+        } else {
+            // 하이브리드 모드 (HYBRID_5M, HYBRID_10M, HYBRID_15M 및 폴백)
             const signalPrice = k1m.open;
             if (sig === 'long' && signalPrice <= targetPrice) {
                 finalEntryPrice = signalPrice;
                 executed = true;
-                entryType = "MARKET(Better)";
+                entryType = `MARKET(${entryMode})`;
             } else if (sig === 'short' && signalPrice >= targetPrice) {
                 finalEntryPrice = signalPrice;
                 executed = true;
-                entryType = "MARKET(Better)";
+                entryType = `MARKET(${entryMode})`;
             } else {
                 // 유리하지 않으면 지정가 주문 대기 (돌파 깊이 적용)
                 for (let j = currentIndex; j < klines1m.length; j++) {
                     const ex = klines1m[j];
                     if (sig === 'long' && ex.low <= targetPrice * (1 - penetrationRate)) {
                         finalEntryPrice = ex.open <= targetPrice ? ex.open : targetPrice;
-                        executed = true; entryTimeIdx = j; entryType = "LIMIT"; break;
+                        executed = true; entryTimeIdx = j; entryType = `LIMIT(${entryMode})`; break;
                     }
                     if (sig === 'short' && ex.high >= targetPrice * (1 + penetrationRate)) {
                         finalEntryPrice = ex.open >= targetPrice ? ex.open : targetPrice;
-                        executed = true; entryTimeIdx = j; entryType = "LIMIT"; break;
+                        executed = true; entryTimeIdx = j; entryType = `LIMIT(${entryMode})`; break;
                     }
                     if (j - currentIndex > waitLimit) break;
                 }
-            }
-        } else {
-            // 일반 LIMIT 모드 (LIMIT_5M, LIMIT_10M, LIMIT_15M)
-            for (let j = currentIndex; j < klines1m.length; j++) {
-                const ex = klines1m[j];
-                if (sig === 'long' && ex.low <= targetPrice * (1 - penetrationRate)) {
-                    finalEntryPrice = ex.open <= targetPrice ? ex.open : targetPrice;
-                    executed = true; entryTimeIdx = j; entryType = entryMode; break;
-                }
-                if (sig === 'short' && ex.high >= targetPrice * (1 + penetrationRate)) {
-                    finalEntryPrice = ex.open >= targetPrice ? ex.open : targetPrice;
-                    executed = true; entryTimeIdx = j; entryType = entryMode; break;
-                }
-                if (j - currentIndex > waitLimit) break;
             }
         }
 

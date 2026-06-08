@@ -244,16 +244,16 @@ async function handleEntry(side, price, klines, skipNotify = false) {
     const config = strategy.config;
     
     // v8.2.4 다중 진입 모드 및 돌파 필터 적용
-    const entryMode = strategy.config.ENTRY_MODE || 'HYBRID_BETTER';
+    const entryMode = strategy.config.ENTRY_MODE || 'HYBRID_5M';
     
     let targetPrice = 0;
-    if (entryMode === 'LIMIT_5M') {
+    if (entryMode === 'HYBRID_5M') {
         const prevM5 = klines.m5[klines.m5.length - 2];
         targetPrice = side === 'LONG' ? prevM5.low : prevM5.high;
-    } else if (entryMode === 'LIMIT_10M') {
+    } else if (entryMode === 'HYBRID_10M') {
         const prevM10 = klines.m10[klines.m10.length - 2];
         targetPrice = side === 'LONG' ? prevM10.low : prevM10.high;
-    } else if (entryMode === 'LIMIT_15M') {
+    } else if (entryMode === 'HYBRID_15M') {
         const prevM15 = klines.m15[klines.m15.length - 2];
         targetPrice = side === 'LONG' ? prevM15.low : prevM15.high;
     } else { // HYBRID_BETTER 또는 MARKET 기본값
@@ -286,7 +286,8 @@ async function handleEntry(side, price, klines, skipNotify = false) {
         if (entryMode === 'MARKET') {
             entryPrice = price;
             isMarketOrder = true;
-        } else if (entryMode === 'HYBRID_BETTER') {
+        } else {
+            // 하이브리드 모드 (HYBRID_5M, HYBRID_10M, HYBRID_15M 및 폴백)
             if (side === 'LONG') {
                 if (price <= targetPrice) {
                     entryPrice = price;
@@ -302,9 +303,6 @@ async function handleEntry(side, price, klines, skipNotify = false) {
                     entryPrice = targetPrice;
                 }
             }
-        } else {
-            // 일반 지정가 모드 (LIMIT_5M, LIMIT_10M, LIMIT_15M)
-            entryPrice = targetPrice;
         }
 
         const amount = (finalAmount * leverage) / entryPrice;

@@ -17,8 +17,8 @@ const BacktestForm = () => {
         takerFee: 0.0005,
         exitMakerFee: 0.0002,
         fundingFee: 0.0001,
-        targetRoi: 0.04,
-        slRoi: 0.15,
+        targetRoi: 0.05,
+        slRoi: 0.14,
         version: OFFICIAL_STRATEGIES[0].version,
         macdFast: 12,
         macdSlow: 26,
@@ -31,7 +31,9 @@ const BacktestForm = () => {
         entryWaitMin: 180,
         exitWaitMin: 1500,
         reduceTpWaitMin: 0,
-        reducedTargetRoi: 0.02
+        reducedTargetRoi: 0.02,
+        penetrationRate: OFFICIAL_STRATEGIES[0].rules.penetrationRate !== undefined ? OFFICIAL_STRATEGIES[0].rules.penetrationRate : 0.001,
+        entryMode: OFFICIAL_STRATEGIES[0].rules.entryMode || 'HYBRID_5M'
     });
 
     const [rules, setRules] = useState(() => {
@@ -198,9 +200,21 @@ const BacktestForm = () => {
             if (found) { 
                 setRules(normalizeAndMapRules(found.rules)); 
                 setDisplayStats(null); 
-                // 해당 전략의 기본 대기 시간도 함께 로드
+                // 해당 전략의 기본 대기 시간 및 신규 8.2.4 매개변수 로드
                 if (found.rules.entryWaitMin) {
-                    setConfig(prev => ({ ...prev, entryWaitMin: found.rules.entryWaitMin, exitWaitMin: found.rules.exitWaitMin }));
+                    setConfig(prev => ({ 
+                        ...prev, 
+                        entryWaitMin: found.rules.entryWaitMin, 
+                        exitWaitMin: found.rules.exitWaitMin,
+                        penetrationRate: found.rules.penetrationRate !== undefined ? found.rules.penetrationRate : 0.001,
+                        entryMode: found.rules.entryMode || 'HYBRID_5M'
+                    }));
+                } else {
+                    setConfig(prev => ({
+                        ...prev,
+                        penetrationRate: found.rules.penetrationRate !== undefined ? found.rules.penetrationRate : 0.001,
+                        entryMode: found.rules.entryMode || 'HYBRID_5M'
+                    }));
                 }
             }
             setResultsTrades([]); // 버전 전환 시 이전 결과 초기화
@@ -947,6 +961,25 @@ const BacktestForm = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
                             <input type="number" step="0.005" name="reducedTargetRoi" value={config.reducedTargetRoi ?? 0.01} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
                             <span style={{ color: '#848e9c', fontSize: '12px' }}>조정된 목표 수익률 (Net ROI)</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Penetration Rate (Decimal, e.g. 0.001 = 0.1%)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <input type="number" step="0.0001" name="penetrationRate" value={config.penetrationRate ?? 0.001} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>목표가 돌파 비율 (지정가 보수화)</span>
+                        </div>
+                    </div>
+                    <div className="input-group">
+                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Entry Mode (진입 방식)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                            <select name="entryMode" value={config.entryMode ?? 'HYBRID_5M'} onChange={handleChange} style={{ width: 'auto', minWidth: '320px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '15px', fontWeight: '800', outline: 'none', cursor: 'pointer', paddingRight: '20px' }}>
+                                <option value="MARKET" style={{ background: '#1e2329', color: '#eaebed' }}>MARKET (시장가)</option>
+                                <option value="HYBRID_5M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_5M (5분봉기준 유리한 가격)</option>
+                                <option value="HYBRID_10M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_10M (10분봉기준 유리한 가격)</option>
+                                <option value="HYBRID_15M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_15M (15분봉기준 유리한 가격)</option>
+                            </select>
+                            <span style={{ color: '#848e9c', fontSize: '12px' }}>진입 기준 가격 옵션</span>
                         </div>
                     </div>
                 </div>
