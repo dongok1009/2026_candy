@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Zap, Power, AlertCircle, Clock, Database, RefreshCcw, Cpu, Terminal, FileText, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react';
 
 const LiveMonitorPage = () => {
+    const [apiBase, setApiBase] = useState(() => localStorage.getItem('live_api_base') || 'http://localhost:3001');
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isEditingIp, setIsEditingIp] = useState(false);
+    const [ipInput, setIpInput] = useState(apiBase);
 
     const fetchStatus = async () => {
         try {
-            const resp = await fetch('http://localhost:3001/api/live-status');
+            const resp = await fetch(`${apiBase}/api/live-status`);
             if (!resp.ok) throw new Error('API server returned error status');
             const data = await resp.json();
             setStatus(data);
@@ -27,7 +30,7 @@ const LiveMonitorPage = () => {
         const timer = setInterval(fetchStatus, 3000); // 3초 주기 자동 갱신
         fetchStatus();
         return () => clearInterval(timer);
-    }, []);
+    }, [apiBase]);
 
     const handleManualRefresh = () => {
         setIsRefreshing(true);
@@ -62,6 +65,50 @@ const LiveMonitorPage = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {/* API Server URL Config */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                        <span style={{ fontSize: '12px', color: '#848e9c', fontWeight: 'bold' }}>API Server:</span>
+                        {isEditingIp ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <input 
+                                    type="text" 
+                                    value={ipInput} 
+                                    onChange={(e) => setIpInput(e.target.value)} 
+                                    style={{ background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', fontSize: '12px', padding: '4px 8px', borderRadius: '4px', outline: 'none', width: '200px' }}
+                                />
+                                <button 
+                                    onClick={() => {
+                                        localStorage.setItem('live_api_base', ipInput);
+                                        setApiBase(ipInput);
+                                        setIsEditingIp(false);
+                                        setLoading(true);
+                                    }}
+                                    style={{ background: '#f3ba2f', color: '#000', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                                >
+                                    저장
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setIpInput(apiBase);
+                                        setIsEditingIp(false);
+                                    }}
+                                    style={{ background: 'transparent', color: '#848e9c', border: 'none', fontSize: '12px', cursor: 'pointer' }}
+                                >
+                                    취소
+                                </button>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <code style={{ fontSize: '12px', color: '#eaebed', fontFamily: 'monospace' }}>{apiBase}</code>
+                                <button 
+                                    onClick={() => setIsEditingIp(true)}
+                                    style={{ background: 'transparent', color: '#f3ba2f', border: 'none', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                >
+                                    변경
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <button 
                         onClick={handleManualRefresh}
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#1e2329', border: '1px solid #2b3139', borderRadius: '8px', color: '#eaebed', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
