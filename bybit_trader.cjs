@@ -189,13 +189,13 @@ async function checkMarkets() {
             const finalSignal = strategy.signal_logic(indicators, indices, overrideRules);
             
             // 개별 지표 계산 (로그용)
-            const m5Long = indicators.m5.adx[indices.idx5m] >= 30 && indicators.m5.stoch.k[indices.idx5m] > indicators.m5.stoch.d[indices.idx5m];
+            const m5K = indicators.m5.stoch.k[indices.idx5m];
+            const m5D = indicators.m5.stoch.d[indices.idx5m];
+            const m5Long = indicators.m5.adx[indices.idx5m] >= 30 && (m5K > m5D || (m5K >= 100 && m5D >= 100));
             const h1Long = indicators.h1.macd.m[indices.r1h] > indicators.h1.macd.s[indices.r1h] && indicators.h1.stoch.k[indices.r1h] > indicators.h1.stoch.d[indices.r1h];
             const d1Long = indicators.d1.macd.m[indices.r1d] > indicators.d1.macd.s[indices.r1d];
 
             const adxVal = indicators.m5.adx[indices.idx5m];
-            const m5K = indicators.m5.stoch.k[indices.idx5m];
-            const m5D = indicators.m5.stoch.d[indices.idx5m];
             const h1K = indicators.h1.stoch.k[indices.r1h];
             const h1D = indicators.h1.stoch.d[indices.r1h];
 

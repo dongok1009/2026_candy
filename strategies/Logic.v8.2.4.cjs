@@ -130,9 +130,22 @@ const strategy = {
             // 4. Stoch Cross
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
                 const k = data.stoch.k[idx], d = data.stoch.d[idx];
-                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')} `;
-                if (side === 'long' && k <= d) match = false;
-                if (side === 'short' && k >= d) match = false;
+                
+                // 5분봉(m5) 기준 K와 D가 모두 100(롱 급등)이거나 모두 0(숏 급락)인 극단적 상황에는 크로스 무시 통과
+                let isExtreme = false;
+                if (interval === 'm5') {
+                    if (side === 'long' && k >= 100 && d >= 100) {
+                        isExtreme = true;
+                    } else if (side === 'short' && k <= 0 && d <= 0) {
+                        isExtreme = true;
+                    }
+                }
+
+                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')}${isExtreme ? '(EXTREME)' : ''} `;
+                if (!isExtreme) {
+                    if (side === 'long' && k <= d) match = false;
+                    if (side === 'short' && k >= d) match = false;
+                }
             }
 
             // 5. MACD Value
