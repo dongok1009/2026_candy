@@ -203,8 +203,8 @@ async function checkMarkets() {
             console.log(`[SCAN] LONG [H1] : ${h1Long ? 'OK' : 'WAIT'} (MACD:${indicators.h1.macd.m[indices.r1h]>indicators.h1.macd.s[indices.r1h]?'OK':'WAIT'}, Stoch:${h1K.toFixed(1)}/${h1D.toFixed(1)})`);
             console.log(`[SCAN] LONG [D1] : ${d1Long ? 'OK' : 'WAIT'} (MACD:${indicators.d1.macd.m[indices.r1d]>indicators.d1.macd.s[indices.r1d]?'OK':'WAIT'})`);
             
-            const isLong = finalSignal === 'long';
-            const isShort = finalSignal === 'short';
+            const isLong = finalSignal === 'long' || finalSignal === 'extreme_long';
+            const isShort = finalSignal === 'short' || finalSignal === 'extreme_short';
             const lastSignal = liveState.lastSignal || 'HOLD';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
@@ -220,8 +220,8 @@ async function checkMarkets() {
                 const signalCooldown = 60 * 60 * 1000; // 1시간 쿨다운
                 const skipNotify = (now - liveState.lastNotifiedSignalTime < signalCooldown);
 
-                if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify);
-                else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify);
+                if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_long');
+                else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_short');
                 
                 if (!skipNotify) {
                     liveState.lastNotifiedSignalTime = now;
@@ -240,11 +240,11 @@ async function checkMarkets() {
     }
 }
 
-async function handleEntry(side, price, klines, skipNotify = false) {
+async function handleEntry(side, price, klines, skipNotify = false, isExtremeBypass = false) {
     const config = strategy.config;
     
-    // v8.2.4 다중 진입 모드 및 돌파 필터 적용
-    const entryMode = strategy.config.ENTRY_MODE || 'HYBRID_5M';
+    // v8.2.4 다중 진입 모드 및 돌파 필터 적용 (극단값 우회 시에는 무조건 시장가 진입)
+    const entryMode = isExtremeBypass ? 'MARKET' : (strategy.config.ENTRY_MODE || 'HYBRID_5M');
     
     let targetPrice = 0;
     if (entryMode === 'HYBRID_5M') {

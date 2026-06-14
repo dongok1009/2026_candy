@@ -1,115 +1,119 @@
 {
-  "5m": {
-    "long": {
+  "long": {
+    "5m": {
       "adxEnabled": true,
       "adxLow": 30,
       "adxHigh": 99,
+      "macdCrossEnabled": false,
       "stochCrossEnabled": true,
+      "stochExtremeBypassEnabled": false,
       "stochLimitEnabled": true,
+      "stochKThreshold": 99,
       "stochKLow": 0,
       "stochKHigh": 99,
-      "stochKThreshold": 99,
       "rsiEnabled": false,
       "rsiLow": 5,
       "rsiHigh": 95,
-      "macdCrossEnabled": false,
       "macdValueEnabled": false,
       "macdValue": 0
     },
-    "short": {
-      "adxEnabled": true,
+    "1h": {
+      "adxEnabled": false,
       "adxLow": 30,
       "adxHigh": 99,
+      "macdCrossEnabled": true,
       "stochCrossEnabled": true,
-      "stochLimitEnabled": true,
+      "stochExtremeBypassEnabled": false,
+      "stochLimitEnabled": false,
+      "stochKThreshold": 98,
       "stochKLow": 0,
-      "stochKHigh": 99,
-      "stochKThreshold": 99,
+      "stochKHigh": 98,
       "rsiEnabled": false,
       "rsiLow": 5,
       "rsiHigh": 95,
-      "macdCrossEnabled": false,
+      "macdValueEnabled": false,
+      "macdValue": 0
+    },
+    "1d": {
+      "adxEnabled": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "macdCrossEnabled": true,
+      "stochCrossEnabled": false,
+      "stochExtremeBypassEnabled": false,
+      "stochLimitEnabled": true,
+      "stochKThreshold": 98,
+      "stochKLow": 0,
+      "stochKHigh": 98,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
       "macdValueEnabled": false,
       "macdValue": 0
     }
   },
-  "1h": {
-    "long": {
-      "adxEnabled": false,
+  "short": {
+    "5m": {
+      "adxEnabled": true,
       "adxLow": 30,
       "adxHigh": 99,
+      "macdCrossEnabled": false,
       "stochCrossEnabled": true,
-      "stochLimitEnabled": false,
+      "stochExtremeBypassEnabled": false,
+      "stochLimitEnabled": true,
+      "stochKThreshold": 99,
       "stochKLow": 0,
-      "stochKHigh": 98,
-      "stochKThreshold": 98,
+      "stochKHigh": 99,
       "rsiEnabled": false,
       "rsiLow": 5,
       "rsiHigh": 95,
-      "macdCrossEnabled": true,
       "macdValueEnabled": false,
       "macdValue": 0
     },
-    "short": {
+    "1h": {
       "adxEnabled": false,
       "adxLow": 30,
       "adxHigh": 99,
+      "macdCrossEnabled": true,
       "stochCrossEnabled": true,
+      "stochExtremeBypassEnabled": false,
       "stochLimitEnabled": false,
+      "stochKThreshold": 98,
       "stochKLow": 0,
       "stochKHigh": 98,
-      "stochKThreshold": 98,
       "rsiEnabled": false,
       "rsiLow": 5,
       "rsiHigh": 95,
-      "macdCrossEnabled": true,
-      "macdValueEnabled": false,
-      "macdValue": 0
-    }
-  },
-  "1d": {
-    "long": {
-      "adxEnabled": false,
-      "adxLow": 15,
-      "adxHigh": 99,
-      "stochCrossEnabled": false,
-      "stochLimitEnabled": true,
-      "stochKLow": 0,
-      "stochKHigh": 98,
-      "stochKThreshold": 98,
-      "rsiEnabled": false,
-      "rsiLow": 5,
-      "rsiHigh": 95,
-      "macdCrossEnabled": true,
       "macdValueEnabled": false,
       "macdValue": 0
     },
-    "short": {
+    "1d": {
       "adxEnabled": false,
       "adxLow": 15,
       "adxHigh": 99,
+      "macdCrossEnabled": true,
       "stochCrossEnabled": false,
+      "stochExtremeBypassEnabled": false,
       "stochLimitEnabled": true,
+      "stochKThreshold": 98,
       "stochKLow": 0,
       "stochKHigh": 98,
-      "stochKThreshold": 98,
       "rsiEnabled": false,
       "rsiLow": 5,
       "rsiHigh": 95,
-      "macdCrossEnabled": true,
       "macdValueEnabled": false,
       "macdValue": 0
     }
   },
   "global": {
     "leverage": 5,
-    "orderAmount": 100,
     "entryWaitMin": 180,
     "exitWaitMin": 1500,
     "targetRoi": 0.05,
     "slRoi": 0.14,
     "reduceTpWaitMin": 0,
     "reducedTargetRoi": 0.02,
+    "orderAmount": 100,
     "penetrationRate": 0.001,
     "entryMode": "HYBRID_5M"
   }

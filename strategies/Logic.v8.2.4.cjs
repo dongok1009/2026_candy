@@ -57,6 +57,9 @@ const strategy = {
     signal_logic: (indicators, indices, overrideRules) => {
         const { idx5m, r1h, r1d } = indices;
 
+        let isExtremeLong = false;
+        let isExtremeShort = false;
+
         const checkCondition = (side, interval, idx, indicatorsObj) => {
             const data = indicatorsObj[interval];
             if (!data) return true;
@@ -133,11 +136,13 @@ const strategy = {
                 
                 // 5분봉(m5) 기준 K와 D가 모두 100(롱 급등)이거나 모두 0(숏 급락)인 극단적 상황에는 크로스 무시 통과
                 let isExtreme = false;
-                if (interval === 'm5') {
+                if (interval === 'm5' && (chk('useStochExtremeBypass') || chk('stochExtremeBypassEnabled'))) {
                     if (side === 'long' && k >= 100 && d >= 100) {
                         isExtreme = true;
+                        isExtremeLong = true;
                     } else if (side === 'short' && k <= 0 && d <= 0) {
                         isExtreme = true;
+                        isExtremeShort = true;
                     }
                 }
 
@@ -186,8 +191,8 @@ const strategy = {
             return checkCondition('short', iv, idx, indicators);
         });
 
-        if (longMatch) return 'long';
-        if (shortMatch) return 'short';
+        if (longMatch) return isExtremeLong ? 'extreme_long' : 'long';
+        if (shortMatch) return isExtremeShort ? 'extreme_short' : 'short';
 
         return 'hold';
     },
@@ -202,6 +207,14 @@ const strategy = {
         let executed = false;
         let entryTimeIdx = currentIndex;
         let entryType = "";
+
+        // Stoch 극단값 우회인 경우(sig === 'extreme_long' or 'extreme_short') 무조건 시장가 진입
+        if (sig === 'extreme_long' || sig === 'extreme_short') {
+            finalEntryPrice = k1m.open;
+            executed = true;
+            entryType = "MARKET(EXTREME_BYPASS)";
+            return { executed, finalEntryPrice, entryType, entryTimeIdx };
+        }
 
         // 1. 진입 방식별 타겟 지정가 결정
         if (entryMode === "HYBRID_5M") {

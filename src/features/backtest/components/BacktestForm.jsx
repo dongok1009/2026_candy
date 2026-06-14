@@ -200,7 +200,7 @@ const BacktestForm = () => {
             if (found) { 
                 setRules(normalizeAndMapRules(found.rules)); 
                 setDisplayStats(null); 
-                // 해당 전략의 기본 대기 시간 및 신규 8.2.4 매개변수 로드
+                // 해당 전략의 기본 대기 시간 및 신규 8.2.4/8.2.5 매개변수 로드
                 if (found.rules.entryWaitMin) {
                     setConfig(prev => ({ 
                         ...prev, 
@@ -238,6 +238,7 @@ const BacktestForm = () => {
                 adxHigh: srcTfRules.adxHigh !== undefined ? srcTfRules.adxHigh : 99,
                 useMacdBeyondSig: srcTfRules.macdCrossEnabled !== undefined ? srcTfRules.macdCrossEnabled : (srcTfRules.useMacdBeyondSig !== undefined ? srcTfRules.useMacdBeyondSig : false),
                 useStochCross: srcTfRules.stochCrossEnabled !== undefined ? srcTfRules.stochCrossEnabled : (srcTfRules.useStochCross !== undefined ? srcTfRules.useStochCross : false),
+                useStochExtremeBypass: srcTfRules.stochExtremeBypassEnabled !== undefined ? srcTfRules.stochExtremeBypassEnabled : (srcTfRules.useStochExtremeBypass !== undefined ? srcTfRules.useStochExtremeBypass : false),
                 useStochKLimit: srcTfRules.stochKLimitEnabled !== undefined ? srcTfRules.stochKLimitEnabled : (srcTfRules.useStochKLimit !== undefined ? srcTfRules.useStochKLimit : false),
                 stochKThreshold: srcTfRules.stochKThreshold !== undefined ? srcTfRules.stochKThreshold : 80,
                 useRSI: srcTfRules.rsiEnabled !== undefined ? srcTfRules.rsiEnabled : (srcTfRules.useRSI !== undefined ? srcTfRules.useRSI : false),
@@ -1083,6 +1084,15 @@ const BacktestForm = () => {
                                                 <input type="checkbox" checked={targetRules[iv]?.useStochCross} onChange={e => handleRuleChange('long', iv, 'useStochCross', e.target.checked)} />
                                                 <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross (Long: K &gt; D)</span>
                                             </div>
+
+                                            {/* Stoch Extreme Bypass (m5 전용) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useStochExtremeBypass} onChange={e => handleRuleChange('long', iv, 'useStochExtremeBypass', e.target.checked)} />
+                                                    <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>극단값에서 무조건 시장가 진입</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1162,6 +1172,15 @@ const BacktestForm = () => {
                                                 <input type="checkbox" checked={targetRules[iv]?.useStochCross} onChange={e => handleRuleChange('short', iv, 'useStochCross', e.target.checked)} />
                                                 <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross (Short: K &lt; D)</span>
                                             </div>
+
+                                            {/* Stoch Extreme Bypass (m5 전용) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useStochExtremeBypass} onChange={e => handleRuleChange('short', iv, 'useStochExtremeBypass', e.target.checked)} />
+                                                    <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>극단값에서 무조건 시장가 진입</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
