@@ -697,7 +697,10 @@ const BacktestForm = () => {
         const indicatorHeaders = [
             "5M StochK", "5M StochD", "5M ADX", "5M RSI",
             "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI",
-            "1D MACD", "1D Signal", "1D ADX", "1D RSI"
+            "1D MACD", "1D Signal", "1D ADX", "1D RSI",
+            "5M BBW", "5M BBWP", "5M BBW ROC",
+            "1H BBW", "1H BBWP", "1H BBW ROC",
+            "1D BBW", "1D BBWP", "1D BBW ROC"
         ];
         const headers = showIndicators ? [...baseHeaders, ...indicatorHeaders] : baseHeaders;
 
@@ -725,7 +728,10 @@ const BacktestForm = () => {
             const indicatorRow = [
                 t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-',
                 t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-',
-                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-'
+                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-',
+                t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-',
+                t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-',
+                t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-'
             ];
             return showIndicators ? [...baseRow, ...indicatorRow] : baseRow;
         });
@@ -1330,16 +1336,28 @@ const BacktestForm = () => {
                                         <th style={{ padding: '12px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>5M StochK</th>
                                         <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M StochD</th>
                                         <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M ADX</th>
+                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M RSI</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBW</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBWP</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M ROC</th>
                                         {/* 1H Group */}
                                         <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1H MACD</th>
                                         <th style={{ padding: '12px 8px', color: '#26a69a' }}>1H Sig</th>
                                         <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H StochK</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H StochD</th>
+                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H StochD</th>
                                         <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H ADX</th>
+                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H RSI</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBW</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBWP</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H ROC</th>
                                         {/* 1D Group */}
                                         <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1D MACD</th>
                                         <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D Sig</th>
                                         <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D ADX</th>
+                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D RSI</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBW</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBWP</th>
+                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D ROC</th>
                                     </>
                                 )}
                             </tr>
@@ -1401,16 +1419,28 @@ const BacktestForm = () => {
                                                 <td style={{ padding: '10px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>{t.m5_stochK || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_stochD || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_adx || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_rsi || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbwp || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw_roc || '-'}</td>
                                                 {/* 1H */}
                                                 <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.h1_macd || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_macdSig || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#f3ba2f' }}>{t.h1_stochK || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_stochD || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_adx || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_rsi || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbwp || '-'}</td>
+                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw_roc || '-'}</td>
                                                 {/* 1D */}
                                                 <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.d1_macd || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_macdSig || '-'}</td>
                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_adx || '-'}</td>
+                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_rsi || '-'}</td>
+                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw || '-'}</td>
+                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbwp || '-'}</td>
+                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw_roc || '-'}</td>
                                             </>
                                         )}
                                     </tr>

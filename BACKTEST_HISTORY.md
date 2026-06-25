@@ -907,3 +907,8 @@
 - ROI: 725.83% | MDD: 38.83% | 151W/50L
 - Params: BTCUSDT 5x | 1000 -> 8258.265026025867
 ---
+
+### 📊 Official Record: Record.8.2.4.12
+- ROI: 644.09% | MDD: 44.66% | 165W/43L
+- Params: BTCUSDT 5x | 1000 -> 7440.921648542662
+---

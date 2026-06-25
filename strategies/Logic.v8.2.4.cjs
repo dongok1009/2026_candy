@@ -1,11 +1,11 @@
-const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX } = require('../lib/indicators.cjs');
+const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX, calculateBBW, calculateBBWP, calculateROC } = require('../lib/indicators.cjs');
 
 console.log(`[LOADED] Logic.v8.2.4.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
     name: 'Logic.v8.2.4',
     description: 'v8.2.4 (Custom Entry Modes & Penetration Rate Integration - BTC Only)',
-    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,M5_RSI,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX,D1_RSI",
+    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M5_StochK,M5_StochD,M5_ADX,M5_RSI,H1_MACD,H1_Sig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,D1_MACD,D1_Sig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,M5_BBW,M5_BBWP,H1_BBW,H1_BBWP,D1_BBW,D1_BBWP,M5_BBW_ROC,H1_BBW_ROC,D1_BBW_ROC",
 
     config: {
         SYMBOL: 'BTCUSDT',
@@ -32,24 +32,41 @@ const strategy = {
     },
 
     indicators_logic: (klines) => {
+        const m5Closes = klines.m5.map(k => k.close);
+        const h1Closes = klines.h1.map(k => k.close);
+        const d1Closes = klines.d1.map(k => k.close);
+
+        const m5Bbw = calculateBBW(m5Closes);
+        const h1Bbw = calculateBBW(h1Closes);
+        const d1Bbw = calculateBBW(d1Closes);
+
         return {
             m5: {
-                macd: calculateMACD(klines.m5.map(k => k.close)),
-                rsi: calculateRSI(klines.m5.map(k => k.close)),
-                stoch: calculateStochRSI(calculateRSI(klines.m5.map(k => k.close))),
-                adx: calculateADX(klines.m5)
+                macd: calculateMACD(m5Closes),
+                rsi: calculateRSI(m5Closes),
+                stoch: calculateStochRSI(calculateRSI(m5Closes)),
+                adx: calculateADX(klines.m5),
+                bbw: m5Bbw,
+                bbwp: calculateBBWP(m5Bbw),
+                bbw_roc: calculateROC(m5Bbw)
             },
             h1: {
-                macd: calculateMACD(klines.h1.map(k => k.close)),
-                rsi: calculateRSI(klines.h1.map(k => k.close)),
-                stoch: calculateStochRSI(calculateRSI(klines.h1.map(k => k.close))),
-                adx: calculateADX(klines.h1)
+                macd: calculateMACD(h1Closes),
+                rsi: calculateRSI(h1Closes),
+                stoch: calculateStochRSI(calculateRSI(h1Closes)),
+                adx: calculateADX(klines.h1),
+                bbw: h1Bbw,
+                bbwp: calculateBBWP(h1Bbw),
+                bbw_roc: calculateROC(h1Bbw)
             },
             d1: {
-                macd: calculateMACD(klines.d1.map(k => k.close)),
-                rsi: calculateRSI(klines.d1.map(k => k.close)),
-                stoch: calculateStochRSI(calculateRSI(klines.d1.map(k => k.close))),
-                adx: calculateADX(klines.d1)
+                macd: calculateMACD(d1Closes),
+                rsi: calculateRSI(d1Closes),
+                stoch: calculateStochRSI(calculateRSI(d1Closes)),
+                adx: calculateADX(klines.d1),
+                bbw: d1Bbw,
+                bbwp: calculateBBWP(d1Bbw),
+                bbw_roc: calculateROC(d1Bbw)
             }
         };
     },
