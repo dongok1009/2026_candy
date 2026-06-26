@@ -45,6 +45,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
   const inspectLineStochRef = useRef();
   const inspectLineAdxRef = useRef();
   
+  const lastEvalTimeRef = useRef(0);
   const dataRef = useRef([]);
   const [borderColor, setBorderColor] = useState('#242a2e');
   const [macdLegend, setMacdLegend] = useState({ hist: 0, macd: 0, signal: 0 });
@@ -421,41 +422,49 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     const lastIdx = fullData.findIndex(d => d.time === formattedCandle.time);
     if (lastIdx > -1) fullData[lastIdx] = formattedCandle;
     else fullData.push(formattedCandle);
+    dataRef.current = fullData; // Keep reference updated
 
-    const closes = fullData.map(d => d.close);
-    const rsiValues = calculateRSI(closes);
-    const { macdLine: mLine, signalLine: sLine, histogram: hist } = calculateMACD(closes);
-    const { kLine, dLine } = calculateStochRSI(rsiValues);
-    const { middle, upper, lower } = calculateBollingerBands(closes);
-    const adxValues = calculateADX(fullData);
+    // Throttle indicator calculations to reduce CPU usage
+    const now = Date.now();
+    const shouldCalculate = lastCandle.isFinal || (now - lastEvalTimeRef.current > 1500);
 
-    const lastTime = formattedCandle.time;
-    if (bbMiddleRef.current) bbMiddleRef.current.update({ time: lastTime, value: middle[fullData.length - 1] });
-    if (bbUpperRef.current) bbUpperRef.current.update({ time: lastTime, value: upper[fullData.length - 1] });
-    if (bbLowerRef.current) bbLowerRef.current.update({ time: lastTime, value: lower[fullData.length - 1] });
-    if (macdLineRef.current) macdLineRef.current.update({ time: lastTime, value: mLine[fullData.length - 1] });
-    if (macdSignalRef.current) macdSignalRef.current.update({ time: lastTime, value: sLine[fullData.length - 1] });
-    if (macdHistRef.current) macdHistRef.current.update({ time: lastTime, value: hist[fullData.length - 1], color: hist[fullData.length - 1] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)' });
-    if (stochKRef.current) stochKRef.current.update({ time: lastTime, value: kLine[fullData.length - 1] });
-    if (stochDRef.current) stochDRef.current.update({ time: lastTime, value: dLine[fullData.length - 1] });
-    if (adxSeriesRef.current) adxSeriesRef.current.update({ time: lastTime, value: adxValues[fullData.length - 1] });
-    if (stoch20Ref.current) stoch20Ref.current.update({ time: lastTime, value: 20 });
-    if (stoch80Ref.current) stoch80Ref.current.update({ time: lastTime, value: 80 });
-    if (stochFillRef.current) stochFillRef.current.update({ time: lastTime, value: 80 });
+    if (shouldCalculate) {
+      lastEvalTimeRef.current = now;
 
-    const ghostUpdate = { time: lastTime, value: 0 };
-    if (priceGhostRef.current) priceGhostRef.current.update(ghostUpdate);
-    if (macdGhostRef.current) macdGhostRef.current.update(ghostUpdate);
-    if (stochGhostRef.current) stochGhostRef.current.update(ghostUpdate);
-    if (adxGhostRef.current) adxGhostRef.current.update(ghostUpdate);
+      const closes = fullData.map(d => d.close);
+      const rsiValues = calculateRSI(closes);
+      const { macdLine: mLine, signalLine: sLine, histogram: hist } = calculateMACD(closes);
+      const { kLine, dLine } = calculateStochRSI(rsiValues);
+      const { middle, upper, lower } = calculateBollingerBands(closes);
+      const adxValues = calculateADX(fullData);
 
-    // Update Legends for live candle
-    const lastI = fullData.length - 1;
-    setMacdLegend({ hist: hist[lastI], macd: mLine[lastI], signal: sLine[lastI] });
-    setStochLegend({ k: kLine[lastI], d: dLine[lastI] });
-    setAdxLegend(adxValues[lastI]);
-    if (onDataUpdate) onDataUpdate({ m: mLine[lastI], s: sLine[lastI], h: hist[lastI], k: kLine[lastI], d: dLine[lastI], adx: adxValues[lastI] });
+      const lastTime = formattedCandle.time;
+      if (bbMiddleRef.current) bbMiddleRef.current.update({ time: lastTime, value: middle[fullData.length - 1] });
+      if (bbUpperRef.current) bbUpperRef.current.update({ time: lastTime, value: upper[fullData.length - 1] });
+      if (bbLowerRef.current) bbLowerRef.current.update({ time: lastTime, value: lower[fullData.length - 1] });
+      if (macdLineRef.current) macdLineRef.current.update({ time: lastTime, value: mLine[fullData.length - 1] });
+      if (macdSignalRef.current) macdSignalRef.current.update({ time: lastTime, value: sLine[fullData.length - 1] });
+      if (macdHistRef.current) macdHistRef.current.update({ time: lastTime, value: hist[fullData.length - 1], color: hist[fullData.length - 1] >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)' });
+      if (stochKRef.current) stochKRef.current.update({ time: lastTime, value: kLine[fullData.length - 1] });
+      if (stochDRef.current) stochDRef.current.update({ time: lastTime, value: dLine[fullData.length - 1] });
+      if (adxSeriesRef.current) adxSeriesRef.current.update({ time: lastTime, value: adxValues[fullData.length - 1] });
+      if (stoch20Ref.current) stoch20Ref.current.update({ time: lastTime, value: 20 });
+      if (stoch80Ref.current) stoch80Ref.current.update({ time: lastTime, value: 80 });
+      if (stochFillRef.current) stochFillRef.current.update({ time: lastTime, value: 80 });
 
+      const ghostUpdate = { time: lastTime, value: 0 };
+      if (priceGhostRef.current) priceGhostRef.current.update(ghostUpdate);
+      if (macdGhostRef.current) macdGhostRef.current.update(ghostUpdate);
+      if (stochGhostRef.current) stochGhostRef.current.update(ghostUpdate);
+      if (adxGhostRef.current) adxGhostRef.current.update(ghostUpdate);
+
+      // Update Legends for live candle
+      const lastI = fullData.length - 1;
+      setMacdLegend({ hist: hist[lastI], macd: mLine[lastI], signal: sLine[lastI] });
+      setStochLegend({ k: kLine[lastI], d: dLine[lastI] });
+      setAdxLegend(adxValues[lastI]);
+      if (onDataUpdate) onDataUpdate({ m: mLine[lastI], s: sLine[lastI], h: hist[lastI], k: kLine[lastI], d: dLine[lastI], adx: adxValues[lastI] });
+    }
   }, [lastCandle, dataLoaded]);
 
   // Handle Signal Evaluation (Unified logic for both Live and Past)

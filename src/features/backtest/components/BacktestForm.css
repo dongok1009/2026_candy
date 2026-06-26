@@ -423,3 +423,43 @@ input[type="checkbox"] {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+  .backtest-container {
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+  .backtest-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .backtest-header div {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch !important;
+  }
+  .header-select {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+  .row-inputs {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+  .run-button, .verify-button, .copy-button, .save-button {
+    width: 100%;
+    justify-content: center;
+  }
+  .backtest-grid + div {
+    flex-direction: column;
+    gap: 8px !important;
+  }
+  .stats-dashboard {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .stats-dashboard > div:last-child {
+    grid-column: span 2;
+  }
+}
+

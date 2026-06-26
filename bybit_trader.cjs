@@ -220,8 +220,8 @@ async function checkMarkets() {
                 const signalCooldown = 60 * 60 * 1000; // 1시간 쿨다운
                 const skipNotify = (now - liveState.lastNotifiedSignalTime < signalCooldown);
 
-                if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_long');
-                else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_short');
+                if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_long', indicators, indices, overrideRules);
+                else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_short', indicators, indices, overrideRules);
                 
                 if (!skipNotify) {
                     liveState.lastNotifiedSignalTime = now;
@@ -233,14 +233,14 @@ async function checkMarkets() {
             liveState.lastSignal = finalSignal.toUpperCase();
             saveState();
         } else {
-            await monitorPosition(m5[m5.length - 1].close);
+            await monitorPosition(m5[m5.length - 1].close, indicators, indices, overrideRules, klines);
         }
     } catch (err) {
         console.error("[SCAN ERROR]", err.message);
     }
 }
 
-async function handleEntry(side, price, klines, skipNotify = false, isExtremeBypass = false) {
+async function handleEntry(side, price, klines, skipNotify = false, isExtremeBypass = false, indicators, indices, overrideRules) {
     const config = strategy.config;
     
     // v8.2.4 다중 진입 모드 및 돌파 필터 적용 (극단값 우회 시에는 무조건 시장가 진입)
@@ -274,11 +274,25 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
             : (parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100);
         const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
 
-        // 실제 가용 잔고와 설정 금액 중 작은 값 선택 (수수료 및 증거금 버퍼 확보를 위해 가용 잔고의 95%만 활용하도록 핫픽스)
-        const finalAmount = Math.min(envAmount, availableBalance * 0.95);
+        // 1h 20MA 대비 포지션 규모 필터 계산 (0.5x or 1.0x)
+        let sizeMultiplier = 1.0;
+        const h1Rules = overrideRules?.[side.toLowerCase()]?.['1h'];
+        if (h1Rules && h1Rules.useMaSizeFilter && indicators && indices) {
+            const h1MaVal = indicators.h1.ma[indices.r1h];
+            if (h1MaVal !== null && h1MaVal !== undefined) {
+                if (side === 'LONG' && price < h1MaVal) {
+                    sizeMultiplier = 0.5;
+                } else if (side === 'SHORT' && price > h1MaVal) {
+                    sizeMultiplier = 0.5;
+                }
+            }
+        }
+
+        // 실제 가용 잔고와 설정 금액 중 작은 값 선택 (수수료 및 증거금 버퍼 확보를 위해 가용 잔고의 95%만 활용하도록 핫픽스, 사이즈 필터 적용)
+        const finalAmount = Math.min(envAmount, availableBalance * 0.95) * sizeMultiplier;
         
-        console.log(`[DEBUG] ENV_AMOUNT:$${envAmount}, BYBIT_FREE:$${availableBalance.toFixed(2)}, FINAL_MARGIN:$${finalAmount}`);
-        updateTradeLog('DEBUG_AMOUNT', { envAmount, availableBalance, finalAmount });
+        console.log(`[DEBUG] ENV_AMOUNT:$${envAmount}, BYBIT_FREE:$${availableBalance.toFixed(2)}, FINAL_MARGIN:$${finalAmount} (SizeMult:${sizeMultiplier})`);
+        updateTradeLog('DEBUG_AMOUNT', { envAmount, availableBalance, finalAmount, sizeMultiplier });
 
         let entryPrice = 0;
         let isMarketOrder = false;
@@ -396,10 +410,31 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
     }
 }
 
-async function monitorPosition(currentPrice) {
+async function monitorPosition(currentPrice, indicators, indices, overrideRules, klines) {
     const entry = liveState.entryPrice;
     const side = liveState.position;
     const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
+
+    // [SWITCHING] 반대 신호 시 즉시 청산 후 스위칭 진입
+    if (liveState.status === 'IN_POSITION' && overrideRules?.global?.switchingEnabled && indicators && indices) {
+        const checkSignal = strategy.signal_logic(indicators, indices, overrideRules);
+        const isOpposite = (side === 'LONG' && (checkSignal === 'short' || checkSignal === 'extreme_short')) ||
+                           (side === 'SHORT' && (checkSignal === 'long' || checkSignal === 'extreme_long'));
+        if (isOpposite) {
+            console.log(`🔄 [SWITCHING SIGNAL] Opposite signal detected: ${checkSignal.toUpperCase()}. Switching...`);
+            const durationMin = Math.floor((Date.now() - liveState.entryTime) / 60000);
+            const roe = side === 'LONG' ? (currentPrice - entry) / entry * leverage : (entry - currentPrice) / entry * leverage;
+            
+            // 기존 포지션 청산
+            await closePosition(side, 'SWITCHING', currentPrice, roe, durationMin);
+            
+            // 즉시 반대 포지션 진입
+            const oppositeSide = side === 'LONG' ? 'SHORT' : 'LONG';
+            const isExtreme = checkSignal.startsWith('extreme');
+            await handleEntry(oppositeSide, currentPrice, klines, false, isExtreme, indicators, indices, overrideRules);
+            return;
+        }
+    }
 
     // WAITING 상태이면 체결 확인만 수행
     if (liveState.status === 'WAITING') {

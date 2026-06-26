@@ -1,10 +1,10 @@
 const { calculateEMA, calculateSMA, calculateRSI, calculateMACD, calculateStochRSI, calculateADX, calculateBBW, calculateBBWP, calculateROC, calculateSlope } = require('../lib/indicators.cjs');
 
-console.log(`[LOADED] Logic.v8.2.4.cjs loaded at ${new Date().toISOString()}`);
+console.log(`[LOADED] Logic.v8.2.5.cjs loaded at ${new Date().toISOString()}`);
 
 const strategy = {
-    name: 'Logic.v8.2.4',
-    description: 'v8.2.4 (Custom Entry Modes & Penetration Rate Integration - BTC Only)',
+    name: 'Logic.v8.2.5',
+    description: 'v8.2.5 (MA Slope, ROC & Switching/Sizing Filters)',
     header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M3_StochK,M3_StochD,M3_ADX,M5_StochK,M5_StochD,M5_ADX,M5_RSI,M5_MACD,M5_MACDSig,M5_BBW,M5_BBWP,M5_BBW_ROC,M5_MA_Slope,M5_MA_ROC,H1_MACD,H1_MACDSig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,H1_BBW,H1_BBWP,H1_BBW_ROC,H1_MA_Slope,H1_MA_ROC,H12_MACD,H12_MACDSig,H12_StochK,H12_StochD,H12_ADX,D1_MACD,D1_MACDSig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,D1_BBW,D1_BBWP,D1_BBW_ROC,D1_MA_Slope,D1_MA_ROC",
 
     config: {
@@ -26,9 +26,8 @@ const strategy = {
         ENTRY_WAIT_MIN: 180,
         EXIT_WAIT_MIN: 1500,
 
-        // [New v8.2.4 parameters]
-        PENETRATION_RATE: 0.001, // 0.1% 돌파 시 체결로 판정
-        ENTRY_MODE: 'HYBRID_5M' // MARKET, HYBRID_5M, HYBRID_10M, HYBRID_15M
+        PENETRATION_RATE: 0.001,
+        ENTRY_MODE: 'HYBRID_5M'
     },
 
     indicators_logic: (klines) => {
@@ -208,6 +207,32 @@ const strategy = {
                 if (val !== null && val !== undefined && (val <= low || val >= high)) match = false;
             }
 
+            // 8. MA Slope Filter (0 기준, 5m 전용)
+            if (interval === 'm5' && (chk('maSlopeEnabled') || chk('useMaSlope'))) {
+                const val = data.ma_slope[idx];
+                logDetail += `MASlope:${val !== null && val !== undefined ? val.toFixed(4) : 'null'} `;
+                if (val !== null && val !== undefined) {
+                    if (side === 'long') {
+                        if (val < 0) match = false;
+                    } else {
+                        if (val >= 0) match = false;
+                    }
+                }
+            }
+
+            // 9. MA ROC Filter (0 기준, 5m 전용)
+            if (interval === 'm5' && (chk('maRocEnabled') || chk('useMaRoc'))) {
+                const val = data.ma_roc[idx];
+                logDetail += `MAROC:${val !== null && val !== undefined ? val.toFixed(1) : 'null'} `;
+                if (val !== null && val !== undefined) {
+                    if (side === 'long') {
+                        if (val < 0) match = false;
+                    } else {
+                        if (val >= 0) match = false;
+                    }
+                }
+            }
+
             return match;
         };
 
@@ -238,7 +263,6 @@ const strategy = {
         let entryTimeIdx = currentIndex;
         let entryType = "";
 
-        // Stoch 극단값 우회인 경우(sig === 'extreme_long' or 'extreme_short') 무조건 시장가 진입
         if (sig === 'extreme_long' || sig === 'extreme_short') {
             finalEntryPrice = k1m.open;
             executed = true;
@@ -246,7 +270,6 @@ const strategy = {
             return { executed, finalEntryPrice, entryType, entryTimeIdx };
         }
 
-        // 1. 진입 방식별 타겟 지정가 결정
         if (entryMode === "HYBRID_5M") {
             const prev5m = extraContext ? extraContext.klines5m[extraContext.idx5m] : k5_prev;
             targetPrice = sig === 'long' ? prev5m.low : prev5m.high;
@@ -257,19 +280,15 @@ const strategy = {
             const prev15m = extraContext.klines15m[extraContext.idx15m];
             targetPrice = sig === 'long' ? prev15m.low : prev15m.high;
         } else {
-            // MARKET 및 기본 폴백은 5m 타겟팅
             const prev5m = extraContext ? extraContext.klines5m[extraContext.idx5m] : k5_prev;
             targetPrice = sig === 'long' ? prev5m.low : prev5m.high;
         }
 
-        // 2. 진입 로직 실행
         if (entryMode === "MARKET") {
-            // 즉시 시장가 진입
             finalEntryPrice = k1m.open;
             executed = true;
             entryType = "MARKET";
         } else {
-            // 하이브리드 모드 (HYBRID_5M, HYBRID_10M, HYBRID_15M 및 폴백)
             const signalPrice = k1m.open;
             if (sig === 'long' && signalPrice <= targetPrice) {
                 finalEntryPrice = signalPrice;
@@ -280,7 +299,6 @@ const strategy = {
                 executed = true;
                 entryType = `MARKET(${entryMode})`;
             } else {
-                // 유리하지 않으면 지정가 주문 대기 (돌파 깊이 적용)
                 for (let j = currentIndex; j < klines1m.length; j++) {
                     const ex = klines1m[j];
                     if (sig === 'long' && ex.low <= targetPrice * (1 - penetrationRate)) {
