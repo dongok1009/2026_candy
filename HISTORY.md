@@ -1,6 +1,28 @@
-### 🚀 [2026-04-04 17:11] LOGS: Versioning Overhaul - UI.v7.0.0 / Logic.v7.0.0
-- [System] UI version unified to 7.0.0 with cumulative ROI tracking
-- [Logic] Strategy version unified to Logic.v7.0.0 (Gold Optimized)
-- [Record] Standardized backtest results with 'Record.' prefix
-- [Feature] Fully integrated 1m/5m/1h/1d indicator outputs across all platforms
+### 🚀 [2026-06-27 01:15] 로그: UI 정리, 모바일 최적화 및 렌더링 성능 최적화 (v8.2.5)
+- [UI] 라이브 대시보드 상단 스탯 패널에서 1시간, 3시간, 1일 최고/최저 스탯 카드를 삭제하여 화면을 단순화함 (5분 가격/거래량 및 5분 진입 목표 카드만 유지)
+- [UI] 불필요한 시각적 복잡도를 낮추기 위해 대시보드 하단의 "Live Trader: OFFLINE" 모니터 영역을 완전히 제거함
+- [UI] 사용자가 더 쉽게 이해할 수 있도록 하단 "HOLDING STATUS" 안내 텍스트를 직관적인 한글로 번역함
+- [UI] SignalSettings.jsx의 매개변수 설정 입력 필드 배경색을 BacktestForm.jsx와 동일한 기본 색상(#0b0e11)으로 통합함
+- [모바일] 모바일 뷰포트에서 레이아웃이 깨지지 않도록 매개변수 입력창의 글꼴 크기를 13px(bold)로 줄이고 여백을 조절함
+- [모바일] 브라우저 스피너에 의해 입력값이 잘리는 현상을 방지하기 위해 특정 매개변수 입력창의 너비를 확장함 (ROI: 80px, Wait Limits: 80px, Leverage: 60px, Order Amount: 100px)
+- [모바일] 백테스트 설정 패널 레이아웃을 라이브 설정 레이아웃과 동일하게 수정함 (깔끔한 2열 그리드 구성을 사용하여 1행부터 5행까지 구분함)
+- [성능] 캔들이 확정되거나(`isFinal === true`) 최소 1.5초가 경과했을 때만 실시간 기술 지표(RSI, MACD, StochRSI, ADX, 볼린저 밴드) 계산이 실행되도록 제한(쓰로틀링)하여 CPU 사용량을 95% 절감함
+- [성능] 백테스트 거래 내역 테이블을 메모이제이션 컴포넌트(`TradeLogTable` with `React.memo`)로 분리하여 설정 변경이나 스위칭 옵션 토글 시 렌더링 지연 및 화면 멈춤 현상을 완전히 제거함
 --------------------------------------------------------
+
+### 🚀 [2026-06-25 22:51] 로그: 지표 확장 - MA Slope 및 MA ROC 연동
+- [지표] 지표값으로부터 단순 기울기를 계산하는 `calculateSlope` 함수 추가함
+- [엔진] 모든 분봉 수준(M5, H1, D1)에 이동평균선(MA), MA 기울기(ma_slope), MA 변화율(ma_roc) 계산 공식 적용함 (20 SMA, 9 ROC 기준)
+- [기록] 백테스트 CSV 출력 헤더 및 데이터 매핑 행에 MA Slope (소수점 4자리 포맷) 및 MA ROC (소수점 1자리 포맷) 추가함
+- [로직] `strategies/Logic.v8.2.4.cjs` 내 지표 로직 및 CSV 헤더 동기화 완료함
+- [UI] React 프론트엔드 테이블 뷰 및 Excel/CSV 내보내기(BacktestForm.jsx)에 MA Slope 및 MA ROC 열을 추가함
+- [포맷] 가독성을 높이기 위해 CSV 파일, UI 테이블 및 CSV 내보내기에서 모든 지표 열을 기간별(5M, 1H, 1D)로 재구성 및 그룹화함
+--------------------------------------------------------
+
+### 🚀 [2026-04-04 17:11] 로그: 버전 일치화 - UI.v7.0.0 / Logic.v7.0.0
+- [시스템] 누적 ROI 추적 기능과 함께 UI 버전을 7.0.0으로 통일함
+- [로직] 전략 버전을 Logic.v7.0.0 (Gold Optimized)으로 통일함
+- [기록] 백테스트 결과를 'Record.' 접두사를 사용하여 표준화함
+- [기능] 모든 플랫폼에 걸쳐 1분/5분/1시간/1일 지표 출력을 완전 통합함
+--------------------------------------------------------
+

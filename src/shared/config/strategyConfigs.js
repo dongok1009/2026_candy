@@ -4,6 +4,45 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
+    version: 'Logic.v8.2.5',
+    name: 'Logic.v8.2.5 (MA Slope, ROC & Switching/Sizing Filters)',
+    description: '5분봉 MA Slope/ROC (0기준 필터), 반대신호 즉시 스위칭 진입, 1시간봉 20MA 수량조절 기능이 통합된 모델',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      targetRoi: 0.05,
+      slRoi: 0.14,
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      reduceTpWaitMin: 0,
+      reducedTargetRoi: 0.03,
+      penetrationRate: 0.001,
+      entryMode: 'HYBRID_5M',
+      global: {
+        switchingEnabled: true
+      },
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSlope: true, useMaRoc: false },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSlope: true, useMaRoc: false },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      }
+    }
+  },
+  {
     version: 'Logic.v8.2.4',
     name: 'Logic.v8.2.4 (Custom Entry Modes & Penetration Rate Integration)',
     description: '돌파 깊이 필터(penetrationRate) 및 다중 진입 모드(Market, Limit 5m/10m/15m)가 결합된 BTC 전용 모델',

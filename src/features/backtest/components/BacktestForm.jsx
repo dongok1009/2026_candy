@@ -245,7 +245,10 @@ const BacktestForm = () => {
                 rsiLow: srcTfRules.rsiLow !== undefined ? srcTfRules.rsiLow : 5,
                 rsiHigh: srcTfRules.rsiHigh !== undefined ? srcTfRules.rsiHigh : 95,
                 useMacdVal: srcTfRules.macdValueEnabled !== undefined ? srcTfRules.macdValueEnabled : (srcTfRules.useMacdVal !== undefined ? srcTfRules.useMacdVal : false),
-                macdVal: srcTfRules.macdValue !== undefined ? srcTfRules.macdValue : (srcTfRules.macdVal !== undefined ? srcTfRules.macdVal : 0)
+                macdVal: srcTfRules.macdValue !== undefined ? srcTfRules.macdValue : (srcTfRules.macdVal !== undefined ? srcTfRules.macdVal : 0),
+                useMaSlope: srcTfRules.useMaSlope !== undefined ? srcTfRules.useMaSlope : false,
+                useMaRoc: srcTfRules.useMaRoc !== undefined ? srcTfRules.useMaRoc : false,
+                useMaSizeFilter: srcTfRules.useMaSizeFilter !== undefined ? srcTfRules.useMaSizeFilter : false
             };
         };
 
@@ -262,8 +265,12 @@ const BacktestForm = () => {
             });
         }
 
+        mapped.global = {
+            switchingEnabled: rawRules.global?.switchingEnabled !== undefined ? rawRules.global.switchingEnabled : false
+        };
+
         Object.keys(rawRules).forEach(k => {
-            if (!timeframes.includes(k) && k !== 'long' && k !== 'short') {
+            if (!timeframes.includes(k) && k !== 'long' && k !== 'short' && k !== 'global') {
                 mapped[k] = rawRules[k];
             }
         });
@@ -695,12 +702,9 @@ const BacktestForm = () => {
         
         const baseHeaders = ["#", "진입(KST)", "청산(KST)", "시간(분)", "방향", "진입가", "청산가", "수량", "LEV", "수수료", "펀딩피", "순수익", "잔액", "누적ROI", "ROE", "실질ROE", "청산", "주문"];
         const indicatorHeaders = [
-            "5M StochK", "5M StochD", "5M ADX", "5M RSI",
-            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI",
-            "1D MACD", "1D Signal", "1D ADX", "1D RSI",
-            "5M BBW", "5M BBWP", "5M BBW ROC",
-            "1H BBW", "1H BBWP", "1H BBW ROC",
-            "1D BBW", "1D BBWP", "1D BBW ROC"
+            "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope", "5M MA ROC",
+            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope", "1H MA ROC",
+            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope", "1D MA ROC"
         ];
         const headers = showIndicators ? [...baseHeaders, ...indicatorHeaders] : baseHeaders;
 
@@ -726,12 +730,9 @@ const BacktestForm = () => {
                 "지정가"
             ];
             const indicatorRow = [
-                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-',
-                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-',
-                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-',
-                t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-',
-                t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-',
-                t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-'
+                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope || '-', t.m5_ma_roc || '-',
+                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope || '-', t.h1_ma_roc || '-',
+                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope || '-', t.d1_ma_roc || '-'
             ];
             return showIndicators ? [...baseRow, ...indicatorRow] : baseRow;
         });
@@ -927,66 +928,103 @@ const BacktestForm = () => {
                 </h3>
                 
                 {/* 2번에서 이동한 익절률, 손절률 및 글로벌 매개변수 입력 필드 */}
-                <div style={{ background: '#0b0e11', padding: '20px', borderRadius: '12px', border: '1px solid #2b3139', marginBottom: '24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <div className="input-group">
-                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Target ROI (Decimal, e.g. 0.03 = 3%)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" step="0.005" name="targetRoi" value={config.targetRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>목표 수익률 (Net ROI)</span>
+                <div style={{ background: '#0b0e11', padding: '12px 16px', borderRadius: '12px', border: '1px solid #2b3139', marginBottom: '24px' }}>
+                    {/* Row 1: Target ROI & Stop Loss ROI */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 16px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Target ROI (Decimal, e.g. 0.03 = 3%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.005" name="targetRoi" value={config.targetRoi} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>목표 수익률 (Net ROI)</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#ef5350', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Stop Loss ROI (Decimal, e.g. 0.15 = 15%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.001" name="slRoi" value={config.slRoi} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>최대 허용 손실률</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label style={{ color: '#ef5350', fontSize: '13px', fontWeight: 'bold' }}>Stop Loss ROI (Decimal, e.g. 0.15 = 15%)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" step="0.001" name="slRoi" value={config.slRoi} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>최대 허용 손실률</span>
+
+                    {/* Row 2: Entry Wait & Exit Wait */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" name="entryWaitMin" value={config.entryWaitMin || 60} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>분 대기 후 진입 실패 처리</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#ff4d4d', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" name="exitWaitMin" value={config.exitWaitMin || 2000} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>분 대기 후 시장가 청산 강제</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Entry Wait Limit (min)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" name="entryWaitMin" value={config.entryWaitMin || 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 진입 실패 처리</span>
+
+                    {/* Row 3: TP Reduction Wait & Reduced Target ROI */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Reduce TP Wait Time (min, 0 to disable)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" name="reduceTpWaitMin" value={config.reduceTpWaitMin ?? 60} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>분 뒤 익절 하향 (0이면 비활성)</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Reduced Target ROI (Decimal, e.g. 0.01 = 1%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.005" name="reducedTargetRoi" value={config.reducedTargetRoi ?? 0.01} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>조정된 목표 수익률 (Net ROI)</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label style={{ color: '#ff4d4d', fontSize: '13px', fontWeight: 'bold' }}>Exit Wait Limit (min)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" name="exitWaitMin" value={config.exitWaitMin || 2000} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 대기 후 시장가 청산 강제</span>
+
+                    {/* Row 4: Penetration Rate & Entry Mode */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Penetration Rate (Decimal, e.g. 0.001 = 0.1%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.0001" name="penetrationRate" value={config.penetrationRate ?? 0.001} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>목표가 돌파 비율 (지정가 보수화)</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Entry Mode (진입 방식)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <select name="entryMode" value={config.entryMode ?? 'HYBRID_5M'} onChange={handleChange} style={{ width: 'auto', minWidth: '180px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none', cursor: 'pointer', paddingRight: '20px' }}>
+                                    <option value="MARKET" style={{ background: '#1e2329', color: '#eaebed' }}>MARKET (시장가)</option>
+                                    <option value="HYBRID_5M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_5M (5분봉기준 유리한 가격)</option>
+                                    <option value="HYBRID_10M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_10M (10분봉기준 유리한 가격)</option>
+                                    <option value="HYBRID_15M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_15M (15분봉기준 유리한 가격)</option>
+                                </select>
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>진입 기준 가격 옵션</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="input-group">
-                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Reduce TP Wait Time (min, 0 to disable)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" name="reduceTpWaitMin" value={config.reduceTpWaitMin ?? 60} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>분 뒤 익절 하향 (0이면 비활성)</span>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Reduced Target ROI (Decimal, e.g. 0.01 = 1%)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" step="0.005" name="reducedTargetRoi" value={config.reducedTargetRoi ?? 0.01} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>조정된 목표 수익률 (Net ROI)</span>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label style={{ color: '#f3ba2f', fontSize: '13px', fontWeight: 'bold' }}>Penetration Rate (Decimal, e.g. 0.001 = 0.1%)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <input type="number" step="0.0001" name="penetrationRate" value={config.penetrationRate ?? 0.001} onChange={handleChange} style={{ width: '120px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '16px', fontWeight: '800', outline: 'none' }} />
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>목표가 돌파 비율 (지정가 보수화)</span>
-                        </div>
-                    </div>
-                    <div className="input-group">
-                        <label style={{ color: '#26a69a', fontSize: '13px', fontWeight: 'bold' }}>Entry Mode (진입 방식)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#1e2329', padding: '8px 12px', borderRadius: '8px', border: '1px solid #2b3139' }}>
-                            <select name="entryMode" value={config.entryMode ?? 'HYBRID_5M'} onChange={handleChange} style={{ width: 'auto', minWidth: '320px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '15px', fontWeight: '800', outline: 'none', cursor: 'pointer', paddingRight: '20px' }}>
-                                <option value="MARKET" style={{ background: '#1e2329', color: '#eaebed' }}>MARKET (시장가)</option>
-                                <option value="HYBRID_5M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_5M (5분봉기준 유리한 가격)</option>
-                                <option value="HYBRID_10M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_10M (10분봉기준 유리한 가격)</option>
-                                <option value="HYBRID_15M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_15M (15분봉기준 유리한 가격)</option>
-                            </select>
-                            <span style={{ color: '#848e9c', fontSize: '12px' }}>진입 기준 가격 옵션</span>
+
+                    {/* Row 5: Opposite Signal Switching */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px 16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Opposite Signal Switching (스위칭 진입)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '6px 12px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={rules.global?.switchingEnabled ?? false} 
+                                    onChange={e => setRules(prev => ({
+                                        ...prev,
+                                        global: {
+                                            ...prev.global,
+                                            switchingEnabled: e.target.checked
+                                        }
+                                    }))} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>포지션 보유 중 반대 방향 시그널 발생 시 즉시 시장가 청산 및 반대 진입</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1038,34 +1076,34 @@ const BacktestForm = () => {
                                         <h5 style={{ color: '#26a69a', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{iv}:</h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                             {/* ADX Range */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useADX} onChange={e => handleRuleChange('long', iv, 'useADX', e.target.checked)} />
                                                 <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>ADX</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxLow ?? 30} onChange={e => handleRuleChange('long', iv, 'adxLow', parseFloat(e.target.value))} />
-                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
+                                                <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxHigh ?? 99} onChange={e => handleRuleChange('long', iv, 'adxHigh', parseFloat(e.target.value))} />
                                             </div>
 
                                             {/* Stoch K Limit */}
                                             {(targetRules[iv]?.stochKThreshold !== undefined || targetRules[iv]?.stochKHigh !== undefined) && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useStochKLimit} onChange={e => handleRuleChange('long', iv, 'useStochKLimit', e.target.checked)} />
                                                     <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>StochK</span>
                                                     <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKLow ?? 0} onChange={e => handleRuleChange('long', iv, 'stochKLow', parseFloat(e.target.value))} />
-                                                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
+                                                    <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
                                                     <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKHigh ?? (targetRules[iv]?.stochKThreshold || 99)} onChange={e => handleRuleChange('long', iv, 'stochKHigh', parseFloat(e.target.value))} />
                                                 </div>
                                             )}
 
                                             {/* RSI Limit */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useRSI} onChange={e => handleRuleChange('long', iv, 'useRSI', e.target.checked)} />
                                                 <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>RSI</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('long', iv, 'rsiLow', parseFloat(e.target.value))} />
-                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+                                                <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('long', iv, 'rsiHigh', parseFloat(e.target.value))} />
                                             </div>
 
@@ -1099,6 +1137,33 @@ const BacktestForm = () => {
                                                     <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>극단값에서 무조건 시장가 진입</span>
                                                 </div>
                                             )}
+
+                                            {/* MA Slope (m5 전용, 0 기준) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('long', iv, 'useMaSlope', e.target.checked)} />
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope (≥ 0)</span>
+                                                </div>
+                                            )}
+
+                                            {/* MA ROC (m5 전용, 0 기준) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('long', iv, 'useMaRoc', e.target.checked)} />
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC (≥ 0)</span>
+                                                </div>
+                                            )}
+
+                                            {/* 1H 20MA Size Filter (1h 전용) */}
+                                            {iv === '1h' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSizeFilter} onChange={e => handleRuleChange('long', iv, 'useMaSizeFilter', e.target.checked)} />
+                                                    <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>1H 20MA 포지션 규모 조절 (미만시 50%)</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1126,34 +1191,34 @@ const BacktestForm = () => {
                                         <h5 style={{ color: '#ef5350', fontSize: '15px', fontWeight: 'bold', margin: '0 0 14px 0' }}>{iv}:</h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                             {/* ADX Range */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useADX} onChange={e => handleRuleChange('short', iv, 'useADX', e.target.checked)} />
                                                 <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>ADX</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxLow ?? 30} onChange={e => handleRuleChange('short', iv, 'adxLow', parseFloat(e.target.value))} />
-                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
+                                                <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; ADX &lt;</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.adxHigh ?? 99} onChange={e => handleRuleChange('short', iv, 'adxHigh', parseFloat(e.target.value))} />
                                             </div>
 
                                             {/* Stoch K Limit */}
                                             {(targetRules[iv]?.stochKThreshold !== undefined || targetRules[iv]?.stochKHigh !== undefined) && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useStochKLimit} onChange={e => handleRuleChange('short', iv, 'useStochKLimit', e.target.checked)} />
                                                     <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>StochK</span>
                                                     <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKLow ?? 0} onChange={e => handleRuleChange('short', iv, 'stochKLow', parseFloat(e.target.value))} />
-                                                    <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
+                                                    <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; StochK &lt;</span>
                                                     <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.stochKHigh ?? (targetRules[iv]?.stochKThreshold || 99)} onChange={e => handleRuleChange('short', iv, 'stochKHigh', parseFloat(e.target.value))} />
                                                 </div>
                                             )}
 
                                             {/* RSI Limit */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useRSI} onChange={e => handleRuleChange('short', iv, 'useRSI', e.target.checked)} />
                                                 <span style={{ display: 'inline-block', width: '70px', color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>RSI</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiLow ?? 5} onChange={e => handleRuleChange('short', iv, 'rsiLow', parseFloat(e.target.value))} />
-                                                <span style={{ display: 'inline-block', width: '85px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
+                                                <span style={{ display: 'inline-block', minWidth: '55px', padding: '0 2px', textAlign: 'center', color: '#eaebed', fontSize: '12px' }}>&lt; RSI &lt;</span>
                                                 <input type="number" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={targetRules[iv]?.rsiHigh ?? 95} onChange={e => handleRuleChange('short', iv, 'rsiHigh', parseFloat(e.target.value))} />
                                             </div>
 
@@ -1185,6 +1250,33 @@ const BacktestForm = () => {
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useStochExtremeBypass} onChange={e => handleRuleChange('short', iv, 'useStochExtremeBypass', e.target.checked)} />
                                                     <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>극단값에서 무조건 시장가 진입</span>
+                                                </div>
+                                            )}
+
+                                            {/* MA Slope (m5 전용, 0 기준) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('short', iv, 'useMaSlope', e.target.checked)} />
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope (&lt; 0)</span>
+                                                </div>
+                                            )}
+
+                                            {/* MA ROC (m5 전용, 0 기준) */}
+                                            {iv === '5m' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('short', iv, 'useMaRoc', e.target.checked)} />
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC (&lt; 0)</span>
+                                                </div>
+                                            )}
+
+                                            {/* 1H 20MA Size Filter (1h 전용) */}
+                                            {iv === '1h' && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {renderAnd()}
+                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSizeFilter} onChange={e => handleRuleChange('short', iv, 'useMaSizeFilter', e.target.checked)} />
+                                                    <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>1H 20MA 포지션 규모 조절 (초과시 50%)</span>
                                                 </div>
                                             )}
                                         </div>
@@ -1308,147 +1400,11 @@ const BacktestForm = () => {
                     </div>
                 </div>
 
-                <div style={{ overflowX: 'auto', background: '#1e2329', borderRadius: '8px', border: '1px solid #2b3139', marginTop: '8px' }}>
-                    <table className="trades-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', whiteSpace: 'nowrap' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid #2b3139', color: '#848e9c', textAlign: 'left' }}>
-                                <th style={{ padding: '12px 8px' }}>#</th>
-                                <th style={{ padding: '12px 8px' }}>진입(KST)</th>
-                                <th style={{ padding: '12px 8px' }}>청산(KST)</th>
-                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>시간(분)</th>
-                                <th style={{ padding: '12px 8px' }}>방향</th>
-                                <th style={{ padding: '12px 8px' }}>진입가</th>
-                                <th style={{ padding: '12px 8px' }}>청산가</th>
-                                <th style={{ padding: '12px 8px' }}>수량</th>
-                                <th style={{ padding: '12px 8px' }}>LEV</th>
-                                <th style={{ padding: '12px 8px' }}>수수료</th>
-                                <th style={{ padding: '12px 8px' }}>펀딩피</th>
-                                <th style={{ padding: '12px 8px', minWidth: '85px' }}>순수익</th>
-                                <th style={{ padding: '12px 8px', color: '#f3ba2f', minWidth: '95px' }}>잔액</th>
-                                <th style={{ padding: '12px 8px', color: '#26a69a', minWidth: '110px' }}>누적 ROI</th>
-                                <th style={{ padding: '12px 8px', minWidth: '90px' }}>ROE</th>
-                                <th style={{ padding: '12px 8px', minWidth: '100px' }}>실질ROE</th>
-                                <th style={{ padding: '12px 8px' }}>청산</th>
-                                <th style={{ padding: '12px 8px' }}>주문</th>
-                                {showIndicators && (
-                                    <>
-                                        {/* 5M Group */}
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>5M StochK</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M StochD</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M ADX</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M RSI</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBW</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBWP</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M ROC</th>
-                                        {/* 1H Group */}
-                                        <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1H MACD</th>
-                                        <th style={{ padding: '12px 8px', color: '#26a69a' }}>1H Sig</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H StochK</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H StochD</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H ADX</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H RSI</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBW</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBWP</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H ROC</th>
-                                        {/* 1D Group */}
-                                        <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1D MACD</th>
-                                        <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D Sig</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D ADX</th>
-                                        <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D RSI</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBW</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBWP</th>
-                                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D ROC</th>
-                                    </>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tradesLog.map((t, idx) => {
-                                const isLong = t.side === 'LONG' || t.direction === 'LONG';
-                                const duration = calculateDuration(t.entryTime, t.exitTime);
-                                const isProfit = String(t.netProfit || t.roe).startsWith('+') || parseFloat(t.netProfit || t.roe) > 0;
-
-                                return (
-                                    <tr key={t.id || idx} style={{ borderBottom: '1px solid #2b3139' }}>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{idx + 1}</td>
-                                        <td style={{ padding: '10px 8px' }}>{t.entryTime}</td>
-                                        <td style={{ padding: '10px 8px' }}>{t.exitTime || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#f3ba2f', fontWeight: 'bold' }}>{duration}</td>
-                                        <td style={{ padding: '10px 8px' }}>
-                                            <span style={{
-                                                padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
-                                                background: isLong ? 'rgba(0, 192, 135, 0.15)' : 'rgba(255, 77, 77, 0.15)',
-                                                color: isLong ? '#26a69a' : '#ff4d4d'
-                                            }}>
-                                                {isLong ? 'LONG' : 'SHORT'}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '10px 8px' }}>{formatValue(t.entryPrice, '', true)}</td>
-                                        <td style={{ padding: '10px 8px' }}>{formatValue(t.exitPrice, '', true)}</td>
-                                        <td style={{ padding: '10px 8px' }}>{t.quantity || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{config.leverage}x</td>
-                                        <td style={{ padding: '10px 8px' }}>{formatValue(t.fee)}</td>
-                                        <td style={{ padding: '10px 8px' }}>{formatValue(t.fundingFee || 0)}</td>
-                                        <td style={{ padding: '10px 8px', fontWeight: 'bold', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '85px' }}>
-                                            {formatValue(t.netProfit)}
-                                        </td>
-                                        <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#f3ba2f', minWidth: '95px' }}>
-                                            {formatValue(t.balance)}
-                                        </td>
-                                        <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#26a69a', minWidth: '110px' }}>
-                                            {((parseFloat(t.balance) / config.initialBalance - 1) * 100).toFixed(3)}%
-                                        </td>
-                                        <td style={{ padding: '10px 8px', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '90px' }}>
-                                            {formatValue(t.roe, '%')}
-                                        </td>
-                                        <td style={{ padding: '10px 8px', fontWeight: 'bold', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '100px' }}>
-                                            {formatValue(t.realRoe || t.roe, '%')}
-                                        </td>
-                                        <td style={{ padding: '10px 8px' }}>
-                                            <span style={{
-                                                padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: '1px solid #2b3139',
-                                                color: (t.exitReason || '').includes('TP') ? '#26a69a' : ((t.exitReason || '').includes('SL') ? '#ff4d4d' : '#848e9c')
-                                            }}>
-                                                {t.exitReason || '전략'}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>지정가</td>
-                                        {showIndicators && (
-                                            <>
-                                                {/* 5M */}
-                                                <td style={{ padding: '10px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>{t.m5_stochK || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_stochD || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_adx || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_rsi || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbwp || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw_roc || '-'}</td>
-                                                {/* 1H */}
-                                                <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.h1_macd || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_macdSig || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#f3ba2f' }}>{t.h1_stochK || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_stochD || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_adx || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_rsi || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbwp || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw_roc || '-'}</td>
-                                                {/* 1D */}
-                                                <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.d1_macd || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_macdSig || '-'}</td>
-                                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_adx || '-'}</td>
-                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_rsi || '-'}</td>
-                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw || '-'}</td>
-                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbwp || '-'}</td>
-                                                 <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw_roc || '-'}</td>
-                                            </>
-                                        )}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                <TradeLogTable 
+                    tradesLog={tradesLog} 
+                    showIndicators={showIndicators} 
+                    config={config} 
+                />
             </section>
 
             <BacktestHistoryArchive 
@@ -1459,5 +1415,202 @@ const BacktestForm = () => {
         </div>
     );
 };
+
+// React.memo로 감싸서, 백테스트 결과(tradesLog)와 지표 활성 여부(showIndicators)가
+// 바뀌지 않는 한, rules 등 다른 상태 변경 시 테이블 전체 리렌더링을 완전히 방지합니다.
+const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
+    // 헬퍼: 수치 데이터 정밀 포맷팅 (기준: 100$)
+    const formatValue = (val, suffix = '', isPrice = false) => {
+        if (val === undefined || val === null) return '-';
+        if (typeof val === 'string' && val.includes('%')) return val;
+        
+        let rawNum = typeof val === 'string' ? parseFloat(val.replace(/[+%$,]/g, '')) : val;
+        if (isNaN(rawNum)) return val;
+
+        const absVal = Math.abs(rawNum);
+        let formatted;
+        
+        if (absVal >= 100) {
+            formatted = Math.floor(absVal).toLocaleString();
+        } else {
+            formatted = absVal.toFixed(3);
+        }
+        
+        const sign = rawNum > 0 ? (suffix === '%' ? '+' : '+') : (rawNum < 0 ? '-' : '');
+        if (rawNum === 0) return `0${suffix}`;
+        
+        return `${sign}${formatted}${suffix}`;
+    };
+
+    const calculateDuration = (start, end) => {
+        if (!start || !end) return '-';
+        const s = new Date(start);
+        const e = new Date(end);
+        const diff = Math.floor((e - s) / (1000 * 60));
+        return diff >= 0 ? `${diff}m` : '-';
+    };
+
+    return (
+        <div style={{ overflowX: 'auto', background: '#1e2329', borderRadius: '8px', border: '1px solid #2b3139', marginTop: '8px' }}>
+            <table className="trades-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', whiteSpace: 'nowrap' }}>
+                <thead>
+                    <tr style={{ borderBottom: '1px solid #2b3139', color: '#848e9c', textAlign: 'left' }}>
+                        <th style={{ padding: '12px 8px' }}>#</th>
+                        <th style={{ padding: '12px 8px' }}>진입(KST)</th>
+                        <th style={{ padding: '12px 8px' }}>청산(KST)</th>
+                        <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>시간(분)</th>
+                        <th style={{ padding: '12px 8px' }}>방향</th>
+                        <th style={{ padding: '12px 8px' }}>진입가</th>
+                        <th style={{ padding: '12px 8px' }}>청산가</th>
+                        <th style={{ padding: '12px 8px' }}>수량</th>
+                        <th style={{ padding: '12px 8px' }}>LEV</th>
+                        <th style={{ padding: '12px 8px' }}>수수료</th>
+                        <th style={{ padding: '12px 8px' }}>펀딩피</th>
+                        <th style={{ padding: '12px 8px', minWidth: '85px' }}>순수익</th>
+                        <th style={{ padding: '12px 8px', color: '#f3ba2f', minWidth: '95px' }}>잔액</th>
+                        <th style={{ padding: '12px 8px', color: '#26a69a', minWidth: '110px' }}>누적 ROI</th>
+                        <th style={{ padding: '12px 8px', minWidth: '90px' }}>ROE</th>
+                        <th style={{ padding: '12px 8px', minWidth: '100px' }}>실질ROE</th>
+                        <th style={{ padding: '12px 8px' }}>청산</th>
+                        <th style={{ padding: '12px 8px' }}>주문</th>
+                        {showIndicators && (
+                            <>
+                                {/* 5M Group */}
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>5M StochK</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M StochD</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M ADX</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>5M RSI</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBW</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBWP</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA ROC</th>
+                                {/* 1H Group */}
+                                <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1H MACD</th>
+                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1H Sig</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H StochK</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H StochD</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H ADX</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>1H RSI</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBW</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBWP</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA ROC</th>
+                                {/* 1D Group */}
+                                <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1D MACD</th>
+                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D Sig</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D ADX</th>
+                                <th style={{ padding: '12px 8px', color: '#848e9c' }}>1D RSI</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBW</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBWP</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA ROC</th>
+                            </>
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {tradesLog.map((t, idx) => {
+                        const isLong = t.side === 'LONG' || t.direction === 'LONG';
+                        const duration = calculateDuration(t.entryTime, t.exitTime);
+                        const isProfit = String(t.netProfit || t.roe).startsWith('+') || parseFloat(t.netProfit || t.roe) > 0;
+
+                        return (
+                            <tr key={t.id || idx} style={{ borderBottom: '1px solid #2b3139' }}>
+                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{idx + 1}</td>
+                                <td style={{ padding: '10px 8px' }}>{t.entryTime}</td>
+                                <td style={{ padding: '10px 8px' }}>{t.exitTime || '-'}</td>
+                                <td style={{ padding: '10px 8px', color: '#f3ba2f', fontWeight: 'bold' }}>{duration}</td>
+                                <td style={{ padding: '10px 8px' }}>
+                                    <span style={{
+                                        padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold',
+                                        background: isLong ? 'rgba(0, 192, 135, 0.15)' : 'rgba(255, 77, 77, 0.15)',
+                                        color: isLong ? '#26a69a' : '#ff4d4d'
+                                    }}>
+                                        {isLong ? 'LONG' : 'SHORT'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '10px 8px' }}>{formatValue(t.entryPrice, '', true)}</td>
+                                <td style={{ padding: '10px 8px' }}>{formatValue(t.exitPrice, '', true)}</td>
+                                <td style={{ padding: '10px 8px' }}>{t.quantity || '-'}</td>
+                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>{config.leverage}x</td>
+                                <td style={{ padding: '10px 8px' }}>{formatValue(t.fee)}</td>
+                                <td style={{ padding: '10px 8px' }}>{formatValue(t.fundingFee || 0)}</td>
+                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '85px' }}>
+                                    {formatValue(t.netProfit)}
+                                </td>
+                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#f3ba2f', minWidth: '95px' }}>
+                                    {formatValue(t.balance)}
+                                </td>
+                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#26a69a', minWidth: '110px' }}>
+                                    {((parseFloat(t.balance) / config.initialBalance - 1) * 100).toFixed(3)}%
+                                </td>
+                                <td style={{ padding: '10px 8px', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '90px' }}>
+                                    {formatValue(t.roe, '%')}
+                                </td>
+                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: isProfit ? '#26a69a' : '#ff4d4d', minWidth: '100px' }}>
+                                    {formatValue(t.realRoe || t.roe, '%')}
+                                </td>
+                                <td style={{ padding: '10px 8px' }}>
+                                    <span style={{
+                                        padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: '1px solid #2b3139',
+                                        color: (t.exitReason || '').includes('TP') ? '#26a69a' : ((t.exitReason || '').includes('SL') ? '#ff4d4d' : '#848e9c')
+                                    }}>
+                                        {t.exitReason || '전략'}
+                                    </span>
+                                </td>
+                                <td style={{ padding: '10px 8px', color: '#848e9c' }}>지정가</td>
+                                {showIndicators && (
+                                    <>
+                                        {/* 5M */}
+                                        <td style={{ padding: '10px 8px', color: '#f3ba2f', borderLeft: '1px solid #2b3139' }}>{t.m5_stochK || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_stochD || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_adx || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_rsi || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbwp || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_roc || '-'}</td>
+                                        {/* 1H */}
+                                        <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.h1_macd || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_macdSig || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#f3ba2f' }}>{t.h1_stochK || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_stochD || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_adx || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_rsi || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbwp || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_roc || '-'}</td>
+                                        {/* 1D */}
+                                        <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.d1_macd || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_macdSig || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_adx || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_rsi || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbwp || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_roc || '-'}</td>
+                                    </>
+                                )}
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}, (prevProps, nextProps) => {
+    // tradesLog의 레퍼런스가 동일하고, 지표 보기 옵션(showIndicators)과 leverage 값이 일치하면 
+    // rules 상태 등의 변화에 따른 불필요한 전체 테이블 리렌더링을 완전히 차단합니다.
+    return prevProps.showIndicators === nextProps.showIndicators &&
+           prevProps.tradesLog === nextProps.tradesLog &&
+           prevProps.config?.leverage === nextProps.config?.leverage;
+});
 
 export default BacktestForm;

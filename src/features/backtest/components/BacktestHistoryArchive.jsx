@@ -248,4 +248,7 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
     );
 };
 
-export default BacktestHistoryArchive;
+export default React.memo(BacktestHistoryArchive, (prevProps, nextProps) => {
+    // 저장된 백테스트 기록의 레퍼런스가 같으면 불필요한 리렌더링을 차단합니다.
+    return prevProps.records === nextProps.records;
+});

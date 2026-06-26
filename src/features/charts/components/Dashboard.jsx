@@ -5,7 +5,6 @@ import SignalSettings from './SignalSettings';
 import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart2 } from 'lucide-react';
 import './Dashboard.css';
 import { sendTelegramMessage, getBotInfo } from '../../../shared/utils/telegramUtils';
-import LiveTradeMonitor from '../../live/components/LiveTradeMonitor';
 
 const StatCard = ({ title, value, change, icon: Icon, color }) => (
   <div className="stat-card">
@@ -24,24 +23,25 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: true, useMaRoc: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
     '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 },
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: true, useMaRoc: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
     '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   global: {
     entryWaitMin: 180,
     exitWaitMin: 1500,
     leverage: 5,
-    targetRoi: 0.04,
-    slRoi: 0.15,
+    targetRoi: 0.05,
+    slRoi: 0.14,
     reduceTpWaitMin: 0,
     reducedTargetRoi: 0.03,
-    orderAmount: 10000
+    orderAmount: 10000,
+    switchingEnabled: true
   }
 };
 
@@ -72,7 +72,7 @@ const Dashboard = () => {
 
   const [rules, setRules] = useState(() => {
     const defaultCopy = JSON.parse(JSON.stringify(DEFAULT_RULES));
-    let saved = localStorage.getItem('trading_rules_v22');
+    let saved = localStorage.getItem('trading_rules_v24');
     
     if (saved) {
       try {
@@ -85,7 +85,7 @@ const Dashboard = () => {
       }
     }
 
-    const oldSaved = localStorage.getItem('trading_rules_v21') || localStorage.getItem('trading_rules_v20') || localStorage.getItem('trading_rules_v19');
+    const oldSaved = localStorage.getItem('trading_rules_v23') || localStorage.getItem('trading_rules_v22') || localStorage.getItem('trading_rules_v21') || localStorage.getItem('trading_rules_v20') || localStorage.getItem('trading_rules_v19');
     if (oldSaved) {
       try {
         const parsedOld = JSON.parse(oldSaved);
@@ -104,7 +104,7 @@ const Dashboard = () => {
 
   React.useEffect(() => {
     if (isValidRules(rules)) {
-      localStorage.setItem('trading_rules_v22', JSON.stringify(rules));
+      localStorage.setItem('trading_rules_v24', JSON.stringify(rules));
     }
   }, [rules]);
 
@@ -394,24 +394,7 @@ const Dashboard = () => {
             icon={DollarSign}
             color="#f3ba2f"
           />
-          <StatCard
-            title="1h High / Low"
-            value={`${high1h !== '-' ? `$${high1h}` : '-'} / ${low1h !== '-' ? `$${low1h}` : '-'}`}
-            icon={TrendingUp}
-            color="#26a69a"
-          />
-          <StatCard
-            title="3h High / Low"
-            value={`${high3h !== '-' ? `$${high3h}` : '-'} / ${low3h !== '-' ? `$${low1h}` : '-'}`}
-            icon={TrendingUp}
-            color="#26a69a"
-          />
-          <StatCard
-            title="1d High / Low"
-            value={`${high1d !== '-' ? `$${high1d}` : '-'} / ${low1d !== '-' ? `$${low1d}` : '-'}`}
-            icon={TrendingUp}
-            color="#26a69a"
-          />
+
           <StatCard
             title="v7.0.1 Target Entry (5m)"
             value={candle5m ? `$${formatPrice(candle5m.low)} (L) / $${formatPrice(candle5m.high)} (S)` : 'Loading...'}
@@ -511,61 +494,11 @@ const Dashboard = () => {
           </div>
         </section>
 
-        <LiveTradeMonitor currentRules={rules} />
+
 
         <SignalSettings
           rules={rules}
           updateRule={updateRule}
-          telegramToken={telegramToken}
-          setTelegramToken={setTelegramToken}
-          telegramChatId={telegramChatId}
-          setTelegramChatId={setTelegramChatId}
-          botName={botName}
-          isTesting={isTesting}
-          debugLogs={debugLogs}
-          onTestTelegram={async () => {
-            console.log('Test button clicked');
-            setDebugLogs([]); // Clear previous logs
-
-            if (!telegramToken || !telegramChatId) {
-              setDebugLogs(['⚠️ 오류: 토큰(Token) 또는 챗 아이디(Chat ID)가 비어있습니다.']);
-              return;
-            }
-
-            setIsTesting(true);
-            try {
-              setDebugLogs(['⏳ 테스트 메시지 전송 시도 중...']);
-              const res = await sendTelegramMessage(telegramToken, telegramChatId, '🔔 <b>Telegram Alert Test</b>\nConnection successful! Your dashboard is now linked to this chat.');
-
-              if (res.success) {
-                setDebugLogs(['✅ 전송 성공! 텔레그램 앱을 확인해 주세요.']);
-              } else {
-                let logs = [`❌ 전송 실패: ${res.error}`];
-
-                // 원인 분석
-                if (res.error.includes('chat not found')) {
-                  logs.push('💡 [원인 분석] 입력하신 Chat ID를 찾을 수 없습니다.');
-                  logs.push('👉 해결 방법 1: 텔레그램 앱에서 연동할 봇 방에 들어가 화면 하단의 [시작(Start)] 버튼을 눌렀는지 확인하세요.');
-                  logs.push('👉 해결 방법 2: Chat ID 숫자가 본인의 고유 ID가 맞는지 확인하세요. (@userinfobot 등에서 확인 가능)');
-                } else if (res.error.includes('Unauthorized') || res.code === 401) {
-                  logs.push('💡 [원인 분석] 봇 토큰이 유효하지 않습니다.');
-                  logs.push('👉 해결 방법: @BotFather가 발급해 준 토큰을 정확히(공백 없이) 붙여넣었는지 확인하세요.');
-                }
-
-                if (res.debugInfo) {
-                  logs.push(`\n--- 전송 데이터 기초 확인 ---`);
-                  logs.push(`• 토큰 유무: ${res.debugInfo.tokenGiven ? 'O' : 'X'}`);
-                  logs.push(`• 발송 시도한 Chat ID: "${res.debugInfo.chatIdSent}"`);
-                }
-
-                setDebugLogs(logs);
-              }
-            } catch (err) {
-              setDebugLogs([`❌ 시스템 오류: ${err.message}`]);
-            } finally {
-              setIsTesting(false);
-            }
-          }}
         />
       </main>
 
