@@ -194,51 +194,41 @@ const strategy = {
             }
 
             // 3. MACD Cross
-            if (chk('macdCrossEnabled') || chk('useMacdCross')) {
-                if (data.macd && data.macd.m && data.macd.s) {
-                    const macdVal = data.macd.m[idx];
-                    const sigVal = data.macd.s[idx];
-                    logDetail += `MACDCross:${macdVal !== null ? macdVal.toFixed(2) : 'null'}/${sigVal !== null ? sigVal.toFixed(2) : 'null'} `;
-                    if (macdVal !== null && sigVal !== null) {
-                        if (side === 'long') {
-                            if (macdVal <= sigVal) match = false;
-                        } else {
-                            if (macdVal >= sigVal) match = false;
-                        }
-                    }
-                }
+            if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig') || chk('useMacdCross')) && data.macd) {
+                const m = data.macd.m[idx], s = data.macd.s[idx];
+                logDetail += `MACD:${side === 'long' ? (m > s ? 'OK' : 'NO') : (m < s ? 'OK' : 'NO')} `;
+                if (side === 'long' && m <= s) match = false;
+                if (side === 'short' && m >= s) match = false;
             }
 
             // 4. Stoch Cross
-            if (chk('stochCrossEnabled') || chk('useStochCross')) {
-                if (data.stoch && data.stoch.k && data.stoch.d) {
-                    const kVal = data.stoch.k[idx];
-                    const dVal = data.stoch.d[idx];
-                    logDetail += `StochCross:${kVal !== null ? kVal.toFixed(1) : 'null'}/${dVal !== null ? dVal.toFixed(1) : 'null'} `;
-                    if (kVal !== null && dVal !== null) {
-                        if (side === 'long') {
-                            if (kVal <= dVal) match = false;
-                        } else {
-                            if (kVal >= dVal) match = false;
-                        }
+            if ((chk('stochCrossEnabled') || chk('useStochCross')) && data.stoch) {
+                const k = data.stoch.k[idx], d = data.stoch.d[idx];
+                
+                // 5분봉(m5) 기준 K와 D가 모두 100(롱 급등)이거나 모두 0(숏 급락)인 극단적 상황에는 크로스 무시 통과
+                let isExtreme = false;
+                if (interval === 'm5' && (chk('useStochExtremeBypass') || chk('stochExtremeBypassEnabled'))) {
+                    if (side === 'long' && k >= 100 && d >= 100) {
+                        isExtreme = true;
+                        isExtremeLong = true;
+                    } else if (side === 'short' && k <= 0 && d <= 0) {
+                        isExtreme = true;
+                        isExtremeShort = true;
                     }
+                }
+
+                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')}${isExtreme ? '(EXTREME)' : ''} `;
+                if (!isExtreme) {
+                    if (side === 'long' && k <= d) match = false;
+                    if (side === 'short' && k >= d) match = false;
                 }
             }
 
-            // 5. Stoch Extreme Bypass (m5 전용 특수 규칙 - 조건만족 여부와 무관하게 80/20 극단값일 때 강제통과 가능케 함)
-            // Long 진입인 경우: m5 Stoch K < 20 이면 다른 필터 상관없이 즉시 롱 시그널
-            // Short 진입인 경우: m5 Stoch K > 80 이면 다른 필터 상관없이 즉시 숏 시그널
-            if (interval === 'm5' && (chk('stochExtremeBypassEnabled') || chk('useStochExtremeBypass'))) {
-                if (data.stoch && data.stoch.k) {
-                    const kVal = data.stoch.k[idx];
-                    if (kVal !== null) {
-                        if (side === 'long' && kVal < 20) {
-                            isExtremeLong = true;
-                        } else if (side === 'short' && kVal > 80) {
-                            isExtremeShort = true;
-                        }
-                    }
-                }
+            // 5. MACD Value
+            if ((chk('macdValueEnabled') || chk('useMacdVal')) && data.macd) {
+                const m = data.macd.m[idx];
+                const threshold = rules.macdValue || rules.macdVal;
+                if (Math.abs(m) >= threshold) match = false;
             }
 
             // 6. Stoch K Limit
