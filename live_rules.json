@@ -15,7 +15,11 @@
       "rsiLow": 5,
       "rsiHigh": 95,
       "macdValueEnabled": false,
-      "macdValue": 0
+      "macdValue": 0,
+      "maSlopeEnabled": false,
+      "maSlopePeriod": 1,
+      "maRocEnabled": false,
+      "maRocPeriod": 20
     },
     "1h": {
       "adxEnabled": false,
@@ -68,7 +72,11 @@
       "rsiLow": 5,
       "rsiHigh": 95,
       "macdValueEnabled": false,
-      "macdValue": 0
+      "macdValue": 0,
+      "maSlopeEnabled": false,
+      "maSlopePeriod": 1,
+      "maRocEnabled": false,
+      "maRocPeriod": 20
     },
     "1h": {
       "adxEnabled": false,
@@ -115,6 +123,7 @@
     "reducedTargetRoi": 0.02,
     "orderAmount": 100,
     "penetrationRate": 0.001,
-    "entryMode": "HYBRID_5M"
+    "entryMode": "HYBRID_5M",
+    "switchingEnabled": false
   }
 }
