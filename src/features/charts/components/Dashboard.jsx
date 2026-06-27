@@ -101,6 +101,7 @@ const Dashboard = () => {
   });
 
   const [isTesting, setIsTesting] = useState(false);
+  const lastLoadedRulesRef = useRef(null);
 
   // 1. 컴포넌트 마운트 시 서버의 live_rules.json 설정을 우선적으로 조회 및 동기화
   React.useEffect(() => {
@@ -110,6 +111,7 @@ const Dashboard = () => {
         if (resp.ok) {
           const data = await resp.json();
           if (isValidRules(data)) {
+            lastLoadedRulesRef.current = JSON.stringify(data);
             setRules(data);
             console.log('[DASHBOARD] Loaded live rules from server successfully!');
           }
@@ -126,6 +128,13 @@ const Dashboard = () => {
     if (isValidRules(rules)) {
       localStorage.setItem('trading_rules_v24', JSON.stringify(rules));
       
+      const currentStr = JSON.stringify(rules);
+      // 서버에서 막 불러온 값과 일치할 경우 전송 스킵 (Vite HMR 무한루프 방지)
+      if (lastLoadedRulesRef.current === currentStr) {
+        console.log('[DASHBOARD] Rules match server state. Sync skipped.');
+        return;
+      }
+
       const syncRulesToServer = async () => {
         try {
           await fetch('http://localhost:3001/api/live-settings', {
@@ -134,6 +143,7 @@ const Dashboard = () => {
             body: JSON.stringify({ rules })
           });
           console.log('[DASHBOARD] Synced updated rules to server!');
+          lastLoadedRulesRef.current = currentStr;
         } catch (err) {
           console.error('[DASHBOARD] Error syncing rules to server:', err);
         }
