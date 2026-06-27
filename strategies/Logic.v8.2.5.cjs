@@ -30,7 +30,7 @@ const strategy = {
         ENTRY_MODE: 'HYBRID_5M'
     },
 
-    indicators_logic: (klines) => {
+    indicators_logic: (klines, overrideRules) => {
         const m5Closes = klines.m5.map(k => k.close);
         const h1Closes = klines.h1.map(k => k.close);
         const d1Closes = klines.d1.map(k => k.close);
@@ -43,7 +43,7 @@ const strategy = {
         const h1Ma = calculateSMA(h1Closes, 20);
         const d1Ma = calculateSMA(d1Closes, 20);
 
-        return {
+        const res = {
             m5: {
                 macd: calculateMACD(m5Closes),
                 rsi: calculateRSI(m5Closes),
@@ -81,15 +81,57 @@ const strategy = {
                 ma_roc: calculateROC(d1Ma)
             }
         };
+
+        // 1분봉(m1)에 대한 동적 MA 지표 사전 계산 및 캐싱
+        if (klines.m1) {
+            res.m1 = {};
+            const closesM1 = klines.m1.map(k => k.close);
+            const m1Periods = new Set([20]); // 기본 20 보장
+            if (overrideRules) {
+                ['long', 'short'].forEach(side => {
+                    ['5m', '1h', '1d'].forEach(tf => {
+                        const r = overrideRules[side]?.[tf];
+                        if (r) {
+                            if (r.maSlopePeriod !== undefined) {
+                                const p = parseInt(r.maSlopePeriod);
+                                if (p > 0) m1Periods.add(p);
+                            }
+                            if (r.maRocPeriod !== undefined) {
+                                const p = parseInt(r.maRocPeriod);
+                                if (p > 0) m1Periods.add(p);
+                            }
+                        }
+                    });
+                });
+            }
+
+            m1Periods.forEach(p => {
+                const maKey = `ma_${p}`;
+                const slopeKey = `ma_slope_${p}`;
+                const rocKey = `ma_roc_${p}`;
+
+                res.m1[maKey] = calculateSMA(closesM1, p);
+                res.m1[slopeKey] = calculateSlope(res.m1[maKey]);
+                res.m1[rocKey] = calculateROC(res.m1[maKey]);
+
+                if (p === 20) {
+                    res.m1.ma = res.m1[maKey];
+                    res.m1.ma_slope = res.m1[slopeKey];
+                    res.m1.ma_roc = res.m1[rocKey];
+                }
+            });
+        }
+
+        return res;
     },
 
     signal_logic: (indicators, indices, overrideRules) => {
-        const { idx5m, r1h, r1d } = indices;
+        const { idx5m, r1h, r1d, idx1m } = indices;
 
         let isExtremeLong = false;
         let isExtremeShort = false;
 
-        const checkCondition = (side, interval, idx, indicatorsObj) => {
+        const checkCondition = (side, interval, idx, indicatorsObj, idx1mVal) => {
             const data = indicatorsObj[interval];
             if (!data) return true;
 
@@ -152,41 +194,51 @@ const strategy = {
             }
 
             // 3. MACD Cross
-            if ((chk('macdCrossEnabled') || chk('useMacdBeyondSig')) && data.macd) {
-                const m = data.macd.m[idx], s = data.macd.s[idx];
-                logDetail += `MACD:${side === 'long' ? (m > s ? 'OK' : 'NO') : (m < s ? 'OK' : 'NO')} `;
-                if (side === 'long' && m <= s) match = false;
-                if (side === 'short' && m >= s) match = false;
+            if (chk('macdCrossEnabled') || chk('useMacdCross')) {
+                if (data.macd && data.macd.m && data.macd.s) {
+                    const macdVal = data.macd.m[idx];
+                    const sigVal = data.macd.s[idx];
+                    logDetail += `MACDCross:${macdVal !== null ? macdVal.toFixed(2) : 'null'}/${sigVal !== null ? sigVal.toFixed(2) : 'null'} `;
+                    if (macdVal !== null && sigVal !== null) {
+                        if (side === 'long') {
+                            if (macdVal <= sigVal) match = false;
+                        } else {
+                            if (macdVal >= sigVal) match = false;
+                        }
+                    }
+                }
             }
 
             // 4. Stoch Cross
             if (chk('stochCrossEnabled') || chk('useStochCross')) {
-                const k = data.stoch.k[idx], d = data.stoch.d[idx];
-                
-                // 5분봉(m5) 기준 K와 D가 모두 100(롱 급등)이거나 모두 0(숏 급락)인 극단적 상황에는 크로스 무시 통과
-                let isExtreme = false;
-                if (interval === 'm5' && (chk('useStochExtremeBypass') || chk('stochExtremeBypassEnabled'))) {
-                    if (side === 'long' && k >= 100 && d >= 100) {
-                        isExtreme = true;
-                        isExtremeLong = true;
-                    } else if (side === 'short' && k <= 0 && d <= 0) {
-                        isExtreme = true;
-                        isExtremeShort = true;
+                if (data.stoch && data.stoch.k && data.stoch.d) {
+                    const kVal = data.stoch.k[idx];
+                    const dVal = data.stoch.d[idx];
+                    logDetail += `StochCross:${kVal !== null ? kVal.toFixed(1) : 'null'}/${dVal !== null ? dVal.toFixed(1) : 'null'} `;
+                    if (kVal !== null && dVal !== null) {
+                        if (side === 'long') {
+                            if (kVal <= dVal) match = false;
+                        } else {
+                            if (kVal >= dVal) match = false;
+                        }
                     }
-                }
-
-                logDetail += `Stoch:${side === 'long' ? (k > d ? 'OK' : 'NO') : (k < d ? 'OK' : 'NO')}${isExtreme ? '(EXTREME)' : ''} `;
-                if (!isExtreme) {
-                    if (side === 'long' && k <= d) match = false;
-                    if (side === 'short' && k >= d) match = false;
                 }
             }
 
-            // 5. MACD Value
-            if ((chk('macdValueEnabled') || chk('useMacdVal')) && data.macd) {
-                const m = data.macd.m[idx];
-                const threshold = rules.macdValue || rules.macdVal;
-                if (Math.abs(m) >= threshold) match = false;
+            // 5. Stoch Extreme Bypass (m5 전용 특수 규칙 - 조건만족 여부와 무관하게 80/20 극단값일 때 강제통과 가능케 함)
+            // Long 진입인 경우: m5 Stoch K < 20 이면 다른 필터 상관없이 즉시 롱 시그널
+            // Short 진입인 경우: m5 Stoch K > 80 이면 다른 필터 상관없이 즉시 숏 시그널
+            if (interval === 'm5' && (chk('stochExtremeBypassEnabled') || chk('useStochExtremeBypass'))) {
+                if (data.stoch && data.stoch.k) {
+                    const kVal = data.stoch.k[idx];
+                    if (kVal !== null) {
+                        if (side === 'long' && kVal < 20) {
+                            isExtremeLong = true;
+                        } else if (side === 'short' && kVal > 80) {
+                            isExtremeShort = true;
+                        }
+                    }
+                }
             }
 
             // 6. Stoch K Limit
@@ -207,10 +259,12 @@ const strategy = {
                 if (val !== null && val !== undefined && (val <= low || val >= high)) match = false;
             }
 
-            // 8. MA Slope Filter (0 기준, 5m 전용)
-            if (interval === 'm5' && (chk('maSlopeEnabled') || chk('useMaSlope'))) {
-                const val = data.ma_slope[idx];
-                logDetail += `MASlope:${val !== null && val !== undefined ? val.toFixed(4) : 'null'} `;
+            // 8. MA Slope Filter (0 기준)
+            if (chk('maSlopeEnabled') || chk('useMaSlope')) {
+                const period = rules && rules.maSlopePeriod !== undefined ? parseInt(rules.maSlopePeriod) : 20;
+                const m1Idx = idx1mVal !== undefined ? idx1mVal : (idx * (interval === 'm5' ? 5 : (interval === 'h1' ? 60 : 1440)));
+                const val = indicatorsObj.m1 && indicatorsObj.m1[`ma_slope_${period}`] ? indicatorsObj.m1[`ma_slope_${period}`][m1Idx] : null;
+                logDetail += `MASlope(${period}):${val !== null && val !== undefined ? val.toFixed(4) : 'null'} `;
                 if (val !== null && val !== undefined) {
                     if (side === 'long') {
                         if (val < 0) match = false;
@@ -220,10 +274,12 @@ const strategy = {
                 }
             }
 
-            // 9. MA ROC Filter (0 기준, 5m 전용)
-            if (interval === 'm5' && (chk('maRocEnabled') || chk('useMaRoc'))) {
-                const val = data.ma_roc[idx];
-                logDetail += `MAROC:${val !== null && val !== undefined ? val.toFixed(1) : 'null'} `;
+            // 9. MA ROC Filter (0 기준)
+            if (chk('maRocEnabled') || chk('useMaRoc')) {
+                const period = rules && rules.maRocPeriod !== undefined ? parseInt(rules.maRocPeriod) : 20;
+                const m1Idx = idx1mVal !== undefined ? idx1mVal : (idx * (interval === 'm5' ? 5 : (interval === 'h1' ? 60 : 1440)));
+                const val = indicatorsObj.m1 && indicatorsObj.m1[`ma_roc_${period}`] ? indicatorsObj.m1[`ma_roc_${period}`][m1Idx] : null;
+                logDetail += `MAROC(${period}):${val !== null && val !== undefined ? val.toFixed(1) : 'null'} `;
                 if (val !== null && val !== undefined) {
                     if (side === 'long') {
                         if (val < 0) match = false;
@@ -238,12 +294,12 @@ const strategy = {
 
         const longMatch = ['m5', 'h1', 'd1'].every(iv => {
             const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
-            return checkCondition('long', iv, idx, indicators);
+            return checkCondition('long', iv, idx, indicators, idx1m);
         });
 
         const shortMatch = ['m5', 'h1', 'd1'].every(iv => {
             const idx = iv === 'm5' ? idx5m : (iv === 'h1' ? r1h : r1d);
-            return checkCondition('short', iv, idx, indicators);
+            return checkCondition('short', iv, idx, indicators, idx1m);
         });
 
         if (longMatch) return isExtremeLong ? 'extreme_long' : 'long';

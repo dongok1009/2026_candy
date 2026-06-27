@@ -1143,7 +1143,14 @@ const BacktestForm = () => {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('long', iv, 'useMaSlope', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope (≥ 0)</span>
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={targetRules[iv]?.maSlopePeriod !== undefined ? targetRules[iv].maSlopePeriod : 20} 
+                                                        onChange={e => handleRuleChange('long', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
+                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
+                                                    />
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (≥ 0)</span>
                                                 </div>
                                             )}
 
@@ -1152,7 +1159,14 @@ const BacktestForm = () => {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('long', iv, 'useMaRoc', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC (≥ 0)</span>
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={targetRules[iv]?.maRocPeriod !== undefined ? targetRules[iv].maRocPeriod : 20} 
+                                                        onChange={e => handleRuleChange('long', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
+                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
+                                                    />
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (≥ 0)</span>
                                                 </div>
                                             )}
 
@@ -1258,7 +1272,14 @@ const BacktestForm = () => {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('short', iv, 'useMaSlope', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope (&lt; 0)</span>
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={targetRules[iv]?.maSlopePeriod !== undefined ? targetRules[iv].maSlopePeriod : 20} 
+                                                        onChange={e => handleRuleChange('short', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
+                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
+                                                    />
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (&lt; 0)</span>
                                                 </div>
                                             )}
 
@@ -1267,7 +1288,14 @@ const BacktestForm = () => {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                     {renderAnd()}
                                                     <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('short', iv, 'useMaRoc', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC (&lt; 0)</span>
+                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC</span>
+                                                    <input 
+                                                        type="number" 
+                                                        value={targetRules[iv]?.maRocPeriod !== undefined ? targetRules[iv].maRocPeriod : 20} 
+                                                        onChange={e => handleRuleChange('short', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
+                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
+                                                    />
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (&lt; 0)</span>
                                                 </div>
                                             )}
 
