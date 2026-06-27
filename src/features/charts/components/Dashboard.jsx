@@ -23,24 +23,26 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: true },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: true },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false }
   },
   global: {
     entryWaitMin: 180,
     exitWaitMin: 1500,
     leverage: 5,
-    targetRoi: 0.05,
-    slRoi: 0.14,
+    targetRoi: 0.04,
+    slRoi: 0.15,
     reduceTpWaitMin: 0,
-    reducedTargetRoi: 0.02,
+    reducedTargetRoi: 0.03,
     orderAmount: 10000,
+    penetrationRate: 0.001,
+    entryMode: "HYBRID_5M",
     switchingEnabled: false
   }
 };
@@ -116,33 +118,7 @@ const Dashboard = () => {
   };
 
   const [rules, setRules] = useState(() => {
-    const defaultCopy = JSON.parse(JSON.stringify(DEFAULT_RULES));
-    let saved = localStorage.getItem('trading_rules_v24');
-    
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (isValidRules(parsed)) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error('[DASHBOARD] Parse error for saved rules:', e);
-      }
-    }
-
-    const oldSaved = localStorage.getItem('trading_rules_v23') || localStorage.getItem('trading_rules_v22') || localStorage.getItem('trading_rules_v21') || localStorage.getItem('trading_rules_v20') || localStorage.getItem('trading_rules_v19');
-    if (oldSaved) {
-      try {
-        const parsedOld = JSON.parse(oldSaved);
-        if (isValidRules(parsedOld)) {
-          return parsedOld;
-        }
-      } catch (e) {
-        console.error('[DASHBOARD] Parse error for old rules:', e);
-      }
-    }
-
-    return defaultCopy;
+    return JSON.parse(JSON.stringify(DEFAULT_RULES));
   });
 
   const [isTesting, setIsTesting] = useState(false);
