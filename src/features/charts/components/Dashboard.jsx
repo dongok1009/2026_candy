@@ -23,12 +23,12 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: true, useMaRoc: false },
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
     '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
     '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: true, useMaRoc: false },
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
     '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
     '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95 }
   },
@@ -39,9 +39,9 @@ const DEFAULT_RULES = {
     targetRoi: 0.05,
     slRoi: 0.14,
     reduceTpWaitMin: 0,
-    reducedTargetRoi: 0.03,
+    reducedTargetRoi: 0.02,
     orderAmount: 10000,
-    switchingEnabled: true
+    switchingEnabled: false
   }
 };
 
@@ -102,9 +102,43 @@ const Dashboard = () => {
 
   const [isTesting, setIsTesting] = useState(false);
 
+  // 1. 컴포넌트 마운트 시 서버의 live_rules.json 설정을 우선적으로 조회 및 동기화
+  React.useEffect(() => {
+    const fetchLiveRules = async () => {
+      try {
+        const resp = await fetch('http://localhost:3001/api/live-rules');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (isValidRules(data)) {
+            setRules(data);
+            console.log('[DASHBOARD] Loaded live rules from server successfully!');
+          }
+        }
+      } catch (err) {
+        console.error('[DASHBOARD] Failed to fetch live rules from server:', err);
+      }
+    };
+    fetchLiveRules();
+  }, []);
+
+  // 2. rules 상태가 변경될 때마다 localStorage 업데이트 및 서버 백엔드(.env / live_rules.json)에 즉시 저장
   React.useEffect(() => {
     if (isValidRules(rules)) {
       localStorage.setItem('trading_rules_v24', JSON.stringify(rules));
+      
+      const syncRulesToServer = async () => {
+        try {
+          await fetch('http://localhost:3001/api/live-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rules })
+          });
+          console.log('[DASHBOARD] Synced updated rules to server!');
+        } catch (err) {
+          console.error('[DASHBOARD] Error syncing rules to server:', err);
+        }
+      };
+      syncRulesToServer();
     }
   }, [rules]);
 
