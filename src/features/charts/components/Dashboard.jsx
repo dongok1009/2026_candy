@@ -67,7 +67,52 @@ const Dashboard = () => {
         return false;
       }
     }
+    for (const side of ['long', 'short']) {
+      for (const tf of ['5m', '1h', '1d']) {
+        if (!r[side] || !r[side][tf] || typeof r[side][tf] !== 'object') {
+          return false;
+        }
+      }
+    }
     return true;
+  };
+
+  const normalizeRulesFromServer = (serverRules) => {
+    if (!serverRules) return null;
+    const normalized = JSON.parse(JSON.stringify(serverRules));
+    for (const side of ['long', 'short']) {
+      for (const tf of ['5m', '1h', '1d']) {
+        const r = normalized[side]?.[tf];
+        if (r) {
+          if (r.stochExtremeBypassEnabled !== undefined) {
+            r.useStochExtremeBypass = r.stochExtremeBypassEnabled;
+          }
+          if (r.stochLimitEnabled !== undefined) {
+            r.stochKLimitEnabled = r.stochLimitEnabled;
+          }
+        }
+      }
+    }
+    return normalized;
+  };
+
+  const normalizeRulesForServer = (uiRules) => {
+    if (!uiRules) return null;
+    const normalized = JSON.parse(JSON.stringify(uiRules));
+    for (const side of ['long', 'short']) {
+      for (const tf of ['5m', '1h', '1d']) {
+        const r = normalized[side]?.[tf];
+        if (r) {
+          if (r.useStochExtremeBypass !== undefined) {
+            r.stochExtremeBypassEnabled = r.useStochExtremeBypass;
+          }
+          if (r.stochKLimitEnabled !== undefined) {
+            r.stochLimitEnabled = r.stochKLimitEnabled;
+          }
+        }
+      }
+    }
+    return normalized;
   };
 
   const [rules, setRules] = useState(() => {
@@ -110,9 +155,10 @@ const Dashboard = () => {
         const resp = await fetch('http://localhost:3001/api/live-rules');
         if (resp.ok) {
           const data = await resp.json();
-          if (isValidRules(data)) {
-            lastLoadedRulesRef.current = JSON.stringify(data);
-            setRules(data);
+          const normalized = normalizeRulesFromServer(data);
+          if (isValidRules(normalized)) {
+            lastLoadedRulesRef.current = JSON.stringify(normalized);
+            setRules(normalized);
             console.log('[DASHBOARD] Loaded live rules from server successfully!');
           }
         }
@@ -137,10 +183,11 @@ const Dashboard = () => {
 
       const syncRulesToServer = async () => {
         try {
+          const serverData = normalizeRulesForServer(rules);
           await fetch('http://localhost:3001/api/live-settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rules })
+            body: JSON.stringify({ rules: serverData })
           });
           console.log('[DASHBOARD] Synced updated rules to server!');
           lastLoadedRulesRef.current = currentStr;
