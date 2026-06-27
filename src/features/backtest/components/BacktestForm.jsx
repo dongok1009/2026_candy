@@ -1150,7 +1150,7 @@ const BacktestForm = () => {
                                                         onChange={e => handleRuleChange('long', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
                                                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                                                     />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (≥ 0)</span>
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (≥ 0)</span>
                                                 </div>
                                             )}
 
@@ -1166,7 +1166,7 @@ const BacktestForm = () => {
                                                         onChange={e => handleRuleChange('long', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
                                                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                                                     />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (≥ 0)</span>
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (≥ 0)</span>
                                                 </div>
                                             )}
 
@@ -1279,7 +1279,7 @@ const BacktestForm = () => {
                                                         onChange={e => handleRuleChange('short', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
                                                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                                                     />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (&lt; 0)</span>
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (&lt; 0)</span>
                                                 </div>
                                             )}
 
@@ -1295,7 +1295,7 @@ const BacktestForm = () => {
                                                         onChange={e => handleRuleChange('short', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
                                                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                                                     />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 (&lt; 0)</span>
+                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (&lt; 0)</span>
                                                 </div>
                                             )}
 

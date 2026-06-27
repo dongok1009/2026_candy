@@ -162,7 +162,7 @@ const SignalSettings = ({
                         onChange={e => updateRule(iv, side, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                       />
-                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 ({isLong ? '≥ 0' : '< 0'})</span>
+                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA ({isLong ? '≥ 0' : '< 0'})</span>
                     </div>
                   )}
 
@@ -178,7 +178,7 @@ const SignalSettings = ({
                         onChange={e => updateRule(iv, side, 'maRocPeriod', parseInt(e.target.value) || 0)} 
                         style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
                       />
-                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>분선 ({isLong ? '≥ 0' : '< 0'})</span>
+                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA ({isLong ? '≥ 0' : '< 0'})</span>
                     </div>
                   )}
 

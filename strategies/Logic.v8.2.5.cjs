@@ -86,7 +86,7 @@ const strategy = {
         if (klines.m1) {
             res.m1 = {};
             const closesM1 = klines.m1.map(k => k.close);
-            const m1Periods = new Set([20]); // 기본 20 보장
+            const m1Periods = new Set([100]); // 기본 100 (5m 20MA) 보장
             if (overrideRules) {
                 ['long', 'short'].forEach(side => {
                     ['5m', '1h', '1d'].forEach(tf => {
@@ -94,11 +94,11 @@ const strategy = {
                         if (r) {
                             if (r.maSlopePeriod !== undefined) {
                                 const p = parseInt(r.maSlopePeriod);
-                                if (p > 0) m1Periods.add(p);
+                                if (p > 0) m1Periods.add(p * 5); // 5m 라인이므로 *5배
                             }
                             if (r.maRocPeriod !== undefined) {
                                 const p = parseInt(r.maRocPeriod);
-                                if (p > 0) m1Periods.add(p);
+                                if (p > 0) m1Periods.add(p * 5); // 5m 라인이므로 *5배
                             }
                         }
                     });
@@ -114,7 +114,7 @@ const strategy = {
                 res.m1[slopeKey] = calculateSlope(res.m1[maKey]);
                 res.m1[rocKey] = calculateROC(res.m1[maKey]);
 
-                if (p === 20) {
+                if (p === 100) {
                     res.m1.ma = res.m1[maKey];
                     res.m1.ma_slope = res.m1[slopeKey];
                     res.m1.ma_roc = res.m1[rocKey];
@@ -251,10 +251,11 @@ const strategy = {
 
             // 8. MA Slope Filter (0 기준)
             if (chk('maSlopeEnabled') || chk('useMaSlope')) {
-                const period = rules && rules.maSlopePeriod !== undefined ? parseInt(rules.maSlopePeriod) : 20;
+                const inputPeriod = rules && rules.maSlopePeriod !== undefined ? parseInt(rules.maSlopePeriod) : 20;
+                const period = inputPeriod * 5; // 5분봉 라인이므로 *5배
                 const m1Idx = idx1mVal !== undefined ? idx1mVal : (idx * (interval === 'm5' ? 5 : (interval === 'h1' ? 60 : 1440)));
                 const val = indicatorsObj.m1 && indicatorsObj.m1[`ma_slope_${period}`] ? indicatorsObj.m1[`ma_slope_${period}`][m1Idx] : null;
-                logDetail += `MASlope(${period}):${val !== null && val !== undefined ? val.toFixed(4) : 'null'} `;
+                logDetail += `MASlope(${inputPeriod}ma):${val !== null && val !== undefined ? val.toFixed(4) : 'null'} `;
                 if (val !== null && val !== undefined) {
                     if (side === 'long') {
                         if (val < 0) match = false;
@@ -266,10 +267,11 @@ const strategy = {
 
             // 9. MA ROC Filter (0 기준)
             if (chk('maRocEnabled') || chk('useMaRoc')) {
-                const period = rules && rules.maRocPeriod !== undefined ? parseInt(rules.maRocPeriod) : 20;
+                const inputPeriod = rules && rules.maRocPeriod !== undefined ? parseInt(rules.maRocPeriod) : 20;
+                const period = inputPeriod * 5; // 5분봉 라인이므로 *5배
                 const m1Idx = idx1mVal !== undefined ? idx1mVal : (idx * (interval === 'm5' ? 5 : (interval === 'h1' ? 60 : 1440)));
                 const val = indicatorsObj.m1 && indicatorsObj.m1[`ma_roc_${period}`] ? indicatorsObj.m1[`ma_roc_${period}`][m1Idx] : null;
-                logDetail += `MAROC(${period}):${val !== null && val !== undefined ? val.toFixed(1) : 'null'} `;
+                logDetail += `MAROC(${inputPeriod}ma):${val !== null && val !== undefined ? val.toFixed(1) : 'null'} `;
                 if (val !== null && val !== undefined) {
                     if (side === 'long') {
                         if (val < 0) match = false;
