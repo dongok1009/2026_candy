@@ -147,6 +147,7 @@ const Dashboard = () => {
 
   const [isTesting, setIsTesting] = useState(false);
   const lastLoadedRulesRef = useRef(null);
+  const isServerRulesLoadedRef = useRef(false);
 
   // 1. 컴포넌트 마운트 시 서버의 live_rules.json 설정을 우선적으로 조회 및 동기화
   React.useEffect(() => {
@@ -158,6 +159,7 @@ const Dashboard = () => {
           const normalized = normalizeRulesFromServer(data);
           if (isValidRules(normalized)) {
             lastLoadedRulesRef.current = JSON.stringify(normalized);
+            isServerRulesLoadedRef.current = true;
             setRules(normalized);
             console.log('[DASHBOARD] Loaded live rules from server successfully!');
           }
@@ -171,6 +173,11 @@ const Dashboard = () => {
 
   // 2. rules 상태가 변경될 때마다 localStorage 업데이트 및 서버 백엔드(.env / live_rules.json)에 즉시 저장
   React.useEffect(() => {
+    if (!isServerRulesLoadedRef.current) {
+      console.log('[DASHBOARD] Sync blocked. Server rules not loaded yet.');
+      return;
+    }
+
     if (isValidRules(rules)) {
       localStorage.setItem('trading_rules_v24', JSON.stringify(rules));
       
