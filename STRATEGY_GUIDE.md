@@ -25,6 +25,29 @@
 | **MA Slope 1h Filter** | 1시간봉 기준 특정 기간 MA의 기울기가 진입 방향과 다르면 진입을 차단하는 글로벌 필터입니다. | `MA_SLOPE_ALIGN_1H_ENABLED` | `false` |
 | **MA Slope 1h Period** | 1h MA Slope 필터 계산에 사용할 이동평균선 기간입니다. | `MA_SLOPE_ALIGN_PERIOD_1H` | `20` |
 
+### 1-1. MA Slope 필터 상세 작동 원칙
+
+MA Slope로 매매를 제한하는 로직은 글로벌 정렬 필터와 개별 타임프레임 필터 2가지로 나뉩니다.
+
+#### A. 5분봉 MA Slope 방향 필터 (글로벌 정렬 필터)
+전체 포지션 진입의 대전제가 되는 글로벌 필터 조건으로, 5분봉 기준 특정 기간(Period) 동안 이동평균선(MA)의 기울기 방향에 따라 매매를 제한합니다.
+* **동작 변수**: 
+  * 활성화 여부: `MA_SLOPE_ALIGN_5M_ENABLED` (대시보드: `MA Slope 5m Filter`)
+  * MA 기준 기간: `MA_SLOPE_ALIGN_PERIOD_5M` (대시보드: `MA Slope 5m Period` - 현재 `2`로 설정됨)
+* **진입 제한 조건** ([Logic.v8.2.5.cjs](file:///c:/dev/2026_candy/strategies/Logic.v8.2.5.cjs#L337-L345) 기준):
+  * 🟢 **LONG 진입 조건**: 5분봉 `2 MA`의 Slope가 **반드시 0보다 커야 함** (Slope <= 0 이면 롱 진입 제한)
+  * 🔴 **SHORT 진입 조건**: 5분봉 `2 MA`의 Slope가 **반드시 0보다 작아야 함** (Slope >= 0 이면 숏 진입 제한)
+  * *즉, 5분봉 상 해당 단기 이평선이 상승 추세일 때만 롱, 하락 추세일 때만 숏 진입이 허용되는 절대 제한 필터입니다.*
+
+#### B. 기간 5 MA Slope 필터 (5 MA Filter)
+개별 타임프레임(5m, 1h, 1d) 진입 조건 내에서 MA Slope 기간을 `5`로 지정하여 필터링하는 방식입니다.
+* **동작 변수** ([rules_helper.cjs](file:///c:/dev/2026_candy/lib/rules_helper.cjs#L77-L79) 기준):
+  * 활성화 여부: `[TF]_[SIDE]_USE_MA_SLOPE=true` (예: `5M_LONG_USE_MA_SLOPE=true`)
+  * MA 기준 기간: `[TF]_[SIDE]_MA_SLOPE_PERIOD=5`
+* **진입 제한 조건** ([Logic.v8.2.5.cjs](file:///c:/dev/2026_candy/strategies/Logic.v8.2.5.cjs#L283-L296) 기준):
+  * 🟢 **LONG 진입 조건**: 지정한 타임프레임의 `5 MA` Slope가 **0 이상(>= 0)** 이어야 함 (0 미만이면 진입 불허)
+  * 🔴 **SHORT 진입 조건**: 지정한 타임프레임의 `5 MA` Slope가 **0 미만(< 0)** 이어야 함 (0 이상이면 진입 불허)
+
 ---
 
 ## 2. 타임프레임별 진입 조건 (Entry Conditions)
