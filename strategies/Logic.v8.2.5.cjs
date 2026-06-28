@@ -5,7 +5,7 @@ console.log(`[LOADED] Logic.v8.2.5.cjs loaded at ${new Date().toISOString()}`);
 const strategy = {
     name: 'Logic.v8.2.5',
     description: 'v8.2.5 (MA Slope, ROC & Switching/Sizing Filters)',
-    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M3_StochK,M3_StochD,M3_ADX,M5_StochK,M5_StochD,M5_ADX,M5_RSI,M5_MACD,M5_MACDSig,M5_BBW,M5_BBWP,M5_BBW_ROC,M5_MA_Slope,M5_MA_ROC,H1_MACD,H1_MACDSig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,H1_BBW,H1_BBWP,H1_BBW_ROC,H1_MA_Slope,H1_MA_ROC,H12_MACD,H12_MACDSig,H12_StochK,H12_StochD,H12_ADX,D1_MACD,D1_MACDSig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,D1_BBW,D1_BBWP,D1_BBW_ROC,D1_MA_Slope,D1_MA_ROC",
+    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M3_StochK,M3_StochD,M3_ADX,M5_StochK,M5_StochD,M5_ADX,M5_RSI,M5_MACD,M5_MACDSig,M5_BBW,M5_BBWP,M5_BBW_ROC,M5_MA_Slope_5,M5_MA_Slope_10,M5_MA_Slope_20,M5_MA_ROC,H1_MACD,H1_MACDSig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,H1_BBW,H1_BBWP,H1_BBW_ROC,H1_MA_Slope_5,H1_MA_Slope_10,H1_MA_Slope_20,H1_MA_ROC,H12_MACD,H12_MACDSig,H12_StochK,H12_StochD,H12_ADX,D1_MACD,D1_MACDSig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,D1_BBW,D1_BBWP,D1_BBW_ROC,D1_MA_Slope_5,D1_MA_Slope_10,D1_MA_Slope_20,D1_MA_ROC",
 
     config: {
         SYMBOL: 'BTCUSDT',
@@ -43,6 +43,13 @@ const strategy = {
         const h1Ma = calculateSMA(h1Closes, 20);
         const d1Ma = calculateSMA(d1Closes, 20);
 
+        const m5Ma5 = calculateSMA(m5Closes, 5);
+        const m5Ma10 = calculateSMA(m5Closes, 10);
+        const h1Ma5 = calculateSMA(h1Closes, 5);
+        const h1Ma10 = calculateSMA(h1Closes, 10);
+        const d1Ma5 = calculateSMA(d1Closes, 5);
+        const d1Ma10 = calculateSMA(d1Closes, 10);
+
         const res = {
             m5: {
                 macd: calculateMACD(m5Closes),
@@ -54,6 +61,9 @@ const strategy = {
                 bbw_roc: calculateROC(m5Bbw),
                 ma: m5Ma,
                 ma_slope: calculateSlope(m5Ma),
+                ma_slope_5: calculateSlope(m5Ma5),
+                ma_slope_10: calculateSlope(m5Ma10),
+                ma_slope_20: calculateSlope(m5Ma),
                 ma_roc: calculateROC(m5Ma)
             },
             h1: {
@@ -66,6 +76,9 @@ const strategy = {
                 bbw_roc: calculateROC(h1Bbw),
                 ma: h1Ma,
                 ma_slope: calculateSlope(h1Ma),
+                ma_slope_5: calculateSlope(h1Ma5),
+                ma_slope_10: calculateSlope(h1Ma10),
+                ma_slope_20: calculateSlope(h1Ma),
                 ma_roc: calculateROC(h1Ma)
             },
             d1: {
@@ -78,9 +91,26 @@ const strategy = {
                 bbw_roc: calculateROC(d1Bbw),
                 ma: d1Ma,
                 ma_slope: calculateSlope(d1Ma),
+                ma_slope_5: calculateSlope(d1Ma5),
+                ma_slope_10: calculateSlope(d1Ma10),
+                ma_slope_20: calculateSlope(d1Ma),
                 ma_roc: calculateROC(d1Ma)
             }
         };
+
+        const globalRules = overrideRules && overrideRules.global ? overrideRules.global : {};
+        const period5m = globalRules.maSlopeAlignPeriod5m ? parseInt(globalRules.maSlopeAlignPeriod5m) : 20;
+        const period1h = globalRules.maSlopeAlignPeriod1h ? parseInt(globalRules.maSlopeAlignPeriod1h) : 20;
+
+        if (period5m && ![5, 10, 20].includes(period5m)) {
+            const m5MaAlign = calculateSMA(m5Closes, period5m);
+            res.m5[`ma_slope_${period5m}`] = calculateSlope(m5MaAlign);
+        }
+
+        if (period1h && ![5, 10, 20].includes(period1h)) {
+            const h1MaAlign = calculateSMA(h1Closes, period1h);
+            res.h1[`ma_slope_${period1h}`] = calculateSlope(h1MaAlign);
+        }
 
         // 1분봉(m1)에 대한 동적 MA 지표 사전 계산 및 캐싱
         if (klines.m1) {
@@ -265,8 +295,8 @@ const strategy = {
                 }
             }
 
-            // 9. MA ROC Filter (0 기준)
-            if (chk('maRocEnabled') || chk('useMaRoc')) {
+            // 9. MA ROC Filter (0 기준 - 5분봉 제외)
+            if (interval !== 'm5' && (chk('maRocEnabled') || chk('useMaRoc'))) {
                 const inputPeriod = rules && rules.maRocPeriod !== undefined ? parseInt(rules.maRocPeriod) : 20;
                 const period = inputPeriod * 5; // 5분봉 라인이므로 *5배
                 const m1Idx = idx1mVal !== undefined ? idx1mVal : (idx * (interval === 'm5' ? 5 : (interval === 'h1' ? 60 : 1440)));
@@ -294,8 +324,40 @@ const strategy = {
             return checkCondition('short', iv, idx, indicators, idx1m);
         });
 
-        if (longMatch) return isExtremeLong ? 'extreme_long' : 'long';
-        if (shortMatch) return isExtremeShort ? 'extreme_short' : 'short';
+        // MA Slope 방향 필터 (5m / 1h 개별 선택 및 개별 MA 기간 적용)
+        let slopeAlignLongOk = true;
+        let slopeAlignShortOk = true;
+
+        const globalRules = overrideRules && overrideRules.global ? overrideRules.global : {};
+        const useSlope5m = globalRules.maSlopeAlign5mEnabled === true || globalRules.maSlopeAlign5mEnabled === 'true';
+        const useSlope1h = globalRules.maSlopeAlign1hEnabled === true || globalRules.maSlopeAlign1hEnabled === 'true';
+
+        if (useSlope5m || useSlope1h) {
+            // 5분봉 Slope 체크
+            if (useSlope5m) {
+                const period5m = globalRules.maSlopeAlignPeriod5m ? parseInt(globalRules.maSlopeAlignPeriod5m) : 20;
+                const slopeKey5m = `ma_slope_${period5m}`;
+                const m5SlopeVal = indicators.m5 && indicators.m5[slopeKey5m] ? indicators.m5[slopeKey5m][idx5m] : null;
+                if (m5SlopeVal !== null) {
+                    if (m5SlopeVal <= 0) slopeAlignLongOk = false;
+                    if (m5SlopeVal >= 0) slopeAlignShortOk = false;
+                }
+            }
+
+            // 1시간봉 Slope 체크
+            if (useSlope1h) {
+                const period1h = globalRules.maSlopeAlignPeriod1h ? parseInt(globalRules.maSlopeAlignPeriod1h) : 20;
+                const slopeKey1h = `ma_slope_${period1h}`;
+                const h1SlopeVal = indicators.h1 && indicators.h1[slopeKey1h] ? indicators.h1[slopeKey1h][r1h] : null;
+                if (h1SlopeVal !== null) {
+                    if (h1SlopeVal <= 0) slopeAlignLongOk = false;
+                    if (h1SlopeVal >= 0) slopeAlignShortOk = false;
+                }
+            }
+        }
+
+        if (longMatch && slopeAlignLongOk) return isExtremeLong ? 'extreme_long' : 'long';
+        if (shortMatch && slopeAlignShortOk) return isExtremeShort ? 'extreme_short' : 'short';
 
         return 'hold';
     },

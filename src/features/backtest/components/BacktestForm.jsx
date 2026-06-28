@@ -5,7 +5,7 @@ import BacktestHistoryArchive from './BacktestHistoryArchive';
 import './BacktestForm.css';
 import './BacktestHistoryArchive.css';
 
-const BacktestForm = () => {
+const BacktestForm = ({ view = 'backtest', setView }) => {
     const API_BASE = "http://localhost:3001";
     const [config, setConfig] = useState({
         symbol: 'BTCUSDT',
@@ -266,7 +266,11 @@ const BacktestForm = () => {
         }
 
         mapped.global = {
-            switchingEnabled: rawRules.global?.switchingEnabled !== undefined ? rawRules.global.switchingEnabled : false
+            switchingEnabled: rawRules.global?.switchingEnabled !== undefined ? rawRules.global.switchingEnabled : false,
+            maSlopeAlign5mEnabled: rawRules.global?.maSlopeAlign5mEnabled !== undefined ? rawRules.global.maSlopeAlign5mEnabled : false,
+            maSlopeAlign1hEnabled: rawRules.global?.maSlopeAlign1hEnabled !== undefined ? rawRules.global.maSlopeAlign1hEnabled : false,
+            maSlopeAlignPeriod5m: rawRules.global?.maSlopeAlignPeriod5m !== undefined ? parseInt(rawRules.global.maSlopeAlignPeriod5m) : (rawRules.global?.maSlopeAlignPeriod !== undefined ? parseInt(rawRules.global.maSlopeAlignPeriod) : 20),
+            maSlopeAlignPeriod1h: rawRules.global?.maSlopeAlignPeriod1h !== undefined ? parseInt(rawRules.global.maSlopeAlignPeriod1h) : (rawRules.global?.maSlopeAlignPeriod !== undefined ? parseInt(rawRules.global.maSlopeAlignPeriod) : 20)
         };
 
         Object.keys(rawRules).forEach(k => {
@@ -340,6 +344,26 @@ const BacktestForm = () => {
                     finalBalance: result.finalBalance || (config.initialBalance * (1 + result.roi / 100))
                 });
                 setHistory([{ id: Date.now(), timestamp: new Date().toLocaleString(), version: config.version, roi: `${result.roi}%` }, ...history].slice(0, 10));
+                
+                // 백테스트 연산 완료 후 자동으로 기록 아카이브에 백그라운드 저장
+                try {
+                    fetch(`${API_BASE}/api/save-history`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ baseVersion: config.version, config, rules, result })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log("[AUTO SAVE] Saved successfully as version:", data.newVersion);
+                            fetchRecords(); // 아카이브 데이터 최신화
+                        }
+                    })
+                    .catch(err => console.error("[AUTO SAVE ERROR]", err));
+                } catch (err) {
+                    console.error("[AUTO SAVE FAIL]", err);
+                }
+
                 await fetchRecords();
             } else {
                 alert(`백테스트 실패: ${result.error || '알 수 없는 오류'}`);
@@ -702,9 +726,9 @@ const BacktestForm = () => {
         
         const baseHeaders = ["#", "진입(KST)", "청산(KST)", "시간(분)", "방향", "진입가", "청산가", "수량", "LEV", "수수료", "펀딩피", "순수익", "잔액", "누적ROI", "ROE", "실질ROE", "청산", "주문"];
         const indicatorHeaders = [
-            "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope", "5M MA ROC",
-            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope", "1H MA ROC",
-            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope", "1D MA ROC"
+            "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope 5", "5M MA Slope 10", "5M MA Slope 20", "5M MA ROC",
+            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope 5", "1H MA Slope 10", "1H MA Slope 20", "1H MA ROC",
+            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope 5", "1D MA Slope 10", "1D MA Slope 20", "1D MA ROC"
         ];
         const headers = showIndicators ? [...baseHeaders, ...indicatorHeaders] : baseHeaders;
 
@@ -730,9 +754,9 @@ const BacktestForm = () => {
                 "지정가"
             ];
             const indicatorRow = [
-                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope || '-', t.m5_ma_roc || '-',
-                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope || '-', t.h1_ma_roc || '-',
-                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope || '-', t.d1_ma_roc || '-'
+                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope_5 || '-', t.m5_ma_slope_10 || '-', t.m5_ma_slope_20 || '-', t.m5_ma_roc || '-',
+                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope_5 || '-', t.h1_ma_slope_10 || '-', t.h1_ma_slope_20 || '-', t.h1_ma_roc || '-',
+                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope_5 || '-', t.d1_ma_slope_10 || '-', t.d1_ma_slope_20 || '-', t.d1_ma_roc || '-'
             ];
             return showIndicators ? [...baseRow, ...indicatorRow] : baseRow;
         });
@@ -767,6 +791,21 @@ const BacktestForm = () => {
     };
 
     const activeStats = displayStats || OFFICIAL_STRATEGIES.find(s => s.version === config.version)?.stats;
+
+    if (view === 'archive') {
+        return (
+            <div className="backtest-container" style={{ padding: '0 20px' }}>
+                <BacktestHistoryArchive 
+                    records={recordedList} 
+                    onSelect={(id) => {
+                        handleRecordSelect({ target: { value: id } });
+                        if (setView) setView('backtest');
+                    }} 
+                    onDelete={handleDeleteRecord}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="backtest-container">
@@ -1027,6 +1066,98 @@ const BacktestForm = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Row 6: MA Slope Align Filters & Periods */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>MA Slope 5m Filter</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '6px 12px', borderRadius: '6px', border: '1px solid #2b3139', height: '38px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={rules.global?.maSlopeAlign5mEnabled ?? false} 
+                                    onChange={e => setRules(prev => ({
+                                        ...prev,
+                                        global: {
+                                            ...prev.global,
+                                            maSlopeAlign5mEnabled: e.target.checked
+                                        }
+                                    }))} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>5m 방향 제한 활성</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>MA Slope 5m Period</label>
+                            <input 
+                                type="number" 
+                                value={rules.global?.maSlopeAlignPeriod5m ?? 20} 
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 20;
+                                    setRules(prev => ({
+                                        ...prev,
+                                        global: {
+                                            ...prev.global,
+                                            maSlopeAlignPeriod5m: val
+                                        }
+                                    }));
+                                }}
+                                style={{ 
+                                    width: '100%', 
+                                    background: '#1e2329', 
+                                    color: '#eaebed', 
+                                    border: '1px solid #2b3139', 
+                                    borderRadius: '6px', 
+                                    padding: '8px 12px',
+                                    fontSize: '13px'
+                                }} 
+                            />
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>MA Slope 1h Filter</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '6px 12px', borderRadius: '6px', border: '1px solid #2b3139', height: '38px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={rules.global?.maSlopeAlign1hEnabled ?? false} 
+                                    onChange={e => setRules(prev => ({
+                                        ...prev,
+                                        global: {
+                                            ...prev.global,
+                                            maSlopeAlign1hEnabled: e.target.checked
+                                        }
+                                    }))} 
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#eaebed', fontSize: '11px', fontWeight: 'bold' }}>1h 방향 제한 활성</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>MA Slope 1h Period</label>
+                            <input 
+                                type="number" 
+                                value={rules.global?.maSlopeAlignPeriod1h ?? 20} 
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 20;
+                                    setRules(prev => ({
+                                        ...prev,
+                                        global: {
+                                            ...prev.global,
+                                            maSlopeAlignPeriod1h: val
+                                        }
+                                    }));
+                                }}
+                                style={{ 
+                                    width: '100%', 
+                                    background: '#1e2329', 
+                                    color: '#eaebed', 
+                                    border: '1px solid #2b3139', 
+                                    borderRadius: '6px', 
+                                    padding: '8px 12px',
+                                    fontSize: '13px'
+                                }} 
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -1138,37 +1269,7 @@ const BacktestForm = () => {
                                                 </div>
                                             )}
 
-                                            {/* MA Slope (m5 전용, 0 기준) */}
-                                            {iv === '5m' && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    {renderAnd()}
-                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('long', iv, 'useMaSlope', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={targetRules[iv]?.maSlopePeriod !== undefined ? targetRules[iv].maSlopePeriod : 20} 
-                                                        onChange={e => handleRuleChange('long', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
-                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                                                    />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (≥ 0)</span>
-                                                </div>
-                                            )}
 
-                                            {/* MA ROC (m5 전용, 0 기준) */}
-                                            {iv === '5m' && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    {renderAnd()}
-                                                    <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('long', iv, 'useMaRoc', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={targetRules[iv]?.maRocPeriod !== undefined ? targetRules[iv].maRocPeriod : 20} 
-                                                        onChange={e => handleRuleChange('long', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
-                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                                                    />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (≥ 0)</span>
-                                                </div>
-                                            )}
 
                                             {/* 1H 20MA Size Filter (1h 전용) */}
                                             {iv === '1h' && (
@@ -1267,37 +1368,6 @@ const BacktestForm = () => {
                                                 </div>
                                             )}
 
-                                            {/* MA Slope (m5 전용, 0 기준) */}
-                                            {iv === '5m' && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    {renderAnd()}
-                                                    <input type="checkbox" checked={targetRules[iv]?.useMaSlope} onChange={e => handleRuleChange('short', iv, 'useMaSlope', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={targetRules[iv]?.maSlopePeriod !== undefined ? targetRules[iv].maSlopePeriod : 20} 
-                                                        onChange={e => handleRuleChange('short', iv, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
-                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                                                    />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (&lt; 0)</span>
-                                                </div>
-                                            )}
-
-                                            {/* MA ROC (m5 전용, 0 기준) */}
-                                            {iv === '5m' && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                    {renderAnd()}
-                                                    <input type="checkbox" checked={targetRules[iv]?.useMaRoc} onChange={e => handleRuleChange('short', iv, 'useMaRoc', e.target.checked)} />
-                                                    <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={targetRules[iv]?.maRocPeriod !== undefined ? targetRules[iv].maRocPeriod : 20} 
-                                                        onChange={e => handleRuleChange('short', iv, 'maRocPeriod', parseInt(e.target.value) || 0)} 
-                                                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                                                    />
-                                                    <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA (&lt; 0)</span>
-                                                </div>
-                                            )}
 
                                             {/* 1H 20MA Size Filter (1h 전용) */}
                                             {iv === '1h' && (
@@ -1435,11 +1505,6 @@ const BacktestForm = () => {
                 />
             </section>
 
-            <BacktestHistoryArchive 
-                records={recordedList} 
-                onSelect={(id) => handleRecordSelect({ target: { value: id } })} 
-                onDelete={handleDeleteRecord}
-            />
         </div>
     );
 };
@@ -1511,7 +1576,9 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBW</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBWP</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M ROC</th>
-                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 5</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 10</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 20</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA ROC</th>
                                 {/* 1H Group */}
                                 <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1H MACD</th>
@@ -1523,7 +1590,9 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBW</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBWP</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H ROC</th>
-                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 5</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 10</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 20</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA ROC</th>
                                 {/* 1D Group */}
                                 <th style={{ padding: '12px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>1D MACD</th>
@@ -1535,8 +1604,11 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D ROC</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 5</th>
+                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 10</th>
+                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 20</th>
                             </>
-                        )}
+                        ) }
                     </tr>
                 </thead>
                 <tbody>
@@ -1600,7 +1672,9 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbwp || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw_roc || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_5 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_10 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_20 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_roc || '-'}</td>
                                         {/* 1H */}
                                         <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.h1_macd || '-'}</td>
@@ -1612,7 +1686,9 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbwp || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw_roc || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_5 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_10 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_20 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_roc || '-'}</td>
                                         {/* 1D */}
                                         <td style={{ padding: '10px 8px', color: '#26a69a', borderLeft: '1px solid #2b3139' }}>{t.d1_macd || '-'}</td>
@@ -1624,6 +1700,9 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw_roc || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_5 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_10 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_20 || '-'}</td>
                                     </>
                                 )}
                             </tr>

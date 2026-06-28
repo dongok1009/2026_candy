@@ -23,27 +23,31 @@ const StatCard = ({ title, value, change, icon: Icon, color }) => (
 
 const DEFAULT_RULES = {
   long: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: true },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSizeFilter: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSizeFilter: true },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSizeFilter: false }
   },
   short: {
-    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false },
-    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: true },
-    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSlope: false, maSlopePeriod: 20, useMaRoc: false, maRocPeriod: 20, useMaSizeFilter: false }
+    '5m': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: false, stochCrossEnabled: true, adxEnabled: true, adxLow: 30, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: true, stochExtremeBypassEnabled: true, stochLimitEnabled: true, useMaSizeFilter: false },
+    '1h': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: true, adxEnabled: false, adxLow: 30, adxHigh: 99, stochKLimitEnabled: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, rsiEnabled: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: false, useMaSizeFilter: true },
+    '1d': { macdValueEnabled: false, macdValue: 0, macdCrossEnabled: true, stochCrossEnabled: false, adxEnabled: false, adxLow: 15, adxHigh: 99, stochKLimitEnabled: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useStochExtremeBypass: false, stochExtremeBypassEnabled: false, stochLimitEnabled: true, useMaSizeFilter: false }
   },
   global: {
     entryWaitMin: 180,
     exitWaitMin: 1500,
     leverage: 5,
-    targetRoi: 0.04,
-    slRoi: 0.15,
+    targetRoi: 0.05,
+    slRoi: 0.14,
     reduceTpWaitMin: 0,
-    reducedTargetRoi: 0.03,
+    reducedTargetRoi: 0.02,
     orderAmount: 10000,
-    penetrationRate: 0.001,
+    penetrationRate: 0.0005,
     entryMode: "HYBRID_5M",
-    switchingEnabled: false
+    switchingEnabled: false,
+    maSlopeAlign5mEnabled: true,
+    maSlopeAlign1hEnabled: false,
+    maSlopeAlignPeriod5m: 2,
+    maSlopeAlignPeriod1h: 20
   }
 };
 

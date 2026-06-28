@@ -25,18 +25,22 @@ export const OFFICIAL_STRATEGIES = [
       exitWaitMin: 1500,
       reduceTpWaitMin: 0,
       reducedTargetRoi: 0.02,
-      penetrationRate: 0.001,
+      penetrationRate: 0.0005,
       entryMode: 'HYBRID_5M',
       global: {
-        switchingEnabled: false
+        switchingEnabled: false,
+        maSlopeAlign5mEnabled: true,
+        maSlopeAlign1hEnabled: false,
+        maSlopeAlignPeriod5m: 2,
+        maSlopeAlignPeriod1h: 20
       },
       long: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
         '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
         '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
       },
       short: {
-        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSlope: false, maSlopePeriod: 1, useMaRoc: false, maRocPeriod: 20 },
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
         '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
         '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
       }

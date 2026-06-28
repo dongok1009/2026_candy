@@ -150,37 +150,7 @@ const SignalSettings = ({
                     </div>
                   )}
 
-                  {/* MA Slope (m5 전용, 0 기준) */}
-                  {iv === '5m' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      {renderAnd()}
-                      <input type="checkbox" checked={getRuleValue(side, iv, 'useMaSlope')} onChange={e => updateRule(iv, side, 'useMaSlope', e.target.checked)} />
-                      <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA Slope</span>
-                      <input 
-                        type="number" 
-                        value={getRuleValue(side, iv, 'maSlopePeriod') !== undefined ? getRuleValue(side, iv, 'maSlopePeriod') : 20} 
-                        onChange={e => updateRule(iv, side, 'maSlopePeriod', parseInt(e.target.value) || 0)} 
-                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                      />
-                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA ({isLong ? '≥ 0' : '< 0'})</span>
-                    </div>
-                  )}
 
-                  {/* MA ROC (m5 전용, 0 기준) */}
-                  {iv === '5m' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      {renderAnd()}
-                      <input type="checkbox" checked={getRuleValue(side, iv, 'useMaRoc')} onChange={e => updateRule(iv, side, 'useMaRoc', e.target.checked)} />
-                      <span style={{ color: '#eaebed', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>MA ROC</span>
-                      <input 
-                        type="number" 
-                        value={getRuleValue(side, iv, 'maRocPeriod') !== undefined ? getRuleValue(side, iv, 'maRocPeriod') : 20} 
-                        onChange={e => updateRule(iv, side, 'maRocPeriod', parseInt(e.target.value) || 0)} 
-                        style={{ width: '45px', background: '#161a1e', border: '1px solid #444', borderRadius: '4px', color: '#fff', fontSize: '11px', textAlign: 'center', marginLeft: '3px', padding: '1px' }} 
-                      />
-                      <span style={{ color: '#888', fontSize: '11px', marginLeft: '2px' }}>5m MA ({isLong ? '≥ 0' : '< 0'})</span>
-                    </div>
-                  )}
 
                   {/* 1H 20MA Size Filter (1h 전용) */}
                   {iv === '1h' && (
