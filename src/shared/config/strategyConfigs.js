@@ -4,6 +4,50 @@
  */
 export const OFFICIAL_STRATEGIES = [
   {
+    version: 'Logic.v8.2.6',
+    name: 'Logic.v8.2.6 (MA Slope, ROC & WHAT-IF Filters Support)',
+    description: '시그널 발생 시 특정 지표 조건에 부합할 경우 진입을 동적으로 제한(차단/비중축소/TP·SL 축소)하는 WHAT-IF 필터 모델',
+    stats: {
+      initialBalance: 1000,
+      finalBalance: 1000,
+      roi: '0.0%',
+      winRate: '-',
+      mdd: '-',
+      trades: 0,
+      wins: 0,
+      losses: 0,
+      period: 'New'
+    },
+    rules: {
+      targetRoi: 0.05,
+      slRoi: 0.14,
+      entryWaitMin: 180,
+      exitWaitMin: 1500,
+      reduceTpWaitMin: 0,
+      reducedTargetRoi: 0.02,
+      penetrationRate: 0.0005,
+      entryMode: 'HYBRID_5M',
+      global: {
+        switchingEnabled: false,
+        maSlopeAlign5mEnabled: true,
+        maSlopeAlign1hEnabled: false,
+        maSlopeAlignPeriod5m: 2,
+        maSlopeAlignPeriod1h: 20,
+        whatIfFilters: []
+      },
+      long: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      },
+      short: {
+        '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
+        '1h': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: true, useADX: false, adxLow: 30, adxHigh: 99, useStochKLimit: false, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95, useMaSizeFilter: true },
+        '1d': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: true, useStochCross: false, useADX: false, adxLow: 15, adxHigh: 99, useStochKLimit: true, stochKThreshold: 98, stochKLow: 0, stochKHigh: 98, useRSI: false, rsiLow: 5, rsiHigh: 95 }
+      }
+    }
+  },
+  {
     version: 'Logic.v8.2.5',
     name: 'Logic.v8.2.5 (MA Slope, ROC & Switching/Sizing Filters)',
     description: '5분봉 MA Slope/ROC (0기준 필터), 반대신호 즉시 스위칭 진입, 1시간봉 20MA 수량조절 기능이 통합된 모델',

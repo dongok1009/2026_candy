@@ -1,0 +1,98 @@
+{
+  "long": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1d": {
+      "useADX": true,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    }
+  },
+  "short": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1d": {
+      "useADX": true,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 80,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    }
+  },
+  "entryWaitMin": 180,
+  "exitWaitMin": 2000
+}

@@ -2,7 +2,7 @@ const ccxt = require('ccxt');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
-const { buildRulesFromEnv, ensureEnvTemplate } = require('./lib/rules_helper.cjs');
+const { buildRulesFromEnv, ensureEnvTemplate, evaluateWhatIfFilters } = require('./lib/rules_helper.cjs');
 
 // .env 로드 (시작 시)
 dotenv.config();
@@ -265,6 +265,14 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
     console.log(`• 현재가: $${price} | 진입 희망가(Target): $${targetPrice}`);
 
     try {
+        // WHAT-IF 동적 진입 필터 평가
+        const whatIf = evaluateWhatIfFilters(side, { idx5m: indices.idx5m, r1h: indices.r1h, r1d: indices.r1d }, indicators, overrideRules);
+        if (whatIf.isBlocked) {
+            console.log(`🚫 [WHAT-IF BLOCK] 진입 차단 조건이 충족되어 매매를 스킵합니다.`);
+            await sendTelegram(`🚫 <b>[${displayVersion} LIVE] 진입 차단!</b>\n\nWHAT-IF 필터 차단 조건이 만족되어 진입이 생략되었습니다.\n💰 <b>현재가:</b> $${price.toLocaleString()}\n📌 <b>방향:</b> ${side}`);
+            return;
+        }
+
         const balance = await exchange.fetchBalance();
         const availableBalance = balance.free.USDT || 0;
         
@@ -274,16 +282,16 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
             : (parseFloat(process.env.ORDER_AMOUNT) || parseFloat(process.env.AMOUNT) || parseFloat(process.env.INITIAL_BALANCE) || 100);
         const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
 
-        // 1h 20MA 대비 포지션 규모 필터 계산 (0.5x or 1.0x)
-        let sizeMultiplier = 1.0;
+        // 1h 20MA 대비 포지션 규모 필터 계산 (0.5x or 1.0x) + WHAT-IF 비중 배율
+        let sizeMultiplier = 1.0 * whatIf.sizeMultiplier;
         const h1Rules = overrideRules?.[side.toLowerCase()]?.['1h'];
         if (h1Rules && h1Rules.useMaSizeFilter && indicators && indices) {
             const h1MaVal = indicators.h1.ma[indices.r1h];
             if (h1MaVal !== null && h1MaVal !== undefined) {
                 if (side === 'LONG' && price < h1MaVal) {
-                    sizeMultiplier = 0.5;
+                    sizeMultiplier *= 0.5;
                 } else if (side === 'SHORT' && price > h1MaVal) {
-                    sizeMultiplier = 0.5;
+                    sizeMultiplier *= 0.5;
                 }
             }
         }
@@ -324,8 +332,8 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
 
         console.log(`[DEBUG] 주문수량: ${contracts} BTC (마진 $${finalAmount} x ${leverage}배)`);
 
-        const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
-        const slRoi = strategy.config.SL_ROI || 0.15;
+        const targetRoi = (strategy.config.TARGET_NET_ROI || 0.03) * whatIf.tpMultiplier;
+        const slRoi = (strategy.config.SL_ROI || 0.15) * whatIf.slMultiplier;
 
         const tpPrice = side === 'LONG' 
             ? parseFloat((entryPrice * (1 + targetRoi / leverage)).toFixed(2))

@@ -1,0 +1,258 @@
+{
+  "searchSpace": {
+    "long": {
+      "m5_useADX": [
+        true
+      ],
+      "m5_adxLow": [
+        30
+      ],
+      "m5_adxHigh": [
+        99
+      ],
+      "m5_useMacdBeyondSig": [
+        false
+      ],
+      "m5_useStochCross": [
+        true
+      ],
+      "m5_useStochKLimit": [
+        true
+      ],
+      "m5_stochKLow": [
+        0
+      ],
+      "m5_stochKHigh": [
+        99
+      ],
+      "m5_useRSI": [
+        false
+      ],
+      "m5_rsiLow": [
+        5
+      ],
+      "m5_rsiHigh": [
+        95
+      ],
+      "m5_useMacdVal": [
+        false
+      ],
+      "m5_macdVal": [
+        0
+      ],
+      "h1_useADX": [
+        false
+      ],
+      "h1_adxLow": [
+        30
+      ],
+      "h1_adxHigh": [
+        99
+      ],
+      "h1_useMacdBeyondSig": [
+        true
+      ],
+      "h1_useStochCross": [
+        true
+      ],
+      "h1_useStochKLimit": [
+        false
+      ],
+      "h1_stochKLow": [],
+      "h1_stochKHigh": [],
+      "h1_useRSI": [
+        false
+      ],
+      "h1_rsiLow": [
+        5
+      ],
+      "h1_rsiHigh": [
+        95
+      ],
+      "h1_useMacdVal": [
+        false
+      ],
+      "h1_macdVal": [
+        0
+      ],
+      "d1_useADX": [
+        false
+      ],
+      "d1_adxLow": [
+        15
+      ],
+      "d1_adxHigh": [
+        99
+      ],
+      "d1_useMacdBeyondSig": [
+        true
+      ],
+      "d1_useStochCross": [
+        false
+      ],
+      "d1_useStochKLimit": [
+        true
+      ],
+      "d1_stochKLow": [
+        0
+      ],
+      "d1_stochKHigh": [
+        98
+      ],
+      "d1_useRSI": [
+        false
+      ],
+      "d1_rsiLow": [
+        5
+      ],
+      "d1_rsiHigh": [
+        95
+      ],
+      "d1_useMacdVal": [
+        false
+      ],
+      "d1_macdVal": [
+        0
+      ]
+    },
+    "short": {
+      "m5_useADX": [
+        true
+      ],
+      "m5_adxLow": [
+        30
+      ],
+      "m5_adxHigh": [
+        99
+      ],
+      "m5_useMacdBeyondSig": [
+        false
+      ],
+      "m5_useStochCross": [
+        true
+      ],
+      "m5_useStochKLimit": [
+        true
+      ],
+      "m5_stochKLow": [
+        0
+      ],
+      "m5_stochKHigh": [
+        99
+      ],
+      "m5_useRSI": [
+        false
+      ],
+      "m5_rsiLow": [
+        5
+      ],
+      "m5_rsiHigh": [
+        95
+      ],
+      "m5_useMacdVal": [
+        false
+      ],
+      "m5_macdVal": [
+        0
+      ],
+      "h1_useADX": [
+        false
+      ],
+      "h1_adxLow": [
+        30
+      ],
+      "h1_adxHigh": [
+        99
+      ],
+      "h1_useMacdBeyondSig": [
+        true
+      ],
+      "h1_useStochCross": [
+        true
+      ],
+      "h1_useStochKLimit": [
+        false
+      ],
+      "h1_stochKLow": [
+        0
+      ],
+      "h1_stochKHigh": [
+        99
+      ],
+      "h1_useRSI": [
+        false
+      ],
+      "h1_rsiLow": [
+        5
+      ],
+      "h1_rsiHigh": [
+        95
+      ],
+      "h1_useMacdVal": [
+        false
+      ],
+      "h1_macdVal": [
+        0
+      ],
+      "d1_useADX": [
+        false
+      ],
+      "d1_adxLow": [
+        15
+      ],
+      "d1_adxHigh": [
+        99
+      ],
+      "d1_useMacdBeyondSig": [
+        true
+      ],
+      "d1_useStochCross": [
+        false
+      ],
+      "d1_useStochKLimit": [
+        true
+      ],
+      "d1_stochKLow": [
+        0
+      ],
+      "d1_stochKHigh": [
+        98
+      ],
+      "d1_useRSI": [
+        false
+      ],
+      "d1_rsiLow": [
+        5
+      ],
+      "d1_rsiHigh": [
+        95
+      ],
+      "d1_useMacdVal": [
+        false
+      ],
+      "d1_macdVal": [
+        0
+      ]
+    },
+    "targetRoi": [
+      0.04,
+      0.05
+    ],
+    "slRoi": [
+      0.15,
+      0.2
+    ]
+  },
+  "globalConfig": {
+    "version": "Logic.v8.2.3",
+    "symbol": "BTCUSDT",
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "leverage": 5,
+    "balance": 1000,
+    "entryWaitMin": 180,
+    "exitWaitMin": 1500,
+    "reduceTpWaitMin": 0,
+    "reducedTargetRoi": 0.02
+  }
+}

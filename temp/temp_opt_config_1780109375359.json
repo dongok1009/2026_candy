@@ -1,0 +1,87 @@
+{
+  "searchSpace": {
+    "m5_useADX": [
+      true
+    ],
+    "m5_adxThreshold": [
+      30
+    ],
+    "m5_useMacdBeyondSig": [
+      false
+    ],
+    "m5_useStochCross": [
+      true
+    ],
+    "m5_useStochKLimit": [
+      true,
+      false
+    ],
+    "m5_stochKThreshold": [
+      90,
+      90,
+      98,
+      99
+    ],
+    "h1_useADX": [
+      false
+    ],
+    "h1_adxThreshold": [
+      30
+    ],
+    "h1_useMacdBeyondSig": [
+      true
+    ],
+    "h1_useStochCross": [
+      true
+    ],
+    "h1_useStochKLimit": [
+      true,
+      false
+    ],
+    "h1_stochKThreshold": [
+      90,
+      90,
+      98,
+      99
+    ],
+    "d1_useADX": [
+      false
+    ],
+    "d1_adxThreshold": [
+      15
+    ],
+    "d1_useMacdBeyondSig": [
+      true
+    ],
+    "d1_useStochCross": [
+      false
+    ],
+    "d1_useStochKLimit": [
+      true,
+      false
+    ],
+    "d1_stochKThreshold": [
+      90,
+      90,
+      98,
+      99
+    ],
+    "targetRoi": [
+      0.03,
+      0.04
+    ],
+    "slRoi": [
+      0.15
+    ]
+  },
+  "globalConfig": {
+    "version": "Logic.v8.1.0",
+    "symbol": "BTCUSDT",
+    "start": "2025-01-01",
+    "end": "2025-12-31",
+    "leverage": 5,
+    "balance": 1000,
+    "entryWaitMin": 180,
+    "exitWaitMin": 1500
+  }
+}

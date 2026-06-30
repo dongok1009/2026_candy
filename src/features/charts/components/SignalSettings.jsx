@@ -1,9 +1,14 @@
 import React from 'react';
-import { Info, BellRing, Send } from 'lucide-react';
+import { Info, BellRing, Send, Layers } from 'lucide-react';
 
 const SignalSettings = ({ 
   rules, 
-  updateRule
+  updateRule,
+  newWhatIf,
+  setNewWhatIf,
+  handleAddWhatIf,
+  handleRemoveWhatIf,
+  handleResetWhatIf
 }) => {
 
   const getRuleValue = (side, iv, field) => {
@@ -293,6 +298,139 @@ const SignalSettings = ({
                       />
                       <span style={{ color: '#eaebed', fontSize: '11px', marginLeft: '5px', fontWeight: 'bold' }}>포지션 보유 중 반대 방향 시그널 발생 시 즉시 시장가 청산 및 반대 진입</span>
                   </div>
+              </div>
+          </div>
+
+          {/* WHAT-IF 진입 필터 */}
+          <div style={{ marginTop: '20px', borderTop: '1px dashed #2b3139', paddingTop: '16px' }}>
+              <h4 style={{ color: '#eaebed', fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Layers size={16} color="#f3ba2f" />
+                  <span style={{ color: '#f3ba2f', fontWeight: 'bold' }}>WHAT-IF 진입필터</span>
+              </h4>
+              <p style={{ color: '#aeaeae', fontSize: '11px', marginBottom: '12px' }}>
+                  진입 시그널 발생 시 지표값에 따라 해당 진입을 차단하거나, 비중/TP/SL 배수를 조정하여 진입합니다.
+              </p>
+              
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', background: '#0b0e11', padding: '10px', borderRadius: '8px', border: '1px solid #2b3139' }}>
+                  {/* 방향 선택 */}
+                  <select 
+                      value={newWhatIf?.side} 
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, side: e.target.value }))}
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
+                  >
+                      <option value="both">양방향</option>
+                      <option value="long">롱</option>
+                      <option value="short">숏</option>
+                  </select>
+
+                  {/* 액션 선택 */}
+                  <select 
+                      value={newWhatIf?.action} 
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, action: e.target.value }))}
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
+                  >
+                      <option value="block">차단</option>
+                      <option value="size_50">50%진입</option>
+                      <option value="tp_50">TP 50%축소</option>
+                      <option value="sl_50">SL 50%축소</option>
+                  </select>
+
+                  {/* 타임프레임 선택 */}
+                  <select 
+                      value={newWhatIf?.timeframe} 
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, timeframe: e.target.value }))}
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
+                  >
+                      <option value="5m">5m</option>
+                      <option value="1h">1h</option>
+                      <option value="1d">1d</option>
+                  </select>
+
+                  {/* 지표 선택 */}
+                  <select 
+                      value={newWhatIf?.indicator} 
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, indicator: e.target.value }))}
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
+                  >
+                      <option value="ma_slope_5">5ma slope</option>
+                      <option value="adx">5ma adx</option>
+                      <option value="rsi">RSI</option>
+                      <option value="macd">MACD</option>
+                      <option value="stochk">StochRSI K</option>
+                      <option value="stochd">StochRSI D</option>
+                      <option value="bbw">BBW</option>
+                      <option value="bbwp">BBWP</option>
+                      <option value="ma_slope_10">10ma slope</option>
+                      <option value="ma_slope_20">20ma slope</option>
+                      <option value="ma_roc">MA ROC</option>
+                  </select>
+
+                  {/* 연산자 선택 */}
+                  <select 
+                      value={newWhatIf?.operator} 
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, operator: e.target.value }))}
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
+                  >
+                      <option value="<">&lt;</option>
+                      <option value=">">&gt;</option>
+                      <option value="=">=</option>
+                  </select>
+
+                  {/* 임계값 입력 */}
+                  <input 
+                      type="number" 
+                      value={newWhatIf?.threshold}
+                      onChange={e => setNewWhatIf(prev => ({ ...prev, threshold: e.target.value }))}
+                      placeholder="임계치"
+                      style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', width: '80px', fontSize: '12px' }}
+                  />
+
+                  {/* 추가 버튼 */}
+                  <button 
+                      type="button"
+                      onClick={handleAddWhatIf}
+                      style={{ background: '#f3ba2f', color: '#0b0e11', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                      + 추가
+                  </button>
+
+                  {/* 초기화 버튼 */}
+                  <button 
+                      type="button"
+                      onClick={handleResetWhatIf}
+                      style={{ background: 'transparent', color: '#aeaeae', border: '1px solid #2b3139', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                      초기화
+                  </button>
+              </div>
+
+              {/* 추가된 WHAT-IF 리스트 칩 표시 */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+                  {rules?.global?.whatIfFilters?.map((filter, index) => {
+                      const sideText = filter.side === 'both' ? '양방향' : (filter.side === 'long' ? '롱' : '숏');
+                      const actionText = filter.action === 'block' ? '차단' : (filter.action === 'size_50' ? '50%진입' : (filter.action === 'tp_50' ? 'TP 50%축소' : 'SL 50%축소'));
+                      return (
+                          <div 
+                              key={index}
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0b0e11', border: '1px solid #f3ba2f', color: '#eaebed', padding: '4px 10px', borderRadius: '16px', fontSize: '11px' }}
+                          >
+                              <span style={{ color: filter.side === 'long' ? '#0ecb81' : (filter.side === 'short' ? '#f6465d' : '#f3ba2f'), fontWeight: 'bold' }}>
+                                  {sideText}
+                              </span>
+                              <span>{filter.timeframe} {filter.indicator} {filter.operator} {filter.threshold}</span>
+                              <span style={{ color: '#f3ba2f', fontWeight: 'bold' }}>➔ {actionText}</span>
+                              <span 
+                                  onClick={() => handleRemoveWhatIf(index)}
+                                  style={{ color: '#aeaeae', marginLeft: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                              >
+                                  ✕
+                              </span>
+                          </div>
+                      );
+                  })}
+                  {(!rules?.global?.whatIfFilters || rules.global.whatIfFilters.length === 0) && (
+                      <div style={{ color: '#848e9c', fontSize: '12px', fontStyle: 'italic' }}>설정된 WHAT-IF 조건이 없습니다.</div>
+                  )}
               </div>
           </div>
       </div>

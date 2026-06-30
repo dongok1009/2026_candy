@@ -1,0 +1,4 @@
+{
+  "ignore": ["live_rules.json", "records.json", "*.log", "BACKTEST_HISTORY.md", "STRATEGY_RULES.md", "temp/**", "results/**"],
+  "delay": "500"
+}

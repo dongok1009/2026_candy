@@ -1,0 +1,91 @@
+{
+  "long": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochKLimit": true,
+      "stochKThreshold": 99,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochKLimit": false,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1d": {
+      "useADX": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochKLimit": true,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    }
+  },
+  "short": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochKLimit": true,
+      "stochKThreshold": 99,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochKLimit": false,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    },
+    "1d": {
+      "useADX": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochKLimit": true,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0
+    }
+  },
+  "global": {}
+}

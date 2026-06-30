@@ -1,0 +1,106 @@
+{
+  "long": {
+    "5m": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": false,
+      "stochCrossEnabled": true,
+      "adxEnabled": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "stochKLimitEnabled": true,
+      "stochKThreshold": 99,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    },
+    "1h": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": true,
+      "stochCrossEnabled": true,
+      "adxEnabled": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "stochKLimitEnabled": false,
+      "stochKThreshold": 98,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    },
+    "1d": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": false,
+      "stochCrossEnabled": false,
+      "adxEnabled": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "stochKLimitEnabled": true,
+      "stochKThreshold": 98,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    }
+  },
+  "short": {
+    "5m": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": false,
+      "stochCrossEnabled": true,
+      "adxEnabled": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "stochKLimitEnabled": true,
+      "stochKThreshold": 99,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    },
+    "1h": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": true,
+      "stochCrossEnabled": true,
+      "adxEnabled": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "stochKLimitEnabled": true,
+      "stochKThreshold": 98,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    },
+    "1d": {
+      "macdValueEnabled": false,
+      "macdValue": 0,
+      "macdCrossEnabled": true,
+      "stochCrossEnabled": false,
+      "adxEnabled": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "stochKLimitEnabled": true,
+      "stochKThreshold": 98,
+      "stochKLow": 0,
+      "stochKHigh": 99,
+      "rsiEnabled": false,
+      "rsiLow": 5,
+      "rsiHigh": 95
+    }
+  },
+  "global": {
+    "targetRoi": 0.04,
+    "slRoi": 0.15
+  }
+}

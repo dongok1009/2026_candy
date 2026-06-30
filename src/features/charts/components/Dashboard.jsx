@@ -47,7 +47,8 @@ const DEFAULT_RULES = {
     maSlopeAlign5mEnabled: true,
     maSlopeAlign1hEnabled: false,
     maSlopeAlignPeriod5m: 2,
-    maSlopeAlignPeriod1h: 20
+    maSlopeAlignPeriod1h: 20,
+    whatIfFilters: []
   }
 };
 
@@ -99,6 +100,9 @@ const Dashboard = () => {
         }
       }
     }
+    if (normalized.global && !normalized.global.whatIfFilters) {
+      normalized.global.whatIfFilters = [];
+    }
     return normalized;
   };
 
@@ -128,6 +132,60 @@ const Dashboard = () => {
   const [isTesting, setIsTesting] = useState(false);
   const lastLoadedRulesRef = useRef(null);
   const isServerRulesLoadedRef = useRef(false);
+
+  // WHAT-IF 동적 필터 폼 상태 선언
+  const [newWhatIf, setNewWhatIf] = useState({
+    side: 'both',
+    action: 'block',
+    timeframe: '1d',
+    indicator: 'ma_slope_5',
+    operator: '<',
+    threshold: '0'
+  });
+
+  const handleAddWhatIf = () => {
+    setRules(prev => {
+      const currentGlobal = prev.global || {};
+      const currentFilters = currentGlobal.whatIfFilters || [];
+      return {
+        ...prev,
+        global: {
+          ...currentGlobal,
+          whatIfFilters: [
+            ...currentFilters,
+            { ...newWhatIf, threshold: parseFloat(newWhatIf.threshold) || 0 }
+          ]
+        }
+      };
+    });
+  };
+
+  const handleRemoveWhatIf = (index) => {
+    setRules(prev => {
+      const currentGlobal = prev.global || {};
+      const currentFilters = currentGlobal.whatIfFilters || [];
+      return {
+        ...prev,
+        global: {
+          ...currentGlobal,
+          whatIfFilters: currentFilters.filter((_, idx) => idx !== index)
+        }
+      };
+    });
+  };
+
+  const handleResetWhatIf = () => {
+    setRules(prev => {
+      const currentGlobal = prev.global || {};
+      return {
+        ...prev,
+        global: {
+          ...currentGlobal,
+          whatIfFilters: []
+        }
+      };
+    });
+  };
 
   // 1. 컴포넌트 마운트 시 서버의 live_rules.json 설정을 우선적으로 조회 및 동기화
   React.useEffect(() => {
@@ -577,6 +635,11 @@ const Dashboard = () => {
         <SignalSettings
           rules={rules}
           updateRule={updateRule}
+          newWhatIf={newWhatIf}
+          setNewWhatIf={setNewWhatIf}
+          handleAddWhatIf={handleAddWhatIf}
+          handleRemoveWhatIf={handleRemoveWhatIf}
+          handleResetWhatIf={handleResetWhatIf}
         />
       </main>
 

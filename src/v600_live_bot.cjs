@@ -3,7 +3,7 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const { fileURLToPath } = require('url');
-const { buildRulesFromEnv } = require('../lib/rules_helper.cjs');
+const { buildRulesFromEnv, evaluateWhatIfFilters } = require('../lib/rules_helper.cjs');
 
 // .env 로드 (루트 디렉토리 명시적 지정으로 구동 CWD 경로 격차 완벽 극복)
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -150,15 +150,22 @@ async function runLiveCycle() {
       const indices = { idx5m: m5.length - 2, r1h: h1.length - 2, r1d: d1.length - 2 };
       const currentSig = strategy.signal_logic(indicators, indices, liveRules);
 
-      console.log(`Current Signal: ${currentSig.toUpperCase()}`);
+      // WHAT-IF 동적 진입 필터 평가
+      let whatIf = { isBlocked: false, sizeMultiplier: 1.0, tpMultiplier: 1.0, slMultiplier: 1.0 };
+      if (currentSig !== 'hold') {
+        try {
+          whatIf = evaluateWhatIfFilters(currentSig, { idx5m: indices.idx5m, r1h: indices.r1h, r1d: indices.r1d }, indicators, liveRules);
+        } catch (whatIfErr) {
+          console.error("⚠️ WHAT-IF Evaluation Error in Live Bot:", whatIfErr.message);
+        }
+      }
+
+      console.log(`Current Signal: ${currentSig.toUpperCase()} | WHAT-IF Blocked: ${whatIf.isBlocked}`);
       errorSent = false;
 
       const completedM5 = m5[m5.length - 2];
       const currentPrice = m5[m5.length - 1].close;
       const checkTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: true });
-
-      // [UPDATE] '감시 시작' 알림 제거 요청에 따라 삭제됨
-      // if (isFirstScan) { ... }
 
       // 1. 신호 변화 알림 (진입/종료)
       const isSignalChanged = (!isFirstScan && currentSig !== lastSignal);
@@ -172,28 +179,46 @@ async function runLiveCycle() {
           let lev = 10; // Default fallback
           if (liveRules?.global?.leverage) {
             lev = liveRules.global.leverage;
-          } else if (liveRules?.long?.['5m']?.leverage) { // Support legacy or mixed structures
+          } else if (liveRules?.long?.['5m']?.leverage) { 
             lev = liveRules.long['5m'].leverage;
           } else {
             lev = strategy.config.LEVERAGE || 10;
           }
 
-          const targetRoi = strategy.config.TARGET_NET_ROI || 0.03;
-          const slRoi = strategy.config.SL_ROI || 0.15;
+          const targetRoi = (strategy.config.TARGET_NET_ROI || 0.03) * whatIf.tpMultiplier;
+          const slRoi = (strategy.config.SL_ROI || 0.15) * whatIf.slMultiplier;
           
           const tpPrice = entryPrice * (currentSig === 'long' ? (1 + targetRoi / lev) : (1 - targetRoi / lev));
           const slPrice = entryPrice * (currentSig === 'long' ? (1 - slRoi / lev) : (1 + slRoi / lev));
 
           let message = '';
           if (currentSig !== 'hold') {
-            message = `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>\n\n` +
+            const title = whatIf.isBlocked 
+              ? `🚫 <b>[${displayVersion} LIVE] 신호 감지 (WHAT-IF 차단)</b>` 
+              : `🚀 <b>[${displayVersion} LIVE] 신호 발생!</b>`;
+              
+            message = `${title}\n\n` +
               `⌚ <b>체크 시간</b>: ${checkTime}\n` +
               `💰 <b>현재 가격</b>: $${currentPrice.toLocaleString()}\n\n` +
               `📌 <b>포지션</b>: ${currentSig.toUpperCase()}\n` +
               `💵 <b>진입 희망가</b>: $${entryPrice.toLocaleString()}\n` +
               `✅ <b>익절가(TP)</b>: $${tpPrice.toLocaleString()} (ROI ${(targetRoi*100).toFixed(1)}%)\n` +
-              `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n` +
-              `📡 레버리지 ${lev}배 기준 계산됨`;
+              `❌ <b>손절가(SL)</b>: $${slPrice.toLocaleString()} (ROI ${(slRoi*100).toFixed(1)}%)\n\n`;
+
+            if (whatIf.isBlocked) {
+                message += `⚠️ <b>[WHAT-IF 차단 필터 작동]</b> 이 시그널은 실전 거래 봇에서 진입하지 않고 패스합니다.\n\n`;
+            } else {
+                let adjustNotes = [];
+                if (whatIf.sizeMultiplier !== 1.0) adjustNotes.push(`진입비중 ${(whatIf.sizeMultiplier * 100).toFixed(0)}% 축소`);
+                if (whatIf.tpMultiplier !== 1.0) adjustNotes.push(`목표익절률 ${(whatIf.tpMultiplier * 100).toFixed(0)}% 축소`);
+                if (whatIf.slMultiplier !== 1.0) adjustNotes.push(`허용손절률 ${(whatIf.slMultiplier * 100).toFixed(0)}% 축소`);
+                
+                if (adjustNotes.length > 0) {
+                    message += `⚠️ <b>[WHAT-IF 조정 작동]</b>\n• ${adjustNotes.join('\n• ')}\n\n`;
+                }
+            }
+
+            message += `📡 레버리지 ${lev}배 기준 계산됨`;
             
             // 진입 정보 보존
             lastEntryPrice = entryPrice;
