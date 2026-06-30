@@ -782,9 +782,9 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
         
         const baseHeaders = ["#", "진입(KST)", "청산(KST)", "시간(분)", "방향", "진입가", "청산가", "수량", "LEV", "수수료", "펀딩피", "순수익", "잔액", "누적ROI", "ROE", "실질ROE", "청산", "주문"];
         const indicatorHeaders = [
-            "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope 5", "5M MA Slope 10", "5M MA Slope 20", "5M MA ROC",
-            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope 5", "1H MA Slope 10", "1H MA Slope 20", "1H MA ROC",
-            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope 5", "1D MA Slope 10", "1D MA Slope 20", "1D MA ROC"
+            "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope 3", "5M MA Slope 5", "5M MA Slope 10", "5M MA Slope 20", "5M MA ROC",
+            "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope 3", "1H MA Slope 5", "1H MA Slope 10", "1H MA Slope 20", "1H MA ROC",
+            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope 3", "1D MA Slope 5", "1D MA Slope 10", "1D MA Slope 20", "1D MA ROC"
         ];
         const headers = showIndicators ? [...baseHeaders, ...indicatorHeaders] : baseHeaders;
 
@@ -810,9 +810,9 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                 "지정가"
             ];
             const indicatorRow = [
-                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope_5 || '-', t.m5_ma_slope_10 || '-', t.m5_ma_slope_20 || '-', t.m5_ma_roc || '-',
-                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope_5 || '-', t.h1_ma_slope_10 || '-', t.h1_ma_slope_20 || '-', t.h1_ma_roc || '-',
-                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope_5 || '-', t.d1_ma_slope_10 || '-', t.d1_ma_slope_20 || '-', t.d1_ma_roc || '-'
+                t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope_3 || '-', t.m5_ma_slope_5 || '-', t.m5_ma_slope_10 || '-', t.m5_ma_slope_20 || '-', t.m5_ma_roc || '-',
+                t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope_3 || '-', t.h1_ma_slope_5 || '-', t.h1_ma_slope_10 || '-', t.h1_ma_slope_20 || '-', t.h1_ma_roc || '-',
+                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope_3 || '-', t.d1_ma_slope_5 || '-', t.d1_ma_slope_10 || '-', t.d1_ma_slope_20 || '-', t.d1_ma_roc || '-'
             ];
             return showIndicators ? [...baseRow, ...indicatorRow] : baseRow;
         });
@@ -1266,6 +1266,7 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                 onChange={e => setNewWhatIf(prev => ({ ...prev, indicator: e.target.value }))}
                                 style={{ background: '#0b0e11', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
                             >
+                                <option value="ma_slope_3">3ma slope</option>
                                 <option value="ma_slope_5">5ma slope</option>
                                 <option value="adx">5ma adx</option>
                                 <option value="rsi">RSI</option>
@@ -1765,6 +1766,7 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBW</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M BBWP</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 3</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 5</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 10</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>5M MA Slope 20</th>
@@ -1779,6 +1781,7 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBW</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H BBWP</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 3</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 5</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 10</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1H MA Slope 20</th>
@@ -1791,11 +1794,11 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBW</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D BBWP</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D ROC</th>
-                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 3</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 5</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 10</th>
+                                <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 20</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA ROC</th>
-                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 5</th>
-                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 10</th>
-                                <th style={{ padding: '12px 8px', color: '#26a69a' }}>1D MA 20</th>
                             </>
                         ) }
                     </tr>
@@ -1861,6 +1864,7 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbwp || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_bbw_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_3 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_5 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_10 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.m5_ma_slope_20 || '-'}</td>
@@ -1875,6 +1879,7 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbwp || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_bbw_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_3 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_5 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_10 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.h1_ma_slope_20 || '-'}</td>
@@ -1887,11 +1892,11 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbwp || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_bbw_roc || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_3 || t.d1_ma_3 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_5 || t.d1_ma_5 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_10 || t.d1_ma_10 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_20 || t.d1_ma_20 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_roc || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_5 || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_10 || '-'}</td>
-                                        <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_20 || '-'}</td>
                                     </>
                                 )}
                             </tr>

@@ -5,7 +5,7 @@ console.log(`[LOADED] Logic.v8.2.5.cjs loaded at ${new Date().toISOString()}`);
 const strategy = {
     name: 'Logic.v8.2.5',
     description: 'v8.2.5 (MA Slope, ROC & Switching/Sizing Filters)',
-    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M3_StochK,M3_StochD,M3_ADX,M5_StochK,M5_StochD,M5_ADX,M5_RSI,M5_MACD,M5_MACDSig,M5_BBW,M5_BBWP,M5_BBW_ROC,M5_MA_Slope_5,M5_MA_Slope_10,M5_MA_Slope_20,M5_MA_ROC,H1_MACD,H1_MACDSig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,H1_BBW,H1_BBWP,H1_BBW_ROC,H1_MA_Slope_5,H1_MA_Slope_10,H1_MA_Slope_20,H1_MA_ROC,H12_MACD,H12_MACDSig,H12_StochK,H12_StochD,H12_ADX,D1_MACD,D1_MACDSig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,D1_BBW,D1_BBWP,D1_BBW_ROC,D1_MA_Slope_5,D1_MA_Slope_10,D1_MA_Slope_20,D1_MA_ROC",
+    header: "Entry_Time,Exit_Time,Balance,Cum_ROI,Side,Entry_Price,Exit_Price,Net_Profit,ROE,Quantity,Fee,FundingFee,M3_StochK,M3_StochD,M3_ADX,M5_StochK,M5_StochD,M5_ADX,M5_RSI,M5_MACD,M5_MACDSig,M5_BBW,M5_BBWP,M5_BBW_ROC,M5_MA_Slope_3,M5_MA_Slope_5,M5_MA_Slope_10,M5_MA_Slope_20,M5_MA_ROC,H1_MACD,H1_MACDSig,H1_StochK,H1_StochD,H1_ADX,H1_RSI,H1_BBW,H1_BBWP,H1_BBW_ROC,H1_MA_Slope_3,H1_MA_Slope_5,H1_MA_Slope_10,H1_MA_Slope_20,H1_MA_ROC,H12_MACD,H12_MACDSig,H12_StochK,H12_StochD,H12_ADX,D1_MACD,D1_MACDSig,D1_StochK,D1_StochD,D1_ADX,D1_RSI,D1_BBW,D1_BBWP,D1_BBW_ROC,D1_MA_Slope_3,D1_MA_Slope_5,D1_MA_Slope_10,D1_MA_Slope_20,D1_MA_ROC",
 
     config: {
         SYMBOL: 'BTCUSDT',
@@ -43,10 +43,13 @@ const strategy = {
         const h1Ma = calculateSMA(h1Closes, 20);
         const d1Ma = calculateSMA(d1Closes, 20);
 
+        const m5Ma3 = calculateSMA(m5Closes, 3);
         const m5Ma5 = calculateSMA(m5Closes, 5);
         const m5Ma10 = calculateSMA(m5Closes, 10);
+        const h1Ma3 = calculateSMA(h1Closes, 3);
         const h1Ma5 = calculateSMA(h1Closes, 5);
         const h1Ma10 = calculateSMA(h1Closes, 10);
+        const d1Ma3 = calculateSMA(d1Closes, 3);
         const d1Ma5 = calculateSMA(d1Closes, 5);
         const d1Ma10 = calculateSMA(d1Closes, 10);
 
@@ -61,6 +64,7 @@ const strategy = {
                 bbw_roc: calculateROC(m5Bbw),
                 ma: m5Ma,
                 ma_slope: calculateSlope(m5Ma),
+                ma_slope_3: calculateSlope(m5Ma3),
                 ma_slope_5: calculateSlope(m5Ma5),
                 ma_slope_10: calculateSlope(m5Ma10),
                 ma_slope_20: calculateSlope(m5Ma),
@@ -76,6 +80,7 @@ const strategy = {
                 bbw_roc: calculateROC(h1Bbw),
                 ma: h1Ma,
                 ma_slope: calculateSlope(h1Ma),
+                ma_slope_3: calculateSlope(h1Ma3),
                 ma_slope_5: calculateSlope(h1Ma5),
                 ma_slope_10: calculateSlope(h1Ma10),
                 ma_slope_20: calculateSlope(h1Ma),
@@ -91,6 +96,7 @@ const strategy = {
                 bbw_roc: calculateROC(d1Bbw),
                 ma: d1Ma,
                 ma_slope: calculateSlope(d1Ma),
+                ma_slope_3: calculateSlope(d1Ma3),
                 ma_slope_5: calculateSlope(d1Ma5),
                 ma_slope_10: calculateSlope(d1Ma10),
                 ma_slope_20: calculateSlope(d1Ma),
@@ -102,12 +108,12 @@ const strategy = {
         const period5m = globalRules.maSlopeAlignPeriod5m ? parseInt(globalRules.maSlopeAlignPeriod5m) : 20;
         const period1h = globalRules.maSlopeAlignPeriod1h ? parseInt(globalRules.maSlopeAlignPeriod1h) : 20;
 
-        if (period5m && ![5, 10, 20].includes(period5m)) {
+        if (period5m && ![3, 5, 10, 20].includes(period5m)) {
             const m5MaAlign = calculateSMA(m5Closes, period5m);
             res.m5[`ma_slope_${period5m}`] = calculateSlope(m5MaAlign);
         }
 
-        if (period1h && ![5, 10, 20].includes(period1h)) {
+        if (period1h && ![3, 5, 10, 20].includes(period1h)) {
             const h1MaAlign = calculateSMA(h1Closes, period1h);
             res.h1[`ma_slope_${period1h}`] = calculateSlope(h1MaAlign);
         }

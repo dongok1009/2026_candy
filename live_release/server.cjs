@@ -207,8 +207,19 @@ app.post('/api/save-history', (req, res) => {
         records.push(newRecord);
         fs.writeFileSync(RECORDS_FILE, JSON.stringify(records, null, 2));
 
+        // WHAT-IF 필터 요약 구성
+        let whatIfSummary = '';
+        if (rules && rules.global && rules.global.whatIfFilters && rules.global.whatIfFilters.length > 0) {
+            const filterStrings = rules.global.whatIfFilters.map(f => {
+                const sideText = f.side === 'both' ? 'both' : f.side;
+                const actionText = f.action === 'block' ? 'block' : f.action;
+                return `[${sideText}] ${f.timeframe} ${f.indicator} ${f.operator} ${f.threshold}➔${actionText}`;
+            });
+            whatIfSummary = `\n- WHAT-IF Filters: ${filterStrings.join(', ')}`;
+        }
+
         // Markdown 추가 기록
-        const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | MDD: ${result.mdd || '-'}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}\n---\n`;
+        const logEntry = `\n### 📊 Official Record: ${newVersion}\n- ROI: ${result.roi}% | MDD: ${result.mdd || '-'}% | ${result.wins}W/${result.losses}L\n- Params: ${config.symbol} ${config.leverage}x | ${config.initialBalance} -> ${result.finalBalance}${whatIfSummary}\n---\n`;
         fs.appendFileSync(HISTORY_MD, logEntry);
 
         res.json({ success: true, newVersion, record: newRecord });

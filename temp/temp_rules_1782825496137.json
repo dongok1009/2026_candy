@@ -1,0 +1,139 @@
+{
+  "long": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochExtremeBypass": true,
+      "useStochKLimit": true,
+      "stochKThreshold": 99,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": false
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": true
+    },
+    "1d": {
+      "useADX": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": true,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": false
+    }
+  },
+  "short": {
+    "5m": {
+      "useADX": true,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": false,
+      "useStochCross": true,
+      "useStochExtremeBypass": true,
+      "useStochKLimit": true,
+      "stochKThreshold": 99,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": false
+    },
+    "1h": {
+      "useADX": false,
+      "adxLow": 30,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": true,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": false,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": true
+    },
+    "1d": {
+      "useADX": false,
+      "adxLow": 15,
+      "adxHigh": 99,
+      "useMacdBeyondSig": true,
+      "useStochCross": false,
+      "useStochExtremeBypass": false,
+      "useStochKLimit": true,
+      "stochKThreshold": 98,
+      "useRSI": false,
+      "rsiLow": 5,
+      "rsiHigh": 95,
+      "useMacdVal": false,
+      "macdVal": 0,
+      "useMaSlope": false,
+      "useMaRoc": false,
+      "useMaSizeFilter": false
+    }
+  },
+  "global": {
+    "switchingEnabled": false,
+    "maSlopeAlign5mEnabled": true,
+    "maSlopeAlign1hEnabled": false,
+    "maSlopeAlignPeriod5m": 2,
+    "maSlopeAlignPeriod1h": 20,
+    "whatIfFilters": [
+      {
+        "side": "long",
+        "action": "sl_50",
+        "timeframe": "1d",
+        "indicator": "ma_slope_3",
+        "operator": "<",
+        "threshold": 400
+      },
+      {
+        "side": "short",
+        "action": "sl_50",
+        "timeframe": "1d",
+        "indicator": "ma_slope_3",
+        "operator": ">",
+        "threshold": -400
+      }
+    ]
+  }
+}

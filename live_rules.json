@@ -154,10 +154,32 @@
     "targetRoi": 0.05,
     "slRoi": 0.14,
     "reduceTpWaitMin": 0,
-    "reducedTargetRoi": 0.03,
+    "reducedTargetRoi": 0.02,
     "orderAmount": 10000,
-    "penetrationRate": 0.001,
+    "penetrationRate": 0.0005,
     "entryMode": "HYBRID_5M",
-    "switchingEnabled": false
+    "switchingEnabled": false,
+    "maSlopeAlign5mEnabled": true,
+    "maSlopeAlign1hEnabled": false,
+    "maSlopeAlignPeriod5m": 2,
+    "maSlopeAlignPeriod1h": 20,
+    "whatIfFilters": [
+      {
+        "side": "long",
+        "action": "sl_50",
+        "timeframe": "1d",
+        "indicator": "ma_slope_5",
+        "operator": "<",
+        "threshold": 400
+      },
+      {
+        "side": "short",
+        "action": "sl_50",
+        "timeframe": "1d",
+        "indicator": "ma_slope_5",
+        "operator": ">",
+        "threshold": -400
+      }
+    ]
   }
 }

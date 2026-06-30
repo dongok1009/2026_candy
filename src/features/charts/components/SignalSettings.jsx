@@ -352,6 +352,7 @@ const SignalSettings = ({
                       onChange={e => setNewWhatIf(prev => ({ ...prev, indicator: e.target.value }))}
                       style={{ background: '#1e2329', color: '#eaebed', border: '1px solid #2b3139', padding: '6px 10px', borderRadius: '4px', fontSize: '12px' }}
                   >
+                      <option value="ma_slope_3">3ma slope</option>
                       <option value="ma_slope_5">5ma slope</option>
                       <option value="adx">5ma adx</option>
                       <option value="rsi">RSI</option>

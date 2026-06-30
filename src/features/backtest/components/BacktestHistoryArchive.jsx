@@ -293,6 +293,30 @@ const BacktestHistoryArchive = ({ records, onSelect, onDelete }) => {
                                                     </>
                                                 )}
 
+                                                {/* WHAT-IF Filters */}
+                                                {record.rules.global && record.rules.global.whatIfFilters && record.rules.global.whatIfFilters.length > 0 && (
+                                                    <>
+                                                        <div className="rules-section-title global-header" style={{ color: '#f3ba2f', marginTop: '14px' }}>🛡️ WHAT-IF Entry Filters</div>
+                                                        <div className="rules-grid-mini" style={{ gridTemplateColumns: '1fr', gap: '6px' }}>
+                                                            {record.rules.global.whatIfFilters.map((filter, fIdx) => {
+                                                                const sideText = filter.side === 'both' ? '양방향' : (filter.side === 'long' ? '롱' : '숏');
+                                                                const actionText = filter.action === 'block' ? '차단' : 
+                                                                                   (filter.action === 'size_50' ? '50%진입' : 
+                                                                                   (filter.action === 'tp_50' ? 'TP 50%축소' : 
+                                                                                   (filter.action === 'sl_50' ? 'SL 50%축소' : filter.action)));
+                                                                return (
+                                                                    <div key={fIdx} className="rule-item-mini" style={{ borderColor: 'rgba(243, 186, 47, 0.2)' }}>
+                                                                        <span className="rule-lbl" style={{ color: '#f3ba2f' }}>
+                                                                            [{sideText}] {filter.timeframe} {filter.indicator} {filter.operator} {filter.threshold}
+                                                                        </span>
+                                                                        <span className="rule-val" style={{ color: '#f3ba2f', fontWeight: 'bold' }}> ➔ {actionText}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </>
+                                                )}
+
                                                 <div className="rules-section-title long-header">📈 Long Entry Conditions</div>
                                                 {renderRulesForSide(record.rules.long, 'long')}
 

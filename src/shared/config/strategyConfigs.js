@@ -33,7 +33,24 @@ export const OFFICIAL_STRATEGIES = [
         maSlopeAlign1hEnabled: false,
         maSlopeAlignPeriod5m: 2,
         maSlopeAlignPeriod1h: 20,
-        whatIfFilters: []
+        whatIfFilters: [
+          {
+            side: "long",
+            action: "sl_50",
+            timeframe: "1d",
+            indicator: "ma_slope_5",
+            operator: "<",
+            threshold: 400
+          },
+          {
+            side: "short",
+            action: "sl_50",
+            timeframe: "1d",
+            indicator: "ma_slope_5",
+            operator: ">",
+            threshold: -400
+          }
+        ]
       },
       long: {
         '5m': { useMacdVal: false, macdVal: 0, useMacdBeyondSig: false, useStochCross: true, useStochExtremeBypass: true, useADX: true, adxLow: 30, adxHigh: 99, useStochKLimit: true, stochKThreshold: 99, stochKLow: 0, stochKHigh: 99, useRSI: false, rsiLow: 5, rsiHigh: 95 },
