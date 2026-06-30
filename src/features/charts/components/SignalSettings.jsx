@@ -406,7 +406,7 @@ const SignalSettings = ({
 
               {/* 추가된 WHAT-IF 리스트 칩 표시 */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                  {rules?.global?.whatIfFilters?.map((filter, index) => {
+                  {(Array.isArray(rules?.global?.whatIfFilters) ? rules.global.whatIfFilters : []).map((filter, index) => {
                       const sideText = filter.side === 'both' ? '양방향' : (filter.side === 'long' ? '롱' : '숏');
                       const actionText = filter.action === 'block' ? '차단' : (filter.action === 'size_50' ? '50%진입' : (filter.action === 'tp_50' ? 'TP 50%축소' : 'SL 50%축소'));
                       return (
@@ -428,7 +428,7 @@ const SignalSettings = ({
                           </div>
                       );
                   })}
-                  {(!rules?.global?.whatIfFilters || rules.global.whatIfFilters.length === 0) && (
+                  {(!Array.isArray(rules?.global?.whatIfFilters) || rules.global.whatIfFilters.length === 0) && (
                       <div style={{ color: '#848e9c', fontSize: '12px', fontStyle: 'italic' }}>설정된 WHAT-IF 조건이 없습니다.</div>
                   )}
               </div>

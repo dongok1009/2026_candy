@@ -60,7 +60,9 @@ app.get('/api/live-rules', (req, res) => {
         if (envRules) {
             const mergeRules = (target, source) => {
                 for (const key in source) {
-                    if (source[key] && typeof source[key] === 'object') {
+                    if (source[key] && Array.isArray(source[key])) {
+                        target[key] = JSON.parse(JSON.stringify(source[key]));
+                    } else if (source[key] && typeof source[key] === 'object') {
                         if (!target[key]) target[key] = {};
                         mergeRules(target[key], source[key]);
                     } else if (source[key] !== undefined) {
