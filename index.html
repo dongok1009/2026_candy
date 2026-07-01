@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/2026_candy/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        var errDiv = document.createElement('div');
+        errDiv.style.cssText = 'color: #ff4444; background: #111; padding: 20px; font-family: monospace; font-size: 14px; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; overflow: auto; box-sizing: border-box;';
+        errDiv.innerHTML = '<h2>🚨 [HTML Global Error]</h2>' +
+          '<p><b>Message:</b> ' + message + '</p>' +
+          '<p><b>Source:</b> ' + source + ' (Line: ' + lineno + ', Col: ' + colno + ')</p>' +
+          '<p><b>Stack:</b> ' + (error ? error.stack : 'N/A') + '</p>';
+        document.body.appendChild(errDiv);
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        var errDiv = document.createElement('div');
+        errDiv.style.cssText = 'color: #ff4444; background: #111; padding: 20px; font-family: monospace; font-size: 14px; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; overflow: auto; box-sizing: border-box;';
+        errDiv.innerHTML = '<h2>🚨 [HTML Unhandled Rejection]</h2>' +
+          '<p><b>Reason:</b> ' + event.reason + '</p>' +
+          '<p><b>Stack:</b> ' + (event.reason && event.reason.stack ? event.reason.stack : 'N/A') + '</p>';
+        document.body.appendChild(errDiv);
+      });
+    </script>
     <title>2026_candy</title>
-    <script type="module" crossorigin src="/2026_candy/assets/index-Cq635JdQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/2026_candy/assets/index-BHogxjDi.css">
+    <script type="module" crossorigin src="/2026_candy/assets/index-BaKHsqD0.js"></script>
+    <link rel="stylesheet" crossorigin href="/2026_candy/assets/index-WT6e8yow.css">
   </head>
   <body>
     <div id="root"></div>
