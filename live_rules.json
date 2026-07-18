@@ -22,7 +22,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": false,
-      "useStochExtremeBypass": true
+      "useStochExtremeBypass": true,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     },
     "1h": {
       "macdValueEnabled": false,
@@ -46,7 +49,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": true,
-      "useStochExtremeBypass": false
+      "useStochExtremeBypass": false,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     },
     "1d": {
       "macdValueEnabled": false,
@@ -70,7 +76,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": false,
-      "useStochExtremeBypass": false
+      "useStochExtremeBypass": false,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     }
   },
   "short": {
@@ -96,7 +105,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": false,
-      "useStochExtremeBypass": true
+      "useStochExtremeBypass": true,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     },
     "1h": {
       "macdValueEnabled": false,
@@ -120,7 +132,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": true,
-      "useStochExtremeBypass": false
+      "useStochExtremeBypass": false,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     },
     "1d": {
       "macdValueEnabled": false,
@@ -144,7 +159,10 @@
       "maSlopePeriod": 20,
       "maRocPeriod": 20,
       "useMaSizeFilter": false,
-      "useStochExtremeBypass": false
+      "useStochExtremeBypass": false,
+      "useRciCross": false,
+      "useTrixCross": false,
+      "trixSignalPeriod": 9
     }
   },
   "global": {

@@ -34,7 +34,10 @@ const SignalSettings = ({
         stochKLimitVal: 'stochKThreshold',
         rsiLimit: 'rsiEnabled',
         rsiLow: 'rsiLow',
-        rsiHigh: 'rsiHigh'
+        rsiHigh: 'rsiHigh',
+        rciCross: 'useRciCross',
+        trixCross: 'useTrixCross',
+        trixSigPeriod: 'trixSignalPeriod'
     };
 
     const isLong = side === 'long';
@@ -144,6 +147,22 @@ const SignalSettings = ({
                     {renderAnd()}
                     <input type="checkbox" checked={getRuleValue(side, iv, fields.stochCross)} onChange={e => updateRule(iv, side, fields.stochCross, e.target.checked)} />
                     <span style={{ color: '#eaebed', fontSize: '12px', marginLeft: '5px' }}>Stoch Cross ({isLong ? 'Long: K > D' : 'Short: K < D'})</span>
+                  </div>
+
+                  {/* RCI 이중(9/26) 교차 필터 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.rciCross)} onChange={e => updateRule(iv, side, fields.rciCross, e.target.checked)} />
+                    <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross ({isLong ? '9 > 26' : '9 < 26'})</span>
+                  </div>
+
+                  {/* TRIX 시그널선 교차 필터 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                    {renderAnd()}
+                    <input type="checkbox" checked={getRuleValue(side, iv, fields.trixCross)} onChange={e => updateRule(iv, side, fields.trixCross, e.target.checked)} />
+                    <span style={{ color: '#4dd0e1', fontSize: '12px', marginLeft: '5px' }}>TRIX Cross ({isLong ? 'TRIX > Sig' : 'TRIX < Sig'})</span>
+                    <span style={{ color: '#848e9c', fontSize: '11px' }}>Sig</span>
+                    <input type="number" min="2" max="50" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.trixSigPeriod) || 9} onChange={e => updateRule(iv, side, fields.trixSigPeriod, parseInt(e.target.value) || 9)} />
                   </div>
 
                   {/* Stoch Extreme Bypass (m5 전용) */}
