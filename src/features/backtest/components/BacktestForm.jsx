@@ -303,7 +303,10 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                 macdVal: srcTfRules.macdValue !== undefined ? srcTfRules.macdValue : (srcTfRules.macdVal !== undefined ? srcTfRules.macdVal : 0),
                 useMaSlope: srcTfRules.useMaSlope !== undefined ? srcTfRules.useMaSlope : false,
                 useMaRoc: srcTfRules.useMaRoc !== undefined ? srcTfRules.useMaRoc : false,
-                useMaSizeFilter: srcTfRules.useMaSizeFilter !== undefined ? srcTfRules.useMaSizeFilter : false
+                useMaSizeFilter: srcTfRules.useMaSizeFilter !== undefined ? srcTfRules.useMaSizeFilter : false,
+                useRciCross: srcTfRules.rciCrossEnabled !== undefined ? srcTfRules.rciCrossEnabled : (srcTfRules.useRciCross !== undefined ? srcTfRules.useRciCross : false),
+                useTrixCross: srcTfRules.trixCrossEnabled !== undefined ? srcTfRules.trixCrossEnabled : (srcTfRules.useTrixCross !== undefined ? srcTfRules.useTrixCross : false),
+                trixSignalPeriod: srcTfRules.trixSignalPeriod !== undefined ? srcTfRules.trixSignalPeriod : 9
             };
         };
 
@@ -784,7 +787,10 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
         const indicatorHeaders = [
             "5M StochK", "5M StochD", "5M ADX", "5M RSI", "5M BBW", "5M BBWP", "5M BBW ROC", "5M MA Slope 3", "5M MA Slope 5", "5M MA Slope 10", "5M MA Slope 20", "5M MA ROC",
             "1H MACD", "1H Signal", "1H StochK", "1H StochD", "1H ADX", "1H RSI", "1H BBW", "1H BBWP", "1H BBW ROC", "1H MA Slope 3", "1H MA Slope 5", "1H MA Slope 10", "1H MA Slope 20", "1H MA ROC",
-            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope 3", "1D MA Slope 5", "1D MA Slope 10", "1D MA Slope 20", "1D MA ROC"
+            "1D MACD", "1D Signal", "1D ADX", "1D RSI", "1D BBW", "1D BBWP", "1D BBW ROC", "1D MA Slope 3", "1D MA Slope 5", "1D MA Slope 10", "1D MA Slope 20", "1D MA ROC",
+            "5M RCI9", "5M RCI26", "5M TRIX", "5M TRIX Sig",
+            "1H RCI9", "1H RCI26", "1H TRIX", "1H TRIX Sig",
+            "1D RCI9", "1D RCI26", "1D TRIX", "1D TRIX Sig"
         ];
         const headers = showIndicators ? [...baseHeaders, ...indicatorHeaders] : baseHeaders;
 
@@ -812,7 +818,10 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
             const indicatorRow = [
                 t.m5_stochK || '-', t.m5_stochD || '-', t.m5_adx || '-', t.m5_rsi || '-', t.m5_bbw || '-', t.m5_bbwp || '-', t.m5_bbw_roc || '-', t.m5_ma_slope_3 || '-', t.m5_ma_slope_5 || '-', t.m5_ma_slope_10 || '-', t.m5_ma_slope_20 || '-', t.m5_ma_roc || '-',
                 t.h1_macd || '-', t.h1_macdSig || '-', t.h1_stochK || '-', t.h1_stochD || '-', t.h1_adx || '-', t.h1_rsi || '-', t.h1_bbw || '-', t.h1_bbwp || '-', t.h1_bbw_roc || '-', t.h1_ma_slope_3 || '-', t.h1_ma_slope_5 || '-', t.h1_ma_slope_10 || '-', t.h1_ma_slope_20 || '-', t.h1_ma_roc || '-',
-                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope_3 || '-', t.d1_ma_slope_5 || '-', t.d1_ma_slope_10 || '-', t.d1_ma_slope_20 || '-', t.d1_ma_roc || '-'
+                t.d1_macd || '-', t.d1_macdSig || '-', t.d1_adx || '-', t.d1_rsi || '-', t.d1_bbw || '-', t.d1_bbwp || '-', t.d1_bbw_roc || '-', t.d1_ma_slope_3 || '-', t.d1_ma_slope_5 || '-', t.d1_ma_slope_10 || '-', t.d1_ma_slope_20 || '-', t.d1_ma_roc || '-',
+                t.m5_rci9 || '-', t.m5_rci26 || '-', t.m5_trix || '-', t.m5_trix_sig || '-',
+                t.h1_rci9 || '-', t.h1_rci26 || '-', t.h1_trix || '-', t.h1_trix_sig || '-',
+                t.d1_rci9 || '-', t.d1_rci26 || '-', t.d1_trix || '-', t.d1_trix_sig || '-'
             ];
             return showIndicators ? [...baseRow, ...indicatorRow] : baseRow;
         });
@@ -1469,6 +1478,24 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                                     <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>1H 20MA 포지션 규모 조절 (미만시 50%)</span>
                                                 </div>
                                             )}
+
+                                            {/* RCI 이중(9/26) 교차 필터 */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useRciCross || false} onChange={e => handleRuleChange('long', iv, 'useRciCross', e.target.checked)} />
+                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &gt; 26)</span>
+                                            </div>
+
+                                            {/* TRIX 시그널선 교차 필터 */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useTrixCross || false} onChange={e => handleRuleChange('long', iv, 'useTrixCross', e.target.checked)} />
+                                                <span style={{ color: '#4dd0e1', fontSize: '12px', marginLeft: '5px' }}>TRIX Cross (TRIX &gt; Signal)</span>
+                                                <span style={{ color: '#888', fontSize: '11px', marginLeft: '6px' }}>Sig</span>
+                                                <input type="number" min="2" max="50" value={targetRules[iv]?.trixSignalPeriod ?? 9}
+                                                    onChange={e => handleRuleChange('long', iv, 'trixSignalPeriod', parseInt(e.target.value) || 9)}
+                                                    style={{ width: '48px', background: '#1e2329', color: '#eee', border: '1px solid #444', borderRadius: '3px', padding: '2px 4px', fontSize: '11px' }} />
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -1567,6 +1594,24 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                                     <span style={{ color: '#f3ba2f', fontSize: '12px', fontWeight: 'bold', marginLeft: '5px' }}>1H 20MA 포지션 규모 조절 (초과시 50%)</span>
                                                 </div>
                                             )}
+
+                                            {/* RCI 이중(9/26) 교차 필터 */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useRciCross || false} onChange={e => handleRuleChange('short', iv, 'useRciCross', e.target.checked)} />
+                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &lt; 26)</span>
+                                            </div>
+
+                                            {/* TRIX 시그널선 교차 필터 */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                {renderAnd()}
+                                                <input type="checkbox" checked={targetRules[iv]?.useTrixCross || false} onChange={e => handleRuleChange('short', iv, 'useTrixCross', e.target.checked)} />
+                                                <span style={{ color: '#4dd0e1', fontSize: '12px', marginLeft: '5px' }}>TRIX Cross (TRIX &lt; Signal)</span>
+                                                <span style={{ color: '#888', fontSize: '11px', marginLeft: '6px' }}>Sig</span>
+                                                <input type="number" min="2" max="50" value={targetRules[iv]?.trixSignalPeriod ?? 9}
+                                                    onChange={e => handleRuleChange('short', iv, 'trixSignalPeriod', parseInt(e.target.value) || 9)}
+                                                    style={{ width: '48px', background: '#1e2329', color: '#eee', border: '1px solid #444', borderRadius: '3px', padding: '2px 4px', fontSize: '11px' }} />
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -1799,6 +1844,18 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 10</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA Slope 20</th>
                                 <th style={{ padding: '12px 8px', color: '#f3ba2f' }}>1D MA ROC</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>5M RCI9</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>5M RCI26</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>5M TRIX</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>5M TRIX Sig</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>1H RCI9</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>1H RCI26</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>1H TRIX</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>1H TRIX Sig</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>1D RCI9</th>
+                                <th style={{ padding: '12px 8px', color: '#9b8cff' }}>1D RCI26</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>1D TRIX</th>
+                                <th style={{ padding: '12px 8px', color: '#4dd0e1' }}>1D TRIX Sig</th>
                             </>
                         ) }
                     </tr>
@@ -1897,6 +1954,18 @@ const TradeLogTable = React.memo(({ tradesLog, showIndicators, config }) => {
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_10 || t.d1_ma_10 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_slope_20 || t.d1_ma_20 || '-'}</td>
                                         <td style={{ padding: '10px 8px', color: '#848e9c' }}>{t.d1_ma_roc || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.m5_rci9 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.m5_rci26 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.m5_trix || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.m5_trix_sig || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.h1_rci9 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.h1_rci26 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.h1_trix || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.h1_trix_sig || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.d1_rci9 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#9b8cff' }}>{t.d1_rci26 || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.d1_trix || '-'}</td>
+                                        <td style={{ padding: '10px 8px', color: '#4dd0e1' }}>{t.d1_trix_sig || '-'}</td>
                                     </>
                                 )}
                             </tr>
