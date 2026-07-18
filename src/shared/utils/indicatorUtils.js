@@ -229,3 +229,53 @@ export const calculateADX = (data, period = 14) => {
 
   return adx;
 };
+
+// null이 있는 원본 배열(src)의 non-null 위치에 압축값(vals)을 순서대로 되돌려 정렬 (중첩 EMA용)
+const realignTo = (src, vals) => {
+  const out = new Array(src.length).fill(null);
+  let k = 0;
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] !== null && k < vals.length) out[i] = vals[k++];
+  }
+  return out;
+};
+
+// RCI (Rank Correlation Index) - 스피어만 순위상관 기반 추세 지표 (-100 ~ +100)
+export const calculateRCI = (closes, period = 9) => {
+  const out = new Array(closes.length).fill(null);
+  if (period < 2) return out;
+  const denom = period * (period * period - 1); // p^3 - p
+  for (let i = period - 1; i < closes.length; i++) {
+    const win = [];
+    for (let j = 0; j < period; j++) win.push({ price: closes[i - j], timeRank: j + 1, priceRank: 0 });
+    const sorted = [...win].sort((a, b) => b.price - a.price);
+    let k = 0;
+    while (k < sorted.length) {
+      let m = k;
+      while (m + 1 < sorted.length && sorted[m + 1].price === sorted[k].price) m++;
+      const avgRank = ((k + 1) + (m + 1)) / 2;
+      for (let t = k; t <= m; t++) sorted[t].priceRank = avgRank;
+      k = m + 1;
+    }
+    let dsq = 0;
+    for (const w of win) { const d = w.timeRank - w.priceRank; dsq += d * d; }
+    out[i] = (1 - (6 * dsq) / denom) * 100;
+  }
+  return out;
+};
+
+// TRIX - 삼중 EMA의 1기간 변화율(%) 오실레이터 + 시그널선
+export const calculateTRIX = (closes, period = 14, signalPeriod = 9) => {
+  const e1 = calculateEMA(closes, period);
+  const e2 = realignTo(e1, calculateEMA(e1.filter(v => v !== null), period));
+  const e3 = realignTo(e2, calculateEMA(e2.filter(v => v !== null), period));
+
+  const trix = new Array(closes.length).fill(null);
+  for (let i = 1; i < closes.length; i++) {
+    if (e3[i] !== null && e3[i - 1] !== null && e3[i - 1] !== 0) {
+      trix[i] = ((e3[i] - e3[i - 1]) / e3[i - 1]) * 100;
+    }
+  }
+  const signal = realignTo(trix, calculateEMA(trix.filter(v => v !== null), signalPeriod));
+  return { trix, signal };
+};
