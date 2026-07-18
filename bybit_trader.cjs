@@ -104,6 +104,43 @@ function updateTradeLog(event, data) {
     }
 }
 
+// 거래소의 실제 청산 체결가와 실현손익을 조회 (기록 정확도 전용)
+// 봇이 관측한 시세는 청산을 '감지한 시점'의 값이라 실제 체결가와 다르다. 백테스트 대조를 위해 실측값을 남긴다.
+// 조회 실패 시 null을 반환하며, 호출부는 기존 추정값으로 계속 진행한다 (매매 흐름에 영향 없음).
+async function fetchActualExit(symbol, sinceMs) {
+    try {
+        const res = await exchange.privateGetV5PositionClosedPnl({
+            category: 'linear',
+            symbol: String(symbol).split(':')[0].replace(/\W/g, '').toUpperCase(), // 'BTC/USDT:USDT' → 'BTCUSDT'
+            limit: 1
+        });
+        const rec = res && res.result && res.result.list && res.result.list[0];
+        if (!rec) return null;
+
+        // 이번 포지션의 기록인지 확인 (진입 시각보다 오래된 기록이면 이전 거래의 잔여 데이터)
+        const updated = Number(rec.updatedTime);
+        if (sinceMs && updated && updated < sinceMs) {
+            console.log(`ℹ️ [CLOSED-PNL] 최신 기록이 이번 포지션보다 이전 시각이라 사용하지 않음`);
+            return null;
+        }
+
+        const exitPrice = parseFloat(rec.avgExitPrice);
+        const entryPrice = parseFloat(rec.avgEntryPrice);
+        const qty = parseFloat(rec.closedSize);
+        const closedPnl = parseFloat(rec.closedPnl);
+        if (!isFinite(exitPrice) || !isFinite(entryPrice) || !qty) return null;
+
+        const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
+        const margin = (entryPrice * qty) / leverage;
+        const roe = margin > 0 ? (closedPnl / margin) * 100 : null;
+
+        return { exitPrice, entryPrice, qty, closedPnl, roe, updatedTime: updated };
+    } catch (e) {
+        console.error("[CLOSED-PNL] 실제 체결가 조회 실패:", e.message);
+        return null;
+    }
+}
+
 async function fetchOHLCV(interval, limit = 200) {
     const symbol = strategy.config.SYMBOL;
     const bybitInterval = interval === '1h' ? '60' : (interval === '12h' ? '720' : (interval === '5m' ? '5' : (interval === '10m' ? '10' : (interval === '15m' ? '15' : 'D'))));
@@ -495,17 +532,28 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
                     ? (currentPrice - liveState.entryPrice) * liveState.quantity 
                     : (liveState.entryPrice - currentPrice) * liveState.quantity;
 
+                const actual = await fetchActualExit(symbol, liveState.entryTime);
+
                 const msg = `🏁 <b>[BYBIT EXIT (Exchange Cleared)] ${symbol} ${side}</b>\n` +
                             `• Reason: ${reason} (Already Cleared on Bybit)\n` +
-                            `• Est. Price: $${currentPrice.toLocaleString()}\n` +
+                            (actual
+                                ? `• <b>Actual Price: $${actual.exitPrice.toLocaleString()}</b> (est. $${currentPrice.toLocaleString()})\n`
+                                : `• Est. Price: $${currentPrice.toLocaleString()}\n`) +
                             `• Quantity: ${liveState.quantity} BTC\n` +
-                            `• <b>Final ROE: ${finalRoe}%</b>\n` +
-                            `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n` +
+                            (actual
+                                ? `• <b>Actual ROE: ${actual.roe.toFixed(2)}%</b> (est. ${finalRoe}%)\n` +
+                                  `• <b>Realized PnL: $${actual.closedPnl.toFixed(2)}</b>\n`
+                                : `• <b>Final ROE: ${finalRoe}%</b>\n` +
+                                  `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n`) +
                             `• Duration: ${durationMin}m`;
 
                 await sendTelegram(msg);
                 updateTradeLog('EXIT', {
-                    side, reason: reason + '_EXCHANGE_CLEARED', price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
+                    side, reason: reason + '_EXCHANGE_CLEARED', price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin,
+                    actualExitPrice: actual ? actual.exitPrice : null,
+                    actualEntryPrice: actual ? actual.entryPrice : null,
+                    actualRoe: actual ? Number(actual.roe.toFixed(2)) : null,
+                    closedPnl: actual ? actual.closedPnl : null
                 });
             }
             liveState.status = 'IDLE'; liveState.position = null; liveState.quantity = 0; liveState.totalAmount = 0; saveState(); return;
@@ -529,18 +577,32 @@ async function closePosition(side, reason, currentPrice, roe, durationMin) {
             ? (currentPrice - liveState.entryPrice) * liveState.quantity 
             : (liveState.entryPrice - currentPrice) * liveState.quantity;
 
+        // 시장가 청산 주문이 체결·정산되기까지 짧게 대기한 뒤 실제 체결가 조회
+        const actual = orderSuccess
+            ? await new Promise(r => setTimeout(r, 2000)).then(() => fetchActualExit(symbol, liveState.entryTime))
+            : null;
+
         const statusLabel = orderSuccess ? 'BYBIT EXIT' : 'BYBIT EXIT (API FAILED - STATE RESET)';
         const msg = `🏁 <b>[${statusLabel}] ${symbol} ${side}</b>\n` +
                     `• Reason: ${reason}\n` +
-                    `• Price: $${currentPrice.toLocaleString()}\n` +
+                    (actual
+                        ? `• <b>Actual Price: $${actual.exitPrice.toLocaleString()}</b> (est. $${currentPrice.toLocaleString()})\n`
+                        : `• Price: $${currentPrice.toLocaleString()}\n`) +
                     `• Quantity: ${liveState.quantity} BTC\n` +
-                    `• <b>Final ROE: ${finalRoe}%</b>\n` +
-                    `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n` +
+                    (actual
+                        ? `• <b>Actual ROE: ${actual.roe.toFixed(2)}%</b> (est. ${finalRoe}%)\n` +
+                          `• <b>Realized PnL: $${actual.closedPnl.toFixed(2)}</b>\n`
+                        : `• <b>Final ROE: ${finalRoe}%</b>\n` +
+                          `• <b>Profit: $${profitAmount.toFixed(2)}</b>\n`) +
                     `• Duration: ${durationMin}m`;
-        
+
         await sendTelegram(msg);
         updateTradeLog('EXIT', {
-            side, reason: reason + (orderSuccess ? '' : '_API_FAIL'), price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin
+            side, reason: reason + (orderSuccess ? '' : '_API_FAIL'), price: currentPrice, quantity: liveState.quantity, roe: finalRoe, profit: profitAmount, duration: durationMin,
+            actualExitPrice: actual ? actual.exitPrice : null,
+            actualEntryPrice: actual ? actual.entryPrice : null,
+            actualRoe: actual ? Number(actual.roe.toFixed(2)) : null,
+            closedPnl: actual ? actual.closedPnl : null
         });
         
         // 무조건 상태 초기화 및 보존
@@ -698,17 +760,28 @@ async function syncExchangeTPSL(leverage) {
                         ? (currentPrice - liveState.entryPrice) * liveState.quantity 
                         : (liveState.entryPrice - currentPrice) * liveState.quantity;
 
+                    const actual = await fetchActualExit(symbol, liveState.entryTime);
+
                     const msg = `🏁 <b>[EXCHANGE EXIT]</b>\n` +
                                 `• ${liveState.position} closed on Bybit (TP/SL or Manual).\n` +
-                                `• Est. Price: $${currentPrice.toLocaleString()}\n` +
+                                (actual
+                                    ? `• <b>Actual Price: $${actual.exitPrice.toLocaleString()}</b> (est. $${currentPrice.toLocaleString()})\n`
+                                    : `• Est. Price: $${currentPrice.toLocaleString()}\n`) +
                                 `• Quantity: ${liveState.quantity} BTC\n` +
-                                `• Est. ROE: ${(roe * 100).toFixed(2)}%\n` +
-                                `• Est. Profit: $${profitAmount.toFixed(2)}`;
+                                (actual
+                                    ? `• <b>Actual ROE: ${actual.roe.toFixed(2)}%</b> (est. ${(roe * 100).toFixed(2)}%)\n` +
+                                      `• <b>Realized PnL: $${actual.closedPnl.toFixed(2)}</b>`
+                                    : `• Est. ROE: ${(roe * 100).toFixed(2)}%\n` +
+                                      `• Est. Profit: $${profitAmount.toFixed(2)}`);
 
                     console.log(`🏁 [SYNC] Position closed on exchange. Resetting to IDLE.`);
                     await sendTelegram(msg);
                     updateTradeLog('EXCHANGE_EXIT', {
-                        side: liveState.position, price: currentPrice, quantity: liveState.quantity, roe: (roe * 100).toFixed(2), profit: profitAmount
+                        side: liveState.position, price: currentPrice, quantity: liveState.quantity, roe: (roe * 100).toFixed(2), profit: profitAmount,
+                        actualExitPrice: actual ? actual.exitPrice : null,
+                        actualEntryPrice: actual ? actual.entryPrice : null,
+                        actualRoe: actual ? Number(actual.roe.toFixed(2)) : null,
+                        closedPnl: actual ? actual.closedPnl : null
                     });
 
                     liveState.status = 'IDLE';
