@@ -5,22 +5,51 @@ import {
   calculateMACD,
   calculateStochRSI,
   calculateBollingerBands,
-  calculateADX
+  calculateADX,
+  calculateRCI,
+  calculateTRIX
 } from '../../../shared/utils/indicatorUtils';
 
+
+// 룰의 TRIX 시그널 기간을 읽어온다 (미지정·비정상값은 전략 파일과 동일하게 9)
+const trixSignalPeriodOf = (rule) => {
+  const p = parseInt(rule?.trixSignalPeriod);
+  return p > 0 ? p : 9;
+};
+
+// RCI(9/26)와 TRIX(14) 계산. 롱·숏 시그널 기간이 같으면 배열을 재사용한다.
+const computeRciTrix = (closes, longSigPeriod, shortSigPeriod) => {
+  const long = calculateTRIX(closes, 14, longSigPeriod);
+  const shortSignal = longSigPeriod === shortSigPeriod
+    ? long.signal
+    : calculateTRIX(closes, 14, shortSigPeriod).signal;
+  return {
+    rci9: calculateRCI(closes, 9),
+    rci26: calculateRCI(closes, 26),
+    trix: long.trix,
+    signalLong: long.signal,
+    signalShort: shortSignal
+  };
+};
 
 const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignalUpdate, onDataUpdate, inspectTime }) => {
   const longRule = rules?.long?.[interval];
   const shortRule = rules?.short?.[interval];
+  const trixSigLongPeriod = trixSignalPeriodOf(longRule);
+  const trixSigShortPeriod = trixSignalPeriodOf(shortRule);
   const priceChartContainerRef = useRef();
   const macdChartContainerRef = useRef();
   const stochChartContainerRef = useRef();
   const adxChartContainerRef = useRef();
+  const rciChartContainerRef = useRef();
+  const trixChartContainerRef = useRef();
 
   const priceChartRef = useRef();
   const macdChartRef = useRef();
   const stochChartRef = useRef();
   const adxChartRef = useRef();
+  const rciChartRef = useRef();
+  const trixChartRef = useRef();
 
   const candlestickSeriesRef = useRef();
   const priceGhostRef = useRef();
@@ -39,18 +68,30 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
   const bbUpperRef = useRef();
   const bbLowerRef = useRef();
   const adxSeriesRef = useRef();
-  
+  const rciGhostRef = useRef();
+  const rci9Ref = useRef();
+  const rci26Ref = useRef();
+  const trixGhostRef = useRef();
+  const trixLineRef = useRef();
+  const trixSignalRef = useRef();
+
   const inspectLineRef = useRef();
   const inspectLineMacdRef = useRef();
   const inspectLineStochRef = useRef();
   const inspectLineAdxRef = useRef();
-  
+  const inspectLineRciRef = useRef();
+  const inspectLineTrixRef = useRef();
+
   const lastEvalTimeRef = useRef(0);
   const dataRef = useRef([]);
+  // RCI/TRIX 배열 캐시 — crosshair 이동마다 재계산하지 않기 위함
+  const rciTrixRef = useRef(null);
   const [borderColor, setBorderColor] = useState('#242a2e');
   const [macdLegend, setMacdLegend] = useState({ hist: 0, macd: 0, signal: 0 });
   const [stochLegend, setStochLegend] = useState({ k: 0, d: 0 });
   const [adxLegend, setAdxLegend] = useState(0);
+  const [rciLegend, setRciLegend] = useState({ r9: 0, r26: 0 });
+  const [trixLegend, setTrixLegend] = useState({ trix: 0, signal: 0 });
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -65,7 +106,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     setDataLoaded(false);
     dataRef.current = [];
     let isDestroyed = false;
-    if (!priceChartContainerRef.current || !macdChartContainerRef.current || !stochChartContainerRef.current || !adxChartContainerRef.current) return;
+    if (!priceChartContainerRef.current || !macdChartContainerRef.current || !stochChartContainerRef.current || !adxChartContainerRef.current || !rciChartContainerRef.current || !trixChartContainerRef.current) return;
 
     const commonOptions = {
       layout: { background: { type: ColorType.Solid, color: '#161a1e' }, textColor: '#d1d4dc' },
@@ -108,6 +149,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     macdChartContainerRef.current.innerHTML = '';
     stochChartContainerRef.current.innerHTML = '';
     adxChartContainerRef.current.innerHTML = '';
+    rciChartContainerRef.current.innerHTML = '';
+    trixChartContainerRef.current.innerHTML = '';
 
     const priceChart = createChart(priceChartContainerRef.current, {
       ...commonOptions,
@@ -195,8 +238,52 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       autoscaleInfoProvider: () => null
     });
 
-    const charts = [priceChart, macdChart, stochChart, adxChart];
-    const syncSeriesList = [candlestickSeries, macdLineRef.current, stochKRef.current, adxSeriesRef.current];
+    // 5. RCI Chart (이중 9/26 교차)
+    const rciChart = createChart(rciChartContainerRef.current, {
+      ...commonOptions,
+      height: isMobile ? 57 : 85,
+      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
+      leftPriceScale: { visible: false }
+    });
+    rciChartRef.current = rciChart;
+    rciGhostRef.current = rciChart.addSeries(LineSeries, { visible: false, lastValueVisible: false, priceLineVisible: false }); // Ghost
+    rci9Ref.current = rciChart.addSeries(LineSeries, { color: '#9b8cff', lineWidth: 2, lastValueVisible: true, title: '' });
+    rci26Ref.current = rciChart.addSeries(LineSeries, { color: '#ff9f43', lineWidth: 2, lastValueVisible: true, title: '' });
+
+    // 과매수/과매도 기준선 ±80
+    [80, -80].forEach(price => rci9Ref.current.createPriceLine({
+      price, color: 'rgba(132,142,156,0.4)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: ''
+    }));
+
+    inspectLineRciRef.current = rciChart.addSeries(HistogramSeries, {
+      lastValueVisible: false, priceLineVisible: false, color: 'rgba(255, 255, 255, 0.3)',
+      autoscaleInfoProvider: () => null
+    });
+
+    // 6. TRIX Chart (시그널선 교차)
+    const trixChart = createChart(trixChartContainerRef.current, {
+      ...commonOptions,
+      height: isMobile ? 57 : 85,
+      rightPriceScale: { visible: true, borderColor: 'rgba(197, 203, 206, 0.1)', minimumWidth: isMobile ? 60 : 80 },
+      leftPriceScale: { visible: false }
+    });
+    trixChartRef.current = trixChart;
+    trixGhostRef.current = trixChart.addSeries(LineSeries, { visible: false, lastValueVisible: false, priceLineVisible: false }); // Ghost
+    trixLineRef.current = trixChart.addSeries(LineSeries, { color: '#4dd0e1', lineWidth: 2, lastValueVisible: true, title: '' });
+    trixSignalRef.current = trixChart.addSeries(LineSeries, { color: '#FF6D00', lineWidth: 2, lastValueVisible: true, title: '' });
+
+    // 0선 (TRIX 교차 판정 기준이 아닌 추세 방향 참고선)
+    trixLineRef.current.createPriceLine({
+      price: 0, color: 'rgba(132,142,156,0.4)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: ''
+    });
+
+    inspectLineTrixRef.current = trixChart.addSeries(HistogramSeries, {
+      lastValueVisible: false, priceLineVisible: false, color: 'rgba(255, 255, 255, 0.3)',
+      autoscaleInfoProvider: () => null
+    });
+
+    const charts = [priceChart, macdChart, stochChart, adxChart, rciChart, trixChart];
+    const syncSeriesList = [candlestickSeries, macdLineRef.current, stochKRef.current, adxSeriesRef.current, rci9Ref.current, trixLineRef.current];
 
     let syncCleanup = null;
     let isFetchingMore = false;
@@ -225,6 +312,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           const allStoch = calculateStochRSI(allRsi);
           const allBB = calculateBollingerBands(allCloses);
           const allAdx = calculateADX(newData);
+          const allRciTrix = computeRciTrix(allCloses, trixSigLongPeriod, trixSigShortPeriod);
+          rciTrixRef.current = allRciTrix;
 
           candlestickSeries.setData(newData);
           if (macdLineRef.current) macdLineRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allMacd.macdLine[i] })).filter(d => d.value !== null));
@@ -238,6 +327,10 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           if (bbUpperRef.current) bbUpperRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allBB.upper[i] })).filter(d => d.value !== null));
           if (bbLowerRef.current) bbLowerRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allBB.lower[i] })).filter(d => d.value !== null));
           if (adxSeriesRef.current) adxSeriesRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allAdx[i] })).filter(d => d.value !== null));
+          if (rci9Ref.current) rci9Ref.current.setData(newData.map((d, i) => ({ time: d.time, value: allRciTrix.rci9[i] })).filter(d => d.value !== null));
+          if (rci26Ref.current) rci26Ref.current.setData(newData.map((d, i) => ({ time: d.time, value: allRciTrix.rci26[i] })).filter(d => d.value !== null));
+          if (trixLineRef.current) trixLineRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allRciTrix.trix[i] })).filter(d => d.value !== null));
+          if (trixSignalRef.current) trixSignalRef.current.setData(newData.map((d, i) => ({ time: d.time, value: allRciTrix.signalLong[i] })).filter(d => d.value !== null));
 
           if (stoch80Ref.current) stoch80Ref.current.setData(newData.map(d => ({ time: d.time, value: 80 })));
           if (stochFillRef.current) stochFillRef.current.setData(newData.map(d => ({ time: d.time, value: 80 })));
@@ -247,6 +340,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           if (macdGhostRef.current) macdGhostRef.current.setData(ghostData);
           if (stochGhostRef.current) stochGhostRef.current.setData(ghostData);
           if (adxGhostRef.current) adxGhostRef.current.setData(ghostData);
+          if (rciGhostRef.current) rciGhostRef.current.setData(ghostData);
+          if (trixGhostRef.current) trixGhostRef.current.setData(ghostData);
           if (adxChartRef.current) {
             // Updated ghost and threshold for ADX
             const adxThreshold = parseFloat(longRule?.adxLow || 30);
@@ -294,6 +389,11 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
               setMacdLegend({ hist: histogram[dataIndex], macd: macdLine[dataIndex], signal: signalLine[dataIndex] });
               setStochLegend({ k: kLine[dataIndex], d: dLine[dataIndex] });
               setAdxLegend(adx[dataIndex]);
+              const rt = rciTrixRef.current;
+              if (rt) {
+                setRciLegend({ r9: rt.rci9[dataIndex], r26: rt.rci26[dataIndex] });
+                setTrixLegend({ trix: rt.trix[dataIndex], signal: rt.signalLong[dataIndex] });
+              }
               if (onDataUpdate) onDataUpdate({ m: macdLine[dataIndex], s: signalLine[dataIndex], h: histogram[dataIndex], k: kLine[dataIndex], d: dLine[dataIndex], adx: adx[dataIndex] });
             }
 
@@ -344,6 +444,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         const allStoch = calculateStochRSI(allRsi);
         const allBB = calculateBollingerBands(allCloses);
         const allAdx = calculateADX(allData);
+        const allRciTrix = computeRciTrix(allCloses, trixSigLongPeriod, trixSigShortPeriod);
+        rciTrixRef.current = allRciTrix;
 
         candlestickSeries.setData(allData);
         if (bbMiddleRef.current) bbMiddleRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allBB.middle[i] })).filter(d => d.value !== null));
@@ -357,6 +459,10 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         if (stochKRef.current) stochKRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allStoch.kLine[i] })).filter(d => d.value !== null));
         if (stochDRef.current) stochDRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allStoch.dLine[i] })).filter(d => d.value !== null));
         if (adxSeriesRef.current) adxSeriesRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allAdx[i] })).filter(d => d.value !== null));
+        if (rci9Ref.current) rci9Ref.current.setData(allData.map((d, i) => ({ time: d.time, value: allRciTrix.rci9[i] })).filter(d => d.value !== null));
+        if (rci26Ref.current) rci26Ref.current.setData(allData.map((d, i) => ({ time: d.time, value: allRciTrix.rci26[i] })).filter(d => d.value !== null));
+        if (trixLineRef.current) trixLineRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allRciTrix.trix[i] })).filter(d => d.value !== null));
+        if (trixSignalRef.current) trixSignalRef.current.setData(allData.map((d, i) => ({ time: d.time, value: allRciTrix.signalLong[i] })).filter(d => d.value !== null));
 
         if (stoch80Ref.current) stoch80Ref.current.setData(allData.map(d => ({ time: d.time, value: 80 })));
         if (stochFillRef.current) stochFillRef.current.setData(allData.map(d => ({ time: d.time, value: 80 })));
@@ -366,6 +472,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         if (macdGhostRef.current) macdGhostRef.current.setData(ghostData);
         if (stochGhostRef.current) stochGhostRef.current.setData(ghostData);
         if (adxGhostRef.current) adxGhostRef.current.setData(ghostData);
+        if (rciGhostRef.current) rciGhostRef.current.setData(ghostData);
+        if (trixGhostRef.current) trixGhostRef.current.setData(ghostData);
 
         setTimeout(() => {
           const total = allData.length;
@@ -394,6 +502,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         const lastI = allData.length - 1;
         setMacdLegend({ hist: allMacd.histogram[lastI], macd: allMacd.macdLine[lastI], signal: allMacd.signalLine[lastI] });
         setStochLegend({ k: allStoch.kLine[lastI], d: allStoch.dLine[lastI] });
+        setRciLegend({ r9: allRciTrix.rci9[lastI], r26: allRciTrix.rci26[lastI] });
+        setTrixLegend({ trix: allRciTrix.trix[lastI], signal: allRciTrix.signalLong[lastI] });
         if (onDataUpdate) onDataUpdate({ m: allMacd.macdLine[lastI], s: allMacd.signalLine[lastI], h: allMacd.histogram[lastI], k: allStoch.kLine[lastI], d: allStoch.dLine[lastI], adx: allData.length > 0 ? calculateADX(allData)[lastI] : 0 });
 
         setDataLoaded(true);
@@ -437,6 +547,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       const { kLine, dLine } = calculateStochRSI(rsiValues);
       const { middle, upper, lower } = calculateBollingerBands(closes);
       const adxValues = calculateADX(fullData);
+      const rciTrix = computeRciTrix(closes, trixSigLongPeriod, trixSigShortPeriod);
+      rciTrixRef.current = rciTrix;
 
       const lastTime = formattedCandle.time;
       if (bbMiddleRef.current) bbMiddleRef.current.update({ time: lastTime, value: middle[fullData.length - 1] });
@@ -448,6 +560,10 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       if (stochKRef.current) stochKRef.current.update({ time: lastTime, value: kLine[fullData.length - 1] });
       if (stochDRef.current) stochDRef.current.update({ time: lastTime, value: dLine[fullData.length - 1] });
       if (adxSeriesRef.current) adxSeriesRef.current.update({ time: lastTime, value: adxValues[fullData.length - 1] });
+      if (rci9Ref.current) rci9Ref.current.update({ time: lastTime, value: rciTrix.rci9[fullData.length - 1] });
+      if (rci26Ref.current) rci26Ref.current.update({ time: lastTime, value: rciTrix.rci26[fullData.length - 1] });
+      if (trixLineRef.current) trixLineRef.current.update({ time: lastTime, value: rciTrix.trix[fullData.length - 1] });
+      if (trixSignalRef.current) trixSignalRef.current.update({ time: lastTime, value: rciTrix.signalLong[fullData.length - 1] });
       if (stoch20Ref.current) stoch20Ref.current.update({ time: lastTime, value: 20 });
       if (stoch80Ref.current) stoch80Ref.current.update({ time: lastTime, value: 80 });
       if (stochFillRef.current) stochFillRef.current.update({ time: lastTime, value: 80 });
@@ -457,12 +573,16 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       if (macdGhostRef.current) macdGhostRef.current.update(ghostUpdate);
       if (stochGhostRef.current) stochGhostRef.current.update(ghostUpdate);
       if (adxGhostRef.current) adxGhostRef.current.update(ghostUpdate);
+      if (rciGhostRef.current) rciGhostRef.current.update(ghostUpdate);
+      if (trixGhostRef.current) trixGhostRef.current.update(ghostUpdate);
 
       // Update Legends for live candle
       const lastI = fullData.length - 1;
       setMacdLegend({ hist: hist[lastI], macd: mLine[lastI], signal: sLine[lastI] });
       setStochLegend({ k: kLine[lastI], d: dLine[lastI] });
       setAdxLegend(adxValues[lastI]);
+      setRciLegend({ r9: rciTrix.rci9[lastI], r26: rciTrix.rci26[lastI] });
+      setTrixLegend({ trix: rciTrix.trix[lastI], signal: rciTrix.signalLong[lastI] });
       if (onDataUpdate) onDataUpdate({ m: mLine[lastI], s: sLine[lastI], h: hist[lastI], k: kLine[lastI], d: dLine[lastI], adx: adxValues[lastI] });
     }
   }, [lastCandle, dataLoaded]);
@@ -483,12 +603,15 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     const { macdLine: mLine, signalLine: sLine } = calculateMACD(closes);
     const { kLine, dLine } = calculateStochRSI(rsiValues);
     const adxValues = calculateADX(fullData);
+    const rciTrix = rciTrixRef.current || computeRciTrix(closes, trixSigLongPeriod, trixSigShortPeriod);
 
 
     // Update Legends to match the target signal point
     setMacdLegend({ hist: mLine[targetIdx] - sLine[targetIdx], macd: mLine[targetIdx], signal: sLine[targetIdx] });
     setStochLegend({ k: kLine[targetIdx], d: dLine[targetIdx] });
     setAdxLegend(adxValues[targetIdx]);
+    setRciLegend({ r9: rciTrix.rci9[targetIdx], r26: rciTrix.rci26[targetIdx] });
+    setTrixLegend({ trix: rciTrix.trix[targetIdx], signal: rciTrix.signalLong[targetIdx] });
 
     if (onDataUpdate) onDataUpdate({ m: mLine[targetIdx], s: sLine[targetIdx], h: mLine[targetIdx] - sLine[targetIdx], k: kLine[targetIdx], d: dLine[targetIdx], adx: adxValues[targetIdx] });
 
@@ -506,14 +629,28 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       if (adxSeriesRef.current && typeof adxSeriesRef.current.setMarkers === 'function') {
         adxSeriesRef.current.setMarkers([{ time: inspectTime, position: 'inBar', color: '#f3ba2f', shape: 'circle', size: 1 }]);
       }
+      if (rci9Ref.current && typeof rci9Ref.current.setMarkers === 'function') {
+        rci9Ref.current.setMarkers([{ time: inspectTime, position: 'inBar', color: '#9b8cff', shape: 'circle', size: 1 }]);
+      }
+      if (trixLineRef.current && typeof trixLineRef.current.setMarkers === 'function') {
+        trixLineRef.current.setMarkers([{ time: inspectTime, position: 'inBar', color: '#4dd0e1', shape: 'circle', size: 1 }]);
+      }
     } else {
       if (candlestickSeriesRef.current && typeof candlestickSeriesRef.current.setMarkers === 'function') candlestickSeriesRef.current.setMarkers([]);
       if (macdLineRef.current && typeof macdLineRef.current.setMarkers === 'function') macdLineRef.current.setMarkers([]);
       if (stochKRef.current && typeof stochKRef.current.setMarkers === 'function') stochKRef.current.setMarkers([]);
       if (adxSeriesRef.current && typeof adxSeriesRef.current.setMarkers === 'function') adxSeriesRef.current.setMarkers([]);
+      if (rci9Ref.current && typeof rci9Ref.current.setMarkers === 'function') rci9Ref.current.setMarkers([]);
+      if (trixLineRef.current && typeof trixLineRef.current.setMarkers === 'function') trixLineRef.current.setMarkers([]);
     }
 
-    evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx], adxValues[targetIdx], rsiValues[targetIdx]);
+    evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx], adxValues[targetIdx], rsiValues[targetIdx], {
+      rci9: rciTrix.rci9[targetIdx],
+      rci26: rciTrix.rci26[targetIdx],
+      trix: rciTrix.trix[targetIdx],
+      trixSigLong: rciTrix.signalLong[targetIdx],
+      trixSigShort: rciTrix.signalShort[targetIdx]
+    });
   }, [dataLoaded, lastCandle, inspectTime]);
 
   // Sync Vertical Inspection Line (Enhanced Visibility & Accuracy)
@@ -553,7 +690,18 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     };
   }, [dataLoaded, inspectTime, interval]);
 
-  const evaluateSignal = (lastM, lastS, lastK, lastD, lastADX, lastRSI) => {
+  // Logic.v8.2.7의 RCI/TRIX 교차 판정과 동일 (값이 null이면 워밍업 구간이므로 통과시킴)
+  const passesRciCross = (side, rci) => {
+    const { r9, r26 } = rci;
+    if (r9 === null || r9 === undefined || r26 === null || r26 === undefined) return true;
+    return side === 'long' ? r9 > r26 : r9 < r26;
+  };
+  const passesTrixCross = (side, tx, sg) => {
+    if (tx === null || tx === undefined || sg === null || sg === undefined) return true;
+    return side === 'long' ? tx > sg : tx < sg;
+  };
+
+  const evaluateSignal = (lastM, lastS, lastK, lastD, lastADX, lastRSI, rciTrix = {}) => {
     let isLong = true;
     let isShort = true;
 
@@ -607,6 +755,18 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           if (!(Math.abs(lastM) < val)) isLong = false;
         }
 
+        // RCI Cross (Long: RCI9 > RCI26)
+        if (longRule.rciCrossEnabled || longRule.useRciCross) {
+          activeLongCondCount++;
+          if (!passesRciCross('long', { r9: rciTrix.rci9, r26: rciTrix.rci26 })) isLong = false;
+        }
+
+        // TRIX Cross (Long: TRIX > Signal)
+        if (longRule.trixCrossEnabled || longRule.useTrixCross) {
+          activeLongCondCount++;
+          if (!passesTrixCross('long', rciTrix.trix, rciTrix.trixSigLong)) isLong = false;
+        }
+
         if (activeLongCondCount === 0) isLong = false;
       } else {
         isLong = false;
@@ -658,6 +818,18 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           if (!(Math.abs(lastM) < val)) isShort = false;
         }
 
+        // RCI Cross (Short: RCI9 < RCI26)
+        if (shortRule.rciCrossEnabled || shortRule.useRciCross) {
+          activeShortCondCount++;
+          if (!passesRciCross('short', { r9: rciTrix.rci9, r26: rciTrix.rci26 })) isShort = false;
+        }
+
+        // TRIX Cross (Short: TRIX < Signal)
+        if (shortRule.trixCrossEnabled || shortRule.useTrixCross) {
+          activeShortCondCount++;
+          if (!passesTrixCross('short', rciTrix.trix, rciTrix.trixSigShort)) isShort = false;
+        }
+
         if (activeShortCondCount === 0) isShort = false;
       } else {
         isShort = false;
@@ -671,6 +843,8 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
   };
 
   const formatVal = (val) => (val !== undefined && val !== null && !isNaN(val) ? val.toFixed(2) : '0.00');
+  // TRIX는 0.0x% 단위라 소수 2자리로는 변화가 보이지 않는다
+  const formatVal4 = (val) => (val !== undefined && val !== null && !isNaN(val) ? val.toFixed(4) : '0.0000');
 
   return (
     <div className="chart-wrapper" style={{ border: `4px solid ${borderColor}`, borderRadius: '12px', position: 'relative', overflow: 'hidden', padding: '10px', background: '#161a1e', transition: 'border-color 0.3s ease' }}>
@@ -727,6 +901,26 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         <span style={{ color: '#f3ba2f' }}>Value: {formatVal(adxLegend)}</span>
       </div>
       <div ref={adxChartContainerRef} style={{ width: '100%', position: 'relative' }} />
+
+      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', flexWrap: 'wrap', rowGap: '5px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
+        <span style={{ fontWeight: 'bold' }}>RCI</span>
+        <span style={{ color: '#9b8cff' }}>RCI9: {formatVal(rciLegend.r9)}</span>
+        <span style={{ color: '#ff9f43' }}>RCI26: {formatVal(rciLegend.r26)}</span>
+        <span style={{ color: rciLegend.r9 > rciLegend.r26 ? '#26a69a' : '#ef5350' }}>
+          {rciLegend.r9 > rciLegend.r26 ? 'LONG 교차' : 'SHORT 교차'}
+        </span>
+      </div>
+      <div ref={rciChartContainerRef} style={{ width: '100%', position: 'relative' }} />
+
+      <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', flexWrap: 'wrap', rowGap: '5px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
+        <span style={{ fontWeight: 'bold' }}>TRIX(14)</span>
+        <span style={{ color: '#4dd0e1' }}>TRIX: {formatVal4(trixLegend.trix)}</span>
+        <span style={{ color: '#FF6D00' }}>Signal({trixSigLongPeriod}): {formatVal4(trixLegend.signal)}</span>
+        <span style={{ color: trixLegend.trix > trixLegend.signal ? '#26a69a' : '#ef5350' }}>
+          {trixLegend.trix > trixLegend.signal ? 'LONG 교차' : 'SHORT 교차'}
+        </span>
+      </div>
+      <div ref={trixChartContainerRef} style={{ width: '100%', position: 'relative' }} />
 
     </div>
   );
