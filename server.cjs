@@ -137,8 +137,11 @@ app.post('/api/backtest', (req, res) => {
             if (fs.existsSync(tempRulesPath)) fs.unlinkSync(tempRulesPath);
 
             if (error) {
-                console.error("[SERVER ERROR]", stderr);
-                return res.status(500).json({ success: false, error: error.message, output });
+                // 자식 프로세스가 강제 종료되면 stdout/stderr 버퍼가 통째로 유실되어
+                // error.message만으로는 원인을 알 수 없다. 종료 사유를 함께 내려보낸다.
+                const diag = `code=${error.code} killed=${error.killed} signal=${error.signal} stdout=${stdout.length}B stderr=${stderr.length}B`;
+                console.error("[SERVER ERROR]", diag, stderr);
+                return res.status(500).json({ success: false, error: error.message, diag, stderr, output });
             }
 
             const jsonMatch = output.match(/###JSON_RESULT###(.*?)###JSON_RESULT###/s);
