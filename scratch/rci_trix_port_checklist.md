@@ -54,7 +54,26 @@
 - [x] 검증: 체크박스 → `.env`/`live_rules.json` 저장 및 새로고침 후 복원까지 왕복 확인
 - [ ] 커밋
 
-## 6단계 — 마무리
+## 6단계 — RCI 장기 기간(26) 사용자 지정
+- [x] `Logic.v8.2.7.cjs`에 `collectRciLongPeriods` 추가 (TRIX 시그널 기간과 동일 방식)
+- [x] `buildRciTrix`가 기간별 `rci_{n}` 배열을 미리 계산, `rci26`은 기본(26) 별칭으로 유지
+- [x] `signal_logic`의 RCI 필터가 룰의 `rciLongPeriod`를 사용
+- [x] `lib/rules_helper.cjs`에 `RCI_LONG_PERIOD` 파싱·write-back·legacy 정리 추가
+- [x] `strategyConfigs.js` 기본값 26 추가 (롱·숏 × 3TF = 6곳)
+- [x] `BacktestForm.jsx`에 기간 입력란 + 정규화 매핑 추가
+- [x] `SignalSettings.jsx`(라이브)에 기간 입력란 추가
+- [x] `PriceChart.jsx`가 설정된 기간으로 RCI 장기선을 그리고 범례에 기간 표기
+- [x] **검증(필수): 기본값 26일 때 기존 결과와 완전 일치**
+      RCI 필터 ON, 2026-01-01~03-01 기준
+      · 필드 없음(구 룰) → 승15/패10/ROI 16.97/MDD 20.06
+      · `rciLongPeriod: 26` → 승15/패10/ROI 16.97/MDD 20.06  ← 동일
+- [x] 검증: 기간을 바꾸면 결과가 달라짐 (`50` → 승24/패9/ROI 52.89/MDD 17.57)
+- [x] 검증: `npm run build` 통과, eslint 신규 오류 없음
+- [x] 검증: 라이브 대시보드에 입력란 6개 렌더, 1d를 60으로 바꾸니 범례가
+      `RCI60`으로 바뀌고 값도 재계산됨 (5m/1h는 26 유지)
+- [ ] 커밋
+
+## 7단계 — 마무리
 - [ ] 컨텍스트 노트 최종 갱신
 - [ ] `main` 병합 및 푸시
 - [ ] 구 저장소(`candy_claude_2026`) 삭제 가능 여부 최종 확인

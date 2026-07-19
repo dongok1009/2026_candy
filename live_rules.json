@@ -24,8 +24,9 @@
       "useMaSizeFilter": false,
       "useStochExtremeBypass": true,
       "useRciCross": false,
-      "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "useTrixCross": true,
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     },
     "1h": {
       "macdValueEnabled": false,
@@ -52,7 +53,8 @@
       "useStochExtremeBypass": false,
       "useRciCross": false,
       "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     },
     "1d": {
       "macdValueEnabled": false,
@@ -79,7 +81,8 @@
       "useStochExtremeBypass": false,
       "useRciCross": false,
       "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     }
   },
   "short": {
@@ -107,8 +110,9 @@
       "useMaSizeFilter": false,
       "useStochExtremeBypass": true,
       "useRciCross": false,
-      "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "useTrixCross": true,
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     },
     "1h": {
       "macdValueEnabled": false,
@@ -135,7 +139,8 @@
       "useStochExtremeBypass": false,
       "useRciCross": false,
       "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     },
     "1d": {
       "macdValueEnabled": false,
@@ -162,7 +167,8 @@
       "useStochExtremeBypass": false,
       "useRciCross": false,
       "useTrixCross": false,
-      "trixSignalPeriod": 9
+      "trixSignalPeriod": 9,
+      "rciLongPeriod": 26
     }
   },
   "global": {
