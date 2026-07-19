@@ -19,6 +19,22 @@ const collectTrixSignalPeriods = (overrideRules) => {
     return set;
 };
 
+// 룰에 등장하는 RCI 장기 기간을 모아 반환 (기본 26 포함).
+// 단기(9)는 고정이며, 장기만 룰별로 달라질 수 있다.
+const collectRciLongPeriods = (overrideRules) => {
+    const set = new Set([26]);
+    if (overrideRules) {
+        ['long', 'short'].forEach(side => {
+            ['5m', '1h', '1d'].forEach(tf => {
+                const r = overrideRules[side]?.[tf];
+                const lp = r && r.rciLongPeriod !== undefined ? parseInt(r.rciLongPeriod) : null;
+                if (lp && lp > 1) set.add(lp);
+            });
+        });
+    }
+    return set;
+};
+
 const strategy = {
     name: 'Logic.v8.2.7',
     description: 'v8.2.7 (v8.2.6 + RCI/TRIX Cross Filters)',
@@ -72,11 +88,13 @@ const strategy = {
 
         // RCI 이중(9/26) 및 TRIX(14) — 룰에 쓰인 시그널 기간별 선을 미리 계산
         const trixSignalPeriods = collectTrixSignalPeriods(overrideRules);
+        const rciLongPeriods = collectRciLongPeriods(overrideRules);
         const buildRciTrix = (closes) => {
-            const out = {
-                rci9: calculateRCI(closes, 9),
-                rci26: calculateRCI(closes, 26)
-            };
+            const out = { rci9: calculateRCI(closes, 9) };
+            rciLongPeriods.forEach(lp => {
+                out[`rci_${lp}`] = calculateRCI(closes, lp);
+            });
+            out.rci26 = out.rci_26;                        // 로그·CSV 기본 장기선
             trixSignalPeriods.forEach(sp => {
                 const r = calculateTRIX(closes, 14, sp);
                 if (!out.trix) out.trix = r.trix;          // trix 본체는 시그널 기간과 무관하게 동일
@@ -356,11 +374,13 @@ const strategy = {
                 }
             }
 
-            // 10. RCI Cross Filter (이중 9/26 교차: 롱 RCI9 > RCI26, 숏 RCI9 < RCI26)
+            // 10. RCI Cross Filter (이중 교차: 롱 RCI9 > RCI장기, 숏 RCI9 < RCI장기 / 장기 기간 룰별 가변)
             if ((chk('rciCrossEnabled') || chk('useRciCross')) && data.rci9 && data.rci26) {
+                const lp = rules && rules.rciLongPeriod !== undefined ? parseInt(rules.rciLongPeriod) : 26;
+                const longArr = data[`rci_${lp}`] || data.rci26;
                 const r9 = data.rci9[idx];
-                const r26 = data.rci26[idx];
-                logDetail += `RCI:${r9 !== null && r9 !== undefined ? r9.toFixed(1) : 'null'}/${r26 !== null && r26 !== undefined ? r26.toFixed(1) : 'null'} `;
+                const r26 = longArr ? longArr[idx] : null;
+                logDetail += `RCI(${lp}):${r9 !== null && r9 !== undefined ? r9.toFixed(1) : 'null'}/${r26 !== null && r26 !== undefined ? r26.toFixed(1) : 'null'} `;
                 if (r9 !== null && r9 !== undefined && r26 !== null && r26 !== undefined) {
                     if (side === 'long' && r9 <= r26) match = false;
                     if (side === 'short' && r9 >= r26) match = false;
