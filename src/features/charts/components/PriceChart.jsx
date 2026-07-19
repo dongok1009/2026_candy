@@ -17,15 +17,24 @@ const trixSignalPeriodOf = (rule) => {
   return p > 0 ? p : 9;
 };
 
-// RCI(9/26)와 TRIX(14) 계산. 롱·숏 시그널 기간이 같으면 배열을 재사용한다.
-const computeRciTrix = (closes, longSigPeriod, shortSigPeriod) => {
-  const long = calculateTRIX(closes, 14, longSigPeriod);
-  const shortSignal = longSigPeriod === shortSigPeriod
+// 룰의 RCI 장기 기간을 읽어온다 (미지정·비정상값은 전략 파일과 동일하게 26)
+const rciLongPeriodOf = (rule) => {
+  const p = parseInt(rule?.rciLongPeriod);
+  return p > 1 ? p : 26;
+};
+
+// RCI(9/장기)와 TRIX(14) 계산. 롱·숏 기간이 같으면 배열을 재사용한다.
+const computeRciTrix = (closes, periods) => {
+  const { trixSigLong, trixSigShort, rciLongL, rciLongS } = periods;
+  const long = calculateTRIX(closes, 14, trixSigLong);
+  const shortSignal = trixSigLong === trixSigShort
     ? long.signal
-    : calculateTRIX(closes, 14, shortSigPeriod).signal;
+    : calculateTRIX(closes, 14, trixSigShort).signal;
+  const rciLong = calculateRCI(closes, rciLongL);
   return {
     rci9: calculateRCI(closes, 9),
-    rci26: calculateRCI(closes, 26),
+    rci26: rciLong,                                   // 차트·범례용 장기선 (롱 룰 기간)
+    rci26Short: rciLongL === rciLongS ? rciLong : calculateRCI(closes, rciLongS),
     trix: long.trix,
     signalLong: long.signal,
     signalShort: shortSignal
@@ -37,6 +46,12 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
   const shortRule = rules?.short?.[interval];
   const trixSigLongPeriod = trixSignalPeriodOf(longRule);
   const trixSigShortPeriod = trixSignalPeriodOf(shortRule);
+  const rciLongPeriod = rciLongPeriodOf(longRule);
+  const rciLongPeriodShort = rciLongPeriodOf(shortRule);
+  const indicatorPeriods = {
+    trixSigLong: trixSigLongPeriod, trixSigShort: trixSigShortPeriod,
+    rciLongL: rciLongPeriod, rciLongS: rciLongPeriodShort
+  };
   const priceChartContainerRef = useRef();
   const macdChartContainerRef = useRef();
   const stochChartContainerRef = useRef();
@@ -312,7 +327,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
           const allStoch = calculateStochRSI(allRsi);
           const allBB = calculateBollingerBands(allCloses);
           const allAdx = calculateADX(newData);
-          const allRciTrix = computeRciTrix(allCloses, trixSigLongPeriod, trixSigShortPeriod);
+          const allRciTrix = computeRciTrix(allCloses, indicatorPeriods);
           rciTrixRef.current = allRciTrix;
 
           candlestickSeries.setData(newData);
@@ -444,7 +459,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         const allStoch = calculateStochRSI(allRsi);
         const allBB = calculateBollingerBands(allCloses);
         const allAdx = calculateADX(allData);
-        const allRciTrix = computeRciTrix(allCloses, trixSigLongPeriod, trixSigShortPeriod);
+        const allRciTrix = computeRciTrix(allCloses, indicatorPeriods);
         rciTrixRef.current = allRciTrix;
 
         candlestickSeries.setData(allData);
@@ -547,7 +562,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       const { kLine, dLine } = calculateStochRSI(rsiValues);
       const { middle, upper, lower } = calculateBollingerBands(closes);
       const adxValues = calculateADX(fullData);
-      const rciTrix = computeRciTrix(closes, trixSigLongPeriod, trixSigShortPeriod);
+      const rciTrix = computeRciTrix(closes, indicatorPeriods);
       rciTrixRef.current = rciTrix;
 
       const lastTime = formattedCandle.time;
@@ -603,7 +618,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     const { macdLine: mLine, signalLine: sLine } = calculateMACD(closes);
     const { kLine, dLine } = calculateStochRSI(rsiValues);
     const adxValues = calculateADX(fullData);
-    const rciTrix = rciTrixRef.current || computeRciTrix(closes, trixSigLongPeriod, trixSigShortPeriod);
+    const rciTrix = rciTrixRef.current || computeRciTrix(closes, indicatorPeriods);
 
 
     // Update Legends to match the target signal point
@@ -647,6 +662,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
     evaluateSignal(mLine[targetIdx], sLine[targetIdx], kLine[targetIdx], dLine[targetIdx], adxValues[targetIdx], rsiValues[targetIdx], {
       rci9: rciTrix.rci9[targetIdx],
       rci26: rciTrix.rci26[targetIdx],
+      rci26Short: rciTrix.rci26Short[targetIdx],
       trix: rciTrix.trix[targetIdx],
       trixSigLong: rciTrix.signalLong[targetIdx],
       trixSigShort: rciTrix.signalShort[targetIdx]
@@ -821,7 +837,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
         // RCI Cross (Short: RCI9 < RCI26)
         if (shortRule.rciCrossEnabled || shortRule.useRciCross) {
           activeShortCondCount++;
-          if (!passesRciCross('short', { r9: rciTrix.rci9, r26: rciTrix.rci26 })) isShort = false;
+          if (!passesRciCross('short', { r9: rciTrix.rci9, r26: rciTrix.rci26Short })) isShort = false;
         }
 
         // TRIX Cross (Short: TRIX < Signal)
@@ -905,7 +921,7 @@ const PriceChart = ({ symbol, interval, lastCandle, limit = 200, rules, onSignal
       <div style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', fontSize: '11px', display: 'flex', gap: '15px', flexWrap: 'wrap', rowGap: '5px', color: '#848e9c', marginBottom: '2px', marginTop: '10px' }}>
         <span style={{ fontWeight: 'bold' }}>RCI</span>
         <span style={{ color: '#9b8cff' }}>RCI9: {formatVal(rciLegend.r9)}</span>
-        <span style={{ color: '#ff9f43' }}>RCI26: {formatVal(rciLegend.r26)}</span>
+        <span style={{ color: '#ff9f43' }}>RCI{rciLongPeriod}: {formatVal(rciLegend.r26)}</span>
         <span style={{ color: rciLegend.r9 > rciLegend.r26 ? '#26a69a' : '#ef5350' }}>
           {rciLegend.r9 > rciLegend.r26 ? 'LONG 교차' : 'SHORT 교차'}
         </span>

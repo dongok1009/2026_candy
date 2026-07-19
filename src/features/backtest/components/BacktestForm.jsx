@@ -306,7 +306,8 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                 useMaSizeFilter: srcTfRules.useMaSizeFilter !== undefined ? srcTfRules.useMaSizeFilter : false,
                 useRciCross: srcTfRules.rciCrossEnabled !== undefined ? srcTfRules.rciCrossEnabled : (srcTfRules.useRciCross !== undefined ? srcTfRules.useRciCross : false),
                 useTrixCross: srcTfRules.trixCrossEnabled !== undefined ? srcTfRules.trixCrossEnabled : (srcTfRules.useTrixCross !== undefined ? srcTfRules.useTrixCross : false),
-                trixSignalPeriod: srcTfRules.trixSignalPeriod !== undefined ? srcTfRules.trixSignalPeriod : 9
+                trixSignalPeriod: srcTfRules.trixSignalPeriod !== undefined ? srcTfRules.trixSignalPeriod : 9,
+                rciLongPeriod: srcTfRules.rciLongPeriod !== undefined ? srcTfRules.rciLongPeriod : 26
             };
         };
 
@@ -1483,7 +1484,11 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useRciCross || false} onChange={e => handleRuleChange('long', iv, 'useRciCross', e.target.checked)} />
-                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &gt; 26)</span>
+                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &gt; 장기)</span>
+                                                <span style={{ color: '#888', fontSize: '11px', marginLeft: '6px' }}>장기</span>
+                                                <input type="number" min="2" max="200" value={targetRules[iv]?.rciLongPeriod ?? 26}
+                                                    onChange={e => handleRuleChange('long', iv, 'rciLongPeriod', parseInt(e.target.value) || 26)}
+                                                    style={{ width: '48px', background: '#1e2329', color: '#eee', border: '1px solid #444', borderRadius: '3px', padding: '2px 4px', fontSize: '11px' }} />
                                             </div>
 
                                             {/* TRIX 시그널선 교차 필터 */}
@@ -1599,7 +1604,11 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                                                 {renderAnd()}
                                                 <input type="checkbox" checked={targetRules[iv]?.useRciCross || false} onChange={e => handleRuleChange('short', iv, 'useRciCross', e.target.checked)} />
-                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &lt; 26)</span>
+                                                <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross (9 &lt; 장기)</span>
+                                                <span style={{ color: '#888', fontSize: '11px', marginLeft: '6px' }}>장기</span>
+                                                <input type="number" min="2" max="200" value={targetRules[iv]?.rciLongPeriod ?? 26}
+                                                    onChange={e => handleRuleChange('short', iv, 'rciLongPeriod', parseInt(e.target.value) || 26)}
+                                                    style={{ width: '48px', background: '#1e2329', color: '#eee', border: '1px solid #444', borderRadius: '3px', padding: '2px 4px', fontSize: '11px' }} />
                                             </div>
 
                                             {/* TRIX 시그널선 교차 필터 */}

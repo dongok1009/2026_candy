@@ -37,7 +37,8 @@ const SignalSettings = ({
         rsiHigh: 'rsiHigh',
         rciCross: 'useRciCross',
         trixCross: 'useTrixCross',
-        trixSigPeriod: 'trixSignalPeriod'
+        trixSigPeriod: 'trixSignalPeriod',
+        rciLongPeriod: 'rciLongPeriod'
     };
 
     const isLong = side === 'long';
@@ -150,10 +151,12 @@ const SignalSettings = ({
                   </div>
 
                   {/* RCI 이중(9/26) 교차 필터 */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                     {renderAnd()}
                     <input type="checkbox" checked={getRuleValue(side, iv, fields.rciCross)} onChange={e => updateRule(iv, side, fields.rciCross, e.target.checked)} />
-                    <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross ({isLong ? '9 > 26' : '9 < 26'})</span>
+                    <span style={{ color: '#9b8cff', fontSize: '12px', marginLeft: '5px' }}>RCI Cross ({isLong ? '9 > 장기' : '9 < 장기'})</span>
+                    <span style={{ color: '#848e9c', fontSize: '11px' }}>장기</span>
+                    <input type="number" min="2" max="200" style={{ width: '45px', background: '#0b0e11', border: '1px solid #2b3139', color: '#eaebed', padding: '3px 4px', borderRadius: '4px', fontSize: '12px', textAlign: 'center' }} value={getRuleNum(side, iv, fields.rciLongPeriod) || 26} onChange={e => updateRule(iv, side, fields.rciLongPeriod, parseInt(e.target.value) || 26)} />
                   </div>
 
                   {/* TRIX 시그널선 교차 필터 */}
