@@ -4,6 +4,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { buildRulesFromEnv, syncRulesToEnv } = require('./lib/rules_helper.cjs');
+const { writeFileAtomicWithRetry } = require('./lib/utils.cjs');
 const app = express();
 const PORT = 3001;
 
@@ -28,20 +29,27 @@ app.get('/api/live-status', (req, res) => {
     }
 });
 
-app.post('/api/live-settings', (req, res) => {
+app.post('/api/live-settings', async (req, res) => {
     const { rules } = req.body;
     try {
-        fs.writeFileSync(LIVE_RULES_FILE, JSON.stringify(rules, null, 2));
+        // 원자적 저장 + 짧은 재시도. 이 환경에서 쓰기가 간헐적으로 UNKNOWN 오류를 낸다.
+        const retried = await writeFileAtomicWithRetry(LIVE_RULES_FILE, JSON.stringify(rules, null, 2));
+        if (retried > 0) console.warn(`[SERVER] live_rules.json 저장에 재시도 ${retried}회 필요했습니다.`);
 
         // syncRulesToEnv를 통해 .env 파일의 지표 조건 및 청산 변수 전체를 실시간 대칭 동기화
         const syncSuccess = syncRulesToEnv(rules);
         if (syncSuccess) {
             console.log(`[SERVER] Full bidirectional sync completed for .env file parameters!`);
         } else {
-            console.warn(`[SERVER] .env sync was skipped or encountered an issue.`);
+            // .env 동기화 실패는 실전 봇이 낡은 조건으로 매매한다는 뜻이므로 조용히 넘기면 안 된다.
+            console.error(`[SERVER] .env 동기화 실패 — 실전 봇이 이전 조건을 계속 사용합니다.`);
+            return res.status(500).json({
+                success: false,
+                error: 'live_rules.json은 저장했으나 .env 동기화에 실패했습니다. 실전 봇에는 아직 반영되지 않았습니다.'
+            });
         }
 
-        res.json({ success: true });
+        res.json({ success: true, retried });
     } catch (err) {
         console.error("Live settings save error:", err);
         res.status(500).json({ success: false, error: err.message });

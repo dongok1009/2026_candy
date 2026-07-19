@@ -130,6 +130,8 @@ const Dashboard = () => {
   });
 
   const [isTesting, setIsTesting] = useState(false);
+  // 설정 저장 실패를 화면에 드러내기 위한 상태 (콘솔에만 남으면 알아채지 못한다)
+  const [saveError, setSaveError] = useState(null);
   const lastLoadedRulesRef = useRef(null);
   const isServerRulesLoadedRef = useRef(false);
 
@@ -229,15 +231,25 @@ const Dashboard = () => {
       const syncRulesToServer = async () => {
         try {
           const serverData = normalizeRulesForServer(rules);
-          await fetch('http://localhost:3001/api/live-settings', {
+          const resp = await fetch('http://localhost:3001/api/live-settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ rules: serverData })
           });
+          // fetch는 HTTP 오류에서 예외를 던지지 않는다. 응답 상태를 직접 확인하지 않으면
+          // 저장 실패가 성공으로 처리되어 조용히 묻힌다.
+          if (!resp.ok) {
+            const detail = await resp.json().catch(() => ({}));
+            throw new Error(detail.error || `서버 응답 ${resp.status}`);
+          }
           console.log('[DASHBOARD] Synced updated rules to server!');
           lastLoadedRulesRef.current = currentStr;
+          setSaveError(null);
         } catch (err) {
           console.error('[DASHBOARD] Error syncing rules to server:', err);
+          // 저장에 실패했으므로 lastLoadedRulesRef를 갱신하지 않는다.
+          // 다음 변경 때 다시 전송을 시도하게 된다.
+          setSaveError(err.message);
         }
       };
       syncRulesToServer();
@@ -448,6 +460,22 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
+      {/* 설정 저장 실패 경고 — 실패를 모른 채 계속 조작하면 실전 조건과 화면이 어긋난다 */}
+      {saveError && (
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 500,
+          background: '#7f1d1d', color: '#fee2e2', border: '1px solid #ef5350',
+          borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
+          fontSize: '13px', fontWeight: 'bold', boxShadow: '0 4px 16px rgba(0,0,0,0.5)'
+        }}>
+          <span>⚠️ 설정 저장 실패 — 변경 내용이 서버에 반영되지 않았습니다. ({saveError})</span>
+          <button onClick={() => setSaveError(null)} style={{
+            background: 'transparent', color: '#fee2e2', border: '1px solid #fca5a5',
+            borderRadius: '4px', padding: '3px 10px', cursor: 'pointer', fontSize: '12px', flexShrink: 0
+          }}>닫기</button>
+        </div>
+      )}
       <header className="dashboard-header">
         <div className="logo-section">
           <Activity color="#f3ba2f" size={32} />
