@@ -33,7 +33,9 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
         reduceTpWaitMin: 0,
         reducedTargetRoi: 0.02,
         penetrationRate: OFFICIAL_STRATEGIES[0].rules.penetrationRate !== undefined ? OFFICIAL_STRATEGIES[0].rules.penetrationRate : 0.001,
-        entryMode: OFFICIAL_STRATEGIES[0].rules.entryMode || 'HYBRID_5M'
+        entryMode: OFFICIAL_STRATEGIES[0].rules.entryMode || 'HYBRID_5M',
+        useTrailingStop: false,
+        trailStopPct: 0.01
     });
 
     const [rules, setRules] = useState(() => {
@@ -1107,6 +1109,27 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                                     <option value="HYBRID_15M" style={{ background: '#1e2329', color: '#eaebed' }}>HYBRID_15M (15분봉기준 유리한 가격)</option>
                                 </select>
                                 <span style={{ color: '#848e9c', fontSize: '11px' }}>진입 기준 가격 옵션</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 4.5: Trailing Stop (TP 대신 선택) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px 16px', marginTop: '12px' }}>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Mode (청산 방식)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '6px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#eaebed', fontSize: '13px', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={config.useTrailingStop || false} onChange={e => setConfig(prev => ({ ...prev, useTrailingStop: e.target.checked }))} />
+                                    트레일링 스탑 (TP 대신)
+                                </label>
+                            </div>
+                            <span style={{ color: '#848e9c', fontSize: '11px' }}>목표가 도달 후 고점 되돌림 청산. 도달 전엔 SL.</span>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Trail Stop % (고점 대비 하락, e.g. 0.01 = 1%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139', opacity: config.useTrailingStop ? 1 : 0.4 }}>
+                                <input type="number" step="0.001" name="trailStopPct" value={config.trailStopPct ?? 0.01} onChange={handleChange} disabled={!config.useTrailingStop} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>가격 기준 (레버리지 미적용)</span>
                             </div>
                         </div>
                     </div>
