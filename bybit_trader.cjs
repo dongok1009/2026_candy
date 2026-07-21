@@ -385,13 +385,14 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
 
         // [TRAILING STOP] TP 대신 트레일링 스탑을 쓰는 경우 Bybit 네이티브 파라미터로 매핑.
         // - activePrice = tpPrice (이 가격에 도달해야 트레일링 시작)
-        // - trailingStop = tpPrice * trailStopPct (Bybit는 %가 아닌 절대 가격 거리를 받음. "고점 대비 %"의 근사)
+        // - trailingStop = entryPrice * trailStopPct / leverage
+        //   trailStopPct는 레버리지 반영 수익률 기준. ROI X% 되돌림 = 가격 entry*X/lev 거리 (백테스트 엔진과 동일)
         // - stopLoss = slPrice 유지 (활성화 전 손절, 활성화 후엔 안전판)
         const useTrailingStop = strategy.config.useTrailingStop === true;
         const trailStopPct = Number(strategy.config.trailStopPct || 0);
+        const trailDistance = parseFloat((entryPrice * trailStopPct / leverage).toFixed(2));
         let orderParams;
         if (useTrailingStop && trailStopPct > 0) {
-            const trailDistance = parseFloat((tpPrice * trailStopPct).toFixed(2));
             orderParams = {
                 'stopLoss': slPrice.toString(),
                 'slOrderType': 'Market',
@@ -440,7 +441,7 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
                 ? {
                     'category': 'linear', 'symbol': config.SYMBOL,
                     'stopLoss': slPrice.toString(), 'slOrderType': 'Market', 'tpslMode': 'Full',
-                    'trailingStop': parseFloat((tpPrice * trailStopPct).toFixed(2)).toString(),
+                    'trailingStop': trailDistance.toString(),
                     'activePrice': tpPrice.toString()
                   }
                 : {
@@ -451,7 +452,7 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
 
             await exchange.privatePostV5PositionTradingStop(tpslParams);
             console.log(useTrailingStop && trailStopPct > 0
-                ? `✅ [TPSL SET SUCCESS] TRAILING active@${tpPrice} dist=${(tpPrice * trailStopPct).toFixed(2)}, SL: ${slPrice}`
+                ? `✅ [TPSL SET SUCCESS] TRAILING active@${tpPrice} dist=${trailDistance} (ROI ${(trailStopPct * 100).toFixed(2)}%), SL: ${slPrice}`
                 : `✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
             if (e.message.includes('not modified') || e.message.includes('10001') || e.message.includes('zero position')) {

@@ -291,22 +291,22 @@ const SignalSettings = ({
                           <input type="checkbox" checked={getRuleValue('global', 'useTrailingStop') || false} onChange={e => {
                               updateRule('global', null, 'useTrailingStop', e.target.checked);
                               // 체크 시 %가 아직 없으면 기본값을 심어 실전 봇에서 조용히 비활성되는 것을 막는다
-                              if (e.target.checked && !getRuleNum('global', 'trailStopPct')) updateRule('global', null, 'trailStopPct', 0.01);
+                              if (e.target.checked && !getRuleNum('global', 'trailStopPct')) updateRule('global', null, 'trailStopPct', 0.05);
                           }} />
                           트레일링 스탑 (TP 대신)
                       </label>
                   </div>
               </div>
               <div className="input-group">
-                  <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Trail Stop % (고점 대비, e.g. 0.01)</label>
+                  <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Trail Stop ROI (고점 대비 수익률, e.g. 0.05)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0b0e11', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139', opacity: getRuleValue('global', 'useTrailingStop') ? 1 : 0.4 }}>
-                      <input type="number" step="0.001"
-                        value={getRuleNum('global', 'trailStopPct') || 0.01}
+                      <input type="number" step="0.005"
+                        value={getRuleNum('global', 'trailStopPct') || 0.05}
                         disabled={!getRuleValue('global', 'useTrailingStop')}
                         onChange={e => updateRule('global', null, 'trailStopPct', parseFloat(e.target.value))}
                         style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }}
                       />
-                      <span style={{ color: '#848e9c', fontSize: '11px' }}>가격 기준 (레버리지 미적용)</span>
+                      <span style={{ color: '#848e9c', fontSize: '11px' }}>수익률 기준 (레버리지 반영)</span>
                   </div>
               </div>
           </div>

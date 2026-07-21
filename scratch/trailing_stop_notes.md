@@ -16,9 +16,18 @@ falsy면 기존 TP/SL 그대로 동작하므로 기본 OFF는 자동으로 보�
 동작 (롱 기준, 숏은 대칭).
 - 활성화 트리거 = 기존 tpPrice (1차 목표가). LONG: high ≥ tpPrice에서 활성화.
 - **활성화 전**: 기존 SL 그대로. low ≤ slPrice면 SL 청산.
-- **활성화 후**: peak 추적(LONG=최고 high). trailStop = peak × (1 − trailStopPct).
+- **활성화 후**: peak 추적(LONG=최고 high). trailStop = peak − trailDist.
   low ≤ trailStop이면 `TRAIL` 청산. 활성화 후에는 고정 SL을 적용하지 않는다
   (트레일링이 청산을 전담 — 사용자 표현 "트레일링 스탑이 실행되고").
+
+### [변경] trailStopPct를 가격 기준 → 레버리지 반영 ROI 기준으로 전환
+초기엔 가격 기준(peak × (1 − pct))이었으나, 사용자 요청으로 **레버리지 반영
+수익률 기준**으로 바꿨다. ROI X% 되돌림 = 가격으로 entry × X / leverage 만큼 되돌림.
+→ `trailDist = entryPrice × trailStopPct / LEVERAGE` (진입 시 1회 계산),
+   trailStop = peak ∓ trailDist. targetRoi·slRoi와 동일한 ROI↔가격 환산이라 일관적이다.
+거리를 peak가 아닌 **진입가 기준 절대 거리**로 두는 이유: ROI는 진입가 기준으로
+정의되므로 "고점 ROI 대비 X%p 하락"은 정확히 entry×X/lev 가격 거리가 된다.
+기본값도 0.01(가격 1%)에서 0.05(ROI 5%)로 상향 — ROI 기준에선 1%가 지나치게 타이트.
 
 ### 봉 내부 순서 (1분봉 한계)
 1분봉은 OHLC만 있어 고가·저가 발생 순서를 모른다. 트레일링에서는

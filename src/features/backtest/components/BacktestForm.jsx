@@ -35,7 +35,7 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
         penetrationRate: OFFICIAL_STRATEGIES[0].rules.penetrationRate !== undefined ? OFFICIAL_STRATEGIES[0].rules.penetrationRate : 0.001,
         entryMode: OFFICIAL_STRATEGIES[0].rules.entryMode || 'HYBRID_5M',
         useTrailingStop: false,
-        trailStopPct: 0.01
+        trailStopPct: 0.05
     });
 
     const [rules, setRules] = useState(() => {
@@ -1126,10 +1126,10 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                             <span style={{ color: '#848e9c', fontSize: '11px' }}>목표가 도달 후 고점 되돌림 청산. 도달 전엔 SL.</span>
                         </div>
                         <div className="input-group">
-                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Trail Stop % (고점 대비 하락, e.g. 0.01 = 1%)</label>
+                            <label style={{ display: 'block', color: '#26a69a', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Trail Stop ROI (고점 대비 수익률 되돌림, e.g. 0.05 = 5%)</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', minHeight: '41px', boxSizing: 'border-box', borderRadius: '6px', border: '1px solid #2b3139', opacity: config.useTrailingStop ? 1 : 0.4 }}>
-                                <input type="number" step="0.001" name="trailStopPct" value={config.trailStopPct ?? 0.01} onChange={handleChange} disabled={!config.useTrailingStop} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
-                                <span style={{ color: '#848e9c', fontSize: '11px' }}>가격 기준 (레버리지 미적용)</span>
+                                <input type="number" step="0.005" name="trailStopPct" value={config.trailStopPct ?? 0.05} onChange={handleChange} disabled={!config.useTrailingStop} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>수익률 기준 (레버리지 반영)</span>
                             </div>
                         </div>
                     </div>
