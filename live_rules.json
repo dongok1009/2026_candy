@@ -204,6 +204,8 @@
         "operator": ">",
         "threshold": -400
       }
-    ]
+    ],
+    "useTrailingStop": false,
+    "trailStopPct": 0.01
   }
 }
