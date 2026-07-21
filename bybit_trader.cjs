@@ -196,6 +196,8 @@ async function checkMarkets() {
             if (g.reduceTpWaitMin !== undefined) strategy.config.reduceTpWaitMin = g.reduceTpWaitMin;
             if (g.reducedTargetRoi !== undefined) strategy.config.reducedTargetRoi = g.reducedTargetRoi;
             if (g.orderAmount !== undefined) strategy.config.orderAmount = g.orderAmount;
+            if (g.useTrailingStop !== undefined) strategy.config.useTrailingStop = g.useTrailingStop;
+            if (g.trailStopPct !== undefined) strategy.config.trailStopPct = g.trailStopPct;
             console.log(`[OVERRIDE] Global config overrides applied!`);
         }
 
@@ -380,13 +382,32 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
             : parseFloat((entryPrice * (1 + slRoi / leverage)).toFixed(2));
 
         const orderSide = side === 'LONG' ? 'buy' : 'sell';
-        const orderParams = {
-            'takeProfit': tpPrice.toString(),
-            'stopLoss': slPrice.toString(),
-            'tpOrderType': 'Market',
-            'slOrderType': 'Market',
-            'tpslMode': 'Full'
-        };
+
+        // [TRAILING STOP] TP 대신 트레일링 스탑을 쓰는 경우 Bybit 네이티브 파라미터로 매핑.
+        // - activePrice = tpPrice (이 가격에 도달해야 트레일링 시작)
+        // - trailingStop = tpPrice * trailStopPct (Bybit는 %가 아닌 절대 가격 거리를 받음. "고점 대비 %"의 근사)
+        // - stopLoss = slPrice 유지 (활성화 전 손절, 활성화 후엔 안전판)
+        const useTrailingStop = strategy.config.useTrailingStop === true;
+        const trailStopPct = Number(strategy.config.trailStopPct || 0);
+        let orderParams;
+        if (useTrailingStop && trailStopPct > 0) {
+            const trailDistance = parseFloat((tpPrice * trailStopPct).toFixed(2));
+            orderParams = {
+                'stopLoss': slPrice.toString(),
+                'slOrderType': 'Market',
+                'tpslMode': 'Full',
+                'trailingStop': trailDistance.toString(),
+                'activePrice': tpPrice.toString()
+            };
+        } else {
+            orderParams = {
+                'takeProfit': tpPrice.toString(),
+                'stopLoss': slPrice.toString(),
+                'tpOrderType': 'Market',
+                'slOrderType': 'Market',
+                'tpslMode': 'Full'
+            };
+        }
 
         const orderType = isMarketOrder ? 'market' : 'limit';
         const orderPrice = isMarketOrder ? undefined : entryPrice;
@@ -414,14 +435,24 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
         try {
             // [Optional Fallback] 포지션이 이미 체결된 경우를 대비한 동기화 시도
             // 하지만 주문 시 설정했으므로 여기서는 10001 에러를 무시하도록 처리
-            const tpslParams = {
-                'category': 'linear', 'symbol': config.SYMBOL,
-                'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
-                'tpOrderType': 'Market', 'slOrderType': 'Market', 'tpslMode': 'Full'
-            };
+            // 트레일링 모드에서는 takeProfit 대신 trailingStop/activePrice를 사용해야 한다.
+            const tpslParams = (useTrailingStop && trailStopPct > 0)
+                ? {
+                    'category': 'linear', 'symbol': config.SYMBOL,
+                    'stopLoss': slPrice.toString(), 'slOrderType': 'Market', 'tpslMode': 'Full',
+                    'trailingStop': parseFloat((tpPrice * trailStopPct).toFixed(2)).toString(),
+                    'activePrice': tpPrice.toString()
+                  }
+                : {
+                    'category': 'linear', 'symbol': config.SYMBOL,
+                    'takeProfit': tpPrice.toString(), 'stopLoss': slPrice.toString(),
+                    'tpOrderType': 'Market', 'slOrderType': 'Market', 'tpslMode': 'Full'
+                  };
 
             await exchange.privatePostV5PositionTradingStop(tpslParams);
-            console.log(`✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
+            console.log(useTrailingStop && trailStopPct > 0
+                ? `✅ [TPSL SET SUCCESS] TRAILING active@${tpPrice} dist=${(tpPrice * trailStopPct).toFixed(2)}, SL: ${slPrice}`
+                : `✅ [TPSL SET SUCCESS] TP: ${tpPrice}, SL: ${slPrice}`);
         } catch (e) {
             if (e.message.includes('not modified') || e.message.includes('10001') || e.message.includes('zero position')) {
                 console.log(`ℹ️ [TPSL SYNC] TP/SL already set or waiting for order fill`);
@@ -443,7 +474,9 @@ async function handleEntry(side, price, klines, skipNotify = false, isExtremeByp
                     `💵 <b>진입 가격:</b> $${entryPrice.toLocaleString()}\n` +
                     `📦 <b>수량:</b> ${contracts} BTC\n` +
                     `💰 <b>총 금액:</b> $${(finalAmount * leverage).toLocaleString()}\n` +
-                    `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()} (ROI ${(targetRoi * 100).toFixed(1)}%)\n` +
+                    (useTrailingStop && trailStopPct > 0
+                        ? `📈 <b>트레일링:</b> $${tpPrice.toLocaleString()} 도달 후 고점대비 ${(trailStopPct * 100).toFixed(2)}% 하락 시 청산\n`
+                        : `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()} (ROI ${(targetRoi * 100).toFixed(1)}%)\n`) +
                     `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()} (ROI ${(slRoi * 100).toFixed(1)}%)\n\n` +
                     `📡 레버리지 ${leverage}배 기준 계산됨`;
 
