@@ -156,6 +156,65 @@ async function fetchOHLCV(interval, limit = 200) {
     }));
 }
 
+// [SIGNAL MONITOR] signal-bot(v600) 통합: 신호 변화 시 정보 알림. 거래/주문/상태 로직과 완전히 분리됨.
+let lastMonitorSig = 'hold';
+let lastMonitorEntryPrice = 0;
+let lastMonitorEntryTime = 0;
+
+async function checkSignalTransition(currentSig, traderStatus, currentPrice, completedM5) {
+    if (!completedM5) return;
+    if (currentSig === lastMonitorSig) return; // 신호 변화가 있을 때만 알림
+
+    const leverage = parseFloat(strategy.config.LEVERAGE) || 5;
+    const checkTime = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toLocaleString('ko-KR');
+
+    if (currentSig !== 'hold') {
+        const isLong = currentSig.includes('long');
+        const entryRef = isLong ? completedM5.low : completedM5.high;
+        // 가상 ROE 계산용 기준가 보존
+        lastMonitorEntryPrice = entryRef;
+        lastMonitorEntryTime = Date.now();
+
+        // IDLE이면 handleEntry가 진입 알림을 보내므로 여기선 생략(중복 방지).
+        // 포지션 보유/대기 중이면 실전 봇이 신규 진입하지 않으므로 '관망' 정보 알림만 보낸다.
+        if (traderStatus !== 'IDLE') {
+            const targetRoi = strategy.config.TARGET_NET_ROI || 0.05;
+            const slRoi = strategy.config.SL_ROI || 0.14;
+            const tpPrice = entryRef * (isLong ? (1 + targetRoi / leverage) : (1 - targetRoi / leverage));
+            const slPrice = entryRef * (isLong ? (1 - slRoi / leverage) : (1 + slRoi / leverage));
+            await sendTelegram(
+                `🚀 <b>[${displayVersion} LIVE] 신호 발생! (포지션 보유중 · 관망)</b>\n\n` +
+                `⌚ <b>체크 시간:</b> ${checkTime}\n` +
+                `💰 <b>현재 가격:</b> $${currentPrice.toLocaleString()}\n\n` +
+                `📌 <b>방향:</b> ${currentSig.toUpperCase()}\n` +
+                `💵 <b>진입 희망가:</b> $${entryRef.toLocaleString()}\n` +
+                `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()}\n` +
+                `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()}\n\n` +
+                `ℹ️ 현재 포지션 보유/대기 중이라 실전 봇은 이 신호로 신규 진입하지 않습니다.`
+            );
+        }
+    } else if (lastMonitorSig !== 'hold') {
+        // 신호 종료(HOLD 전환): 가상 ROE와 함께 알림 (트레이더 상태 무관)
+        const wasLong = lastMonitorSig.includes('long');
+        const roe = lastMonitorEntryPrice > 0
+            ? (wasLong ? (currentPrice - lastMonitorEntryPrice) : (lastMonitorEntryPrice - currentPrice)) / lastMonitorEntryPrice * leverage
+            : 0;
+        const roePct = (roe * 100).toFixed(2);
+        const icon = roe >= 0 ? '🟢 Profit' : '🔴 Loss';
+        const durMin = Math.floor((Date.now() - lastMonitorEntryTime) / 60000);
+        await sendTelegram(
+            `💤 <b>[${displayVersion} LIVE] 신호 종료! (HOLD)</b>\n\n` +
+            `⌚ <b>종료 시간:</b> ${checkTime}\n` +
+            `💰 <b>종료 가격:</b> $${currentPrice.toLocaleString()}\n\n` +
+            `📌 <b>이전 신호:</b> ${lastMonitorSig.toUpperCase()}\n` +
+            `📈 <b>가상 수익률(ROE):</b> ${roePct}% (${icon})\n` +
+            `⏱️ <b>유지 시간:</b> ${durMin}분`
+        );
+    }
+
+    lastMonitorSig = currentSig;
+}
+
 async function checkMarkets() {
     const config = strategy.config;
     // 한국 시간(KST)으로 로그 시간 표시
@@ -225,8 +284,17 @@ async function checkMarkets() {
             }
         }
 
+        // [SIGNAL MONITOR] 모든 상태에서 신호를 계산해 정보 알림(signal-bot 통합). 오류가 거래를 막지 않도록 격리.
+        const currentSig = strategy.signal_logic(indicators, indices, overrideRules);
+        liveState.currentSignal = currentSig.toUpperCase();
+        try {
+            await checkSignalTransition(currentSig, liveState.status, m5[m5.length - 1].close, m5[m5.length - 2]);
+        } catch (sigErr) {
+            console.error("[SIGNAL MONITOR ERROR]", sigErr.message);
+        }
+
         if (liveState.status === 'IDLE') {
-            const finalSignal = strategy.signal_logic(indicators, indices, overrideRules);
+            const finalSignal = currentSig;
             
             // 개별 지표 계산 (로그용)
             const m5K = indicators.m5.stoch.k[indices.idx5m];
@@ -907,6 +975,7 @@ async function checkStatusNotification() {
         let msg = `🔔 <b>[${displayVersion} LIVE] 시스템 가동 중</b>\n` +
                   `• 체크 시간: ${timeStr} (KST)\n` +
                   `• 봇 상태: ${liveState.status}\n` +
+                  `• 현재 신호: ${liveState.currentSignal || 'HOLD'}\n` +
                   `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`;
         
         if (liveState.status === 'IN_POSITION' && liveState.entryPrice && liveState.lastPrice) {
