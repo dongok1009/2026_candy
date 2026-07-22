@@ -103,7 +103,7 @@ app.get('/api/list-history', (req, res) => {
 // 백테스트 실행 API
 app.post('/api/backtest', (req, res) => {
     try {
-        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi, reduceTpWaitMin, reducedTargetRoi, entryMode, penetrationRate, useTrailingStop, trailStopPct } = req.body;
+        const { version, symbol, startDate, endDate, leverage, initialBalance, overrideRules, exitWaitLimit, exitWaitMin, entryWaitLimit, entryWaitMin, targetRoi, slRoi, reduceTpWaitMin, reducedTargetRoi, entryMode, penetrationRate, exitSlippageRate, useTrailingStop, trailStopPct } = req.body;
         
         // 필수 필드 체크
         if (!version || !symbol || !startDate || !endDate) {
@@ -133,10 +133,11 @@ app.post('/api/backtest', (req, res) => {
         const reducedTargetRoiArg = reducedTargetRoi !== undefined ? `--reducedTargetRoi=${reducedTargetRoi}` : '';
         const entryModeArg = entryMode !== undefined ? `--entryMode=${entryMode}` : '';
         const penetrationRateArg = penetrationRate !== undefined ? `--penetrationRate=${penetrationRate}` : '';
+        const exitSlippageRateArg = exitSlippageRate !== undefined ? `--exitSlippageRate=${exitSlippageRate}` : '';
         const useTrailingStopArg = useTrailingStop !== undefined ? `--useTrailingStop=${useTrailingStop ? 'true' : 'false'}` : '';
         const trailStopPctArg = trailStopPct !== undefined ? `--trailStopPct=${trailStopPct}` : '';
 
-        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${reduceTpWaitMinArg} ${reducedTargetRoiArg} ${entryModeArg} ${penetrationRateArg} ${useTrailingStopArg} ${trailStopPctArg} ${rulesFileArg}`;
+        const cmd = `node run_backtest.cjs ${version} --symbol=${symbol} --start=${startStr} --end=${endStr} --leverage=${leverage} --balance=${initialBalance} --exitWaitMin=${finalExitWait} --entryWaitMin=${finalEntryWait} ${targetRoiArg} ${slRoiArg} ${reduceTpWaitMinArg} ${reducedTargetRoiArg} ${entryModeArg} ${penetrationRateArg} ${exitSlippageRateArg} ${useTrailingStopArg} ${trailStopPctArg} ${rulesFileArg}`;
 
         console.log(`[API] Executing: ${cmd}`);
 

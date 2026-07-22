@@ -33,6 +33,7 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
         reduceTpWaitMin: 0,
         reducedTargetRoi: 0.02,
         penetrationRate: OFFICIAL_STRATEGIES[0].rules.penetrationRate !== undefined ? OFFICIAL_STRATEGIES[0].rules.penetrationRate : 0.001,
+        exitSlippageRate: OFFICIAL_STRATEGIES[0].rules.exitSlippageRate !== undefined ? OFFICIAL_STRATEGIES[0].rules.exitSlippageRate : 0.0005,
         entryMode: OFFICIAL_STRATEGIES[0].rules.entryMode || 'HYBRID_5M',
         useTrailingStop: false,
         trailStopPct: 0.05
@@ -264,12 +265,14 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                         entryWaitMin: found.rules.entryWaitMin, 
                         exitWaitMin: found.rules.exitWaitMin,
                         penetrationRate: found.rules.penetrationRate !== undefined ? found.rules.penetrationRate : 0.001,
+                        exitSlippageRate: found.rules.exitSlippageRate !== undefined ? found.rules.exitSlippageRate : 0.0005,
                         entryMode: found.rules.entryMode || 'HYBRID_5M'
                     }));
                 } else {
                     setConfig(prev => ({
                         ...prev,
                         penetrationRate: found.rules.penetrationRate !== undefined ? found.rules.penetrationRate : 0.001,
+                        exitSlippageRate: found.rules.exitSlippageRate !== undefined ? found.rules.exitSlippageRate : 0.0005,
                         entryMode: found.rules.entryMode || 'HYBRID_5M'
                     }));
                 }
@@ -1097,6 +1100,13 @@ const BacktestForm = ({ view = 'backtest', setView }) => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
                                 <input type="number" step="0.0001" name="penetrationRate" value={config.penetrationRate ?? 0.001} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
                                 <span style={{ color: '#848e9c', fontSize: '11px' }}>목표가 돌파 비율 (지정가 보수화)</span>
+                            </div>
+                        </div>
+                        <div className="input-group">
+                            <label style={{ display: 'block', color: '#f3ba2f', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold' }}>Exit Slippage (Decimal, e.g. 0.0005 = 0.05%)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e2329', padding: '4px 8px', borderRadius: '6px', border: '1px solid #2b3139' }}>
+                                <input type="number" step="0.0001" name="exitSlippageRate" value={config.exitSlippageRate ?? 0.0005} onChange={handleChange} style={{ width: '80px', background: 'transparent', border: 'none', color: '#eaebed', fontSize: '13px', fontWeight: 'bold', outline: 'none' }} />
+                                <span style={{ color: '#848e9c', fontSize: '11px' }}>시장가 청산 슬리피지 (SL·트레일, 스프레드 포함)</span>
                             </div>
                         </div>
                         <div className="input-group">

@@ -19,6 +19,7 @@ const strategy = {
         TAKER_FEE_RATE: 0.0005,
         EXIT_MAKER_FEE_RATE: 0.0002,
         FUNDING_FEE_RATE: 0.0001,
+        EXIT_SLIPPAGE_RATE: 0.0005, // 시장가(SL/트레일) 청산 손실 슬리피지 (스프레드 포함 근사)
 
         TARGET_NET_ROI: 0.05,
         SL_ROI: 0.14,

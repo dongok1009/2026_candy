@@ -61,6 +61,7 @@ try {
     if (params.reducedTargetRoi) strategy.config.reducedTargetRoi = parseFloat(params.reducedTargetRoi);
     if (params.entryMode) strategy.config.ENTRY_MODE = params.entryMode;
     if (params.penetrationRate) strategy.config.PENETRATION_RATE = parseFloat(params.penetrationRate);
+    if (params.exitSlippageRate !== undefined) strategy.config.EXIT_SLIPPAGE_RATE = parseFloat(params.exitSlippageRate);
     if (params.useTrailingStop !== undefined) strategy.config.useTrailingStop = params.useTrailingStop === 'true';
     if (params.trailStopPct) strategy.config.trailStopPct = parseFloat(params.trailStopPct);
 
