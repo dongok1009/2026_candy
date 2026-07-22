@@ -1,4 +1,5 @@
 const ccxt = require('ccxt');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
@@ -63,19 +64,19 @@ async function sendTelegram(message) {
     const chatId = process.env.TELEGRAM_CHAT_ID;
     if (!token || !chatId) return;
 
-    try {
-        const url = `https://api.telegram.org/bot${token}/sendMessage`;
-        await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-                parse_mode: 'HTML'
-            })
-        });
-    } catch (err) {
-        console.error("Telegram send error:", err.message);
+    const url = `https://api.telegram.org/bot${token}/sendMessage`;
+    const payload = { chat_id: chatId, text: message, parse_mode: 'HTML', disable_web_page_preview: true };
+    // 오라클 서버에서 Node 내장 fetch가 'fetch failed'로 실패하는 문제로 axios 사용(작동 검증된 signal-bot과 동일).
+    // 텔레그램 연결이 간헐적으로 끊기므로 1회 재시도.
+    for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+            await axios.post(url, payload, { timeout: 10000 });
+            return;
+        } catch (err) {
+            const detail = err.response ? JSON.stringify(err.response.data) : err.message;
+            console.error(`Telegram send error (attempt ${attempt}):`, detail);
+            if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
     }
 }
 
