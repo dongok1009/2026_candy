@@ -14,6 +14,7 @@ const strategy = require('./strategies/' + strategyVersion);
 const displayVersion = (strategy.name || strategyVersion).replace('Logic.', '').replace('.cjs', '');
 
 const STATE_FILE = path.join(__dirname, 'bybit_live_state.json');
+const CONTROL_FILE = path.join(__dirname, 'bot_control.json'); // 원격 일시정지 플래그(재시작에도 유지)
 const RULES_FILE = path.join(__dirname, 'live_rules.json');
 
 // Bybit 클라이언트 설정
@@ -59,6 +60,23 @@ function saveState() {
     fs.writeFileSync(STATE_FILE, JSON.stringify(liveState, null, 2));
 }
 
+// [일시정지 제어] 텔레그램 /pause 명령으로 신규 진입만 중단. 파일에 저장돼 pm2 재시작에도 유지됨.
+let tradingPaused = false;
+
+function loadControl() {
+    try {
+        if (fs.existsSync(CONTROL_FILE)) {
+            const c = JSON.parse(fs.readFileSync(CONTROL_FILE, 'utf8'));
+            tradingPaused = !!c.paused;
+        }
+    } catch (e) { console.error("[CONTROL LOAD ERROR]", e.message); }
+}
+
+function saveControl() {
+    try { fs.writeFileSync(CONTROL_FILE, JSON.stringify({ paused: tradingPaused }, null, 2)); }
+    catch (e) { console.error("[CONTROL SAVE ERROR]", e.message); }
+}
+
 async function sendTelegram(message) {
     const token = process.env.TELEGRAM_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -77,6 +95,69 @@ async function sendTelegram(message) {
             console.error(`Telegram send error (attempt ${attempt}):`, detail);
             if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
         }
+    }
+}
+
+// [원격 제어] 텔레그램 명령(/pause /resume /status)을 폴링해 신규 진입을 껐다 켠다. 거래 루프와 분리됨.
+let telegramUpdateOffset = 0;
+
+// 시작 시 밀린 과거 업데이트(오래된 /pause 등)를 건너뛴다. 마지막 update_id 다음으로 오프셋을 맞춘다.
+async function initTelegramOffset() {
+    const token = process.env.TELEGRAM_TOKEN;
+    if (!token) return;
+    try {
+        const res = await axios.get(`https://api.telegram.org/bot${token}/getUpdates`, { params: { offset: -1 }, timeout: 10000 });
+        const updates = res.data.result || [];
+        if (updates.length > 0) telegramUpdateOffset = updates[updates.length - 1].update_id + 1;
+    } catch (e) {
+        console.error("[TG INIT ERROR]", e.response ? JSON.stringify(e.response.data) : e.message);
+    }
+}
+
+async function pollTelegramCommands() {
+    const token = process.env.TELEGRAM_TOKEN;
+    const authChatId = process.env.TELEGRAM_CHAT_ID;
+    if (!token || !authChatId) return;
+    try {
+        const res = await axios.get(`https://api.telegram.org/bot${token}/getUpdates`, { params: { offset: telegramUpdateOffset }, timeout: 10000 });
+        const updates = res.data.result || [];
+        for (const u of updates) {
+            telegramUpdateOffset = u.update_id + 1;
+            const msg = u.message;
+            if (!msg || !msg.text) continue;
+            // 인증: 지정된 chat_id에서 온 명령만 수락(타인 명령 무시).
+            if (String(msg.chat.id) !== String(authChatId)) continue;
+            const text = msg.text.trim().toLowerCase();
+
+            if (text === '/pause') {
+                if (tradingPaused) {
+                    await sendTelegram("⏸️ 이미 일시정지 상태입니다.");
+                } else {
+                    tradingPaused = true; saveControl();
+                    console.log("⏸️ [CONTROL] 매매 일시정지 (텔레그램 /pause)");
+                    await sendTelegram("⏸️ <b>매매 일시정지</b>\n신규 진입을 중단합니다. 보유 포지션은 계속 정상 관리·청산됩니다.\n재개하려면 /resume");
+                }
+            } else if (text === '/resume') {
+                if (!tradingPaused) {
+                    await sendTelegram("▶️ 이미 매매 가동 중입니다.");
+                } else {
+                    tradingPaused = false; saveControl();
+                    console.log("▶️ [CONTROL] 매매 재개 (텔레그램 /resume)");
+                    await sendTelegram("▶️ <b>매매 재개</b>\n신규 진입을 다시 시작합니다.");
+                }
+            } else if (text === '/status') {
+                await sendTelegram(
+                    `📊 <b>[${displayVersion} LIVE] 봇 상태</b>\n` +
+                    `• 매매: ${tradingPaused ? '⏸️ 일시정지' : '▶️ 가동중'}\n` +
+                    `• 포지션 상태: ${liveState.status}\n` +
+                    `• 현재 신호: ${liveState.currentSignal || 'HOLD'}\n` +
+                    `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`
+                );
+            }
+        }
+    } catch (e) {
+        // getUpdates 실패는 다음 주기에 재시도. 거래 루프를 막지 않도록 조용히 로그만 남긴다.
+        console.error("[TG POLL ERROR]", e.response ? JSON.stringify(e.response.data) : e.message);
     }
 }
 
@@ -316,7 +397,10 @@ async function checkMarkets() {
             const lastSignal = liveState.lastSignal || 'HOLD';
             console.log(`--- 최종 결과: ${isLong || isShort ? '🔥 SIGNAL (' + finalSignal.toUpperCase() + ')' : 'PASS'} ---`);
 
-            if (isLong || isShort) {
+            if ((isLong || isShort) && tradingPaused) {
+                // 일시정지 상태: 신규 진입 신호가 있어도 진입하지 않는다(보유 포지션 관리는 별개로 계속).
+                console.log(`⏸️ [PAUSED] 신규 진입 신호(${finalSignal.toUpperCase()}) 감지됐으나 일시정지 상태 → 진입 스킵`);
+            } else if (isLong || isShort) {
                 updateTradeLog('SIGNAL', {
                     side: finalSignal.toUpperCase(),
                     price: m5[m5.length - 1].close,
@@ -330,7 +414,7 @@ async function checkMarkets() {
 
                 if (isLong) await handleEntry('LONG', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_long', indicators, indices, overrideRules);
                 else if (isShort) await handleEntry('SHORT', m5[m5.length - 1].close, klines, skipNotify, finalSignal === 'extreme_short', indicators, indices, overrideRules);
-                
+
                 if (!skipNotify) {
                     liveState.lastNotifiedSignalTime = now;
                 }
@@ -974,6 +1058,7 @@ async function checkStatusNotification() {
         const timeStr = kstDate.toISOString().replace('T', ' ').substring(0, 19);
         let msg = `🔔 <b>[${displayVersion} LIVE] 시스템 가동 중</b>\n` +
                   `• 체크 시간: ${timeStr} (KST)\n` +
+                  `• 매매: ${tradingPaused ? '⏸️ 일시정지' : '▶️ 가동중'}\n` +
                   `• 봇 상태: ${liveState.status}\n` +
                   `• 현재 신호: ${liveState.currentSignal || 'HOLD'}\n` +
                   `• 현재가: $${(liveState.lastPrice || 0).toLocaleString()}`;
@@ -1004,12 +1089,17 @@ async function checkStatusNotification() {
 async function init() {
     ensureEnvTemplate();
     loadState();
+    loadControl();
     console.log(`\n🤖 [Antigravity ${strategyVersion}] Bybit Live Bot Starting...`);
     const leverage = parseFloat(strategy.config.LEVERAGE) || parseFloat(process.env.LEVERAGE) || 5;
-    
+
     // 시작 시 텔레그램 알림 추가
-    await sendTelegram(`🤖 <b>[${displayVersion} LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}`);
-    
+    await sendTelegram(`🤖 <b>[${displayVersion} LIVE] 봇 시작됨</b>\n• 전략 버전: ${strategyVersion}\n• 레버리지: ${leverage}배\n• 상태: ${liveState.status}\n• 매매: ${tradingPaused ? '⏸️ 일시정지' : '▶️ 가동중'}`);
+
+    // 원격 제어 명령 폴러 시작: 시작 시 과거 백로그를 건너뛴 뒤 5초 주기로 /pause·/resume·/status 처리.
+    await initTelegramOffset();
+    setInterval(pollTelegramCommands, 5000);
+
     await syncExchangeTPSL(leverage);
     while(true) {
         try {

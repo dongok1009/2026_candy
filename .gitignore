@@ -34,3 +34,7 @@ backtest_high_precision_1m.csv
 .env.development.local
 .env.test.local
 .env.production.local
+
+# 실전 봇 런타임 상태 (서버별 값, 커밋 금지)
+bot_control.json
+bybit_live_state.json
