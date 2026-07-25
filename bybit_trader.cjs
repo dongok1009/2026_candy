@@ -343,7 +343,8 @@ async function checkMarkets() {
         }
 
         // [RESCUE] IDLE 상태라 하더라도 실제 거래소에 포지션이나 미체결 주문이 있는지 최종 확인
-        if (liveState.status === 'IDLE') {
+        // 일시정지 중에는 거래소 포지션(수동 매매 포함)을 입양하지 않는다 → 봇이 손대지 않음
+        if (!tradingPaused && liveState.status === 'IDLE') {
             const positions = await exchange.fetchPositions();
             const pos = positions.find(p => isSymbolMatch(p.symbol, config.SYMBOL) && parseFloat(p.contracts) > 0);
             if (pos) {
@@ -424,6 +425,10 @@ async function checkMarkets() {
 
             liveState.lastSignal = finalSignal.toUpperCase();
             saveState();
+        } else if (tradingPaused) {
+            // 일시정지 중에는 보유/거래소 포지션 관리를 하지 않는다(타임아웃·스위칭·청산 규칙 미적용).
+            // 봇이 이전에 건 거래소 측 TP/SL 주문은 그대로 남아 보호는 유지된다.
+            console.log(`⏸️ [PAUSED] 포지션 관리 스킵 → 거래소 포지션에 손대지 않음`);
         } else {
             await monitorPosition(m5[m5.length - 1].close, indicators, indices, overrideRules, klines);
         }
