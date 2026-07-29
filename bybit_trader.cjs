@@ -1,5 +1,6 @@
 const ccxt = require('ccxt');
 const axios = require('axios');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
@@ -7,6 +8,10 @@ const { buildRulesFromEnv, ensureEnvTemplate, evaluateWhatIfFilters } = require(
 
 // .env 로드 (시작 시)
 dotenv.config();
+
+// 오라클 서버는 api.telegram.org의 IPv6 경로가 없어 Node가 IPv6로 붙으면 ETIMEDOUT난다(curl은 IPv4라 정상).
+// axios는 텔레그램 전용이므로 기본 소켓을 IPv4 전용으로 못 박아 송·수신 타임아웃을 막는다. (family:4로 검증됨)
+axios.defaults.httpsAgent = new https.Agent({ family: 4, keepAlive: true });
 
 // 전략 로직 모듈 동적 로드 (기본값 v7.0.3)
 const strategyVersion = process.env.STRATEGY_VERSION || 'Logic.v7.0.3.cjs';
