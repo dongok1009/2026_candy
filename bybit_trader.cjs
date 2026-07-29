@@ -256,22 +256,27 @@ async function checkSignalTransition(currentSig, traderStatus, currentPrice, com
         lastMonitorEntryPrice = entryRef;
         lastMonitorEntryTime = Date.now();
 
-        // IDLE이면 handleEntry가 진입 알림을 보내므로 여기선 생략(중복 방지).
-        // 포지션 보유/대기 중이면 실전 봇이 신규 진입하지 않으므로 '관망' 정보 알림만 보낸다.
-        if (traderStatus !== 'IDLE') {
+        // IDLE이고 가동 중이면 handleEntry가 진입 알림을 보내므로 여기선 생략(중복 방지).
+        // 봇이 신규 진입하지 않는 경우(포지션 보유/대기 중 OR 일시정지)엔 '관망' 정보 알림만 보낸다.
+        if (traderStatus !== 'IDLE' || tradingPaused) {
+            const holding = traderStatus !== 'IDLE';
+            const reason = holding ? '포지션 보유중' : '일시정지 중';
+            const tail = holding
+                ? 'ℹ️ 현재 포지션 보유/대기 중이라 실전 봇은 이 신호로 신규 진입하지 않습니다.'
+                : '⏸️ 일시정지 상태라 실전 봇은 이 신호로 신규 진입하지 않습니다.';
             const targetRoi = strategy.config.TARGET_NET_ROI || 0.05;
             const slRoi = strategy.config.SL_ROI || 0.14;
             const tpPrice = entryRef * (isLong ? (1 + targetRoi / leverage) : (1 - targetRoi / leverage));
             const slPrice = entryRef * (isLong ? (1 - slRoi / leverage) : (1 + slRoi / leverage));
             await sendTelegram(
-                `🚀 <b>[${displayVersion} LIVE] 신호 발생! (포지션 보유중 · 관망)</b>\n\n` +
+                `🚀 <b>[${displayVersion} LIVE] 신호 발생! (${reason} · 관망)</b>\n\n` +
                 `⌚ <b>체크 시간:</b> ${checkTime}\n` +
                 `💰 <b>현재 가격:</b> $${currentPrice.toLocaleString()}\n\n` +
                 `📌 <b>방향:</b> ${currentSig.toUpperCase()}\n` +
                 `💵 <b>진입 희망가:</b> $${entryRef.toLocaleString()}\n` +
                 `✅ <b>익절가(TP):</b> $${tpPrice.toLocaleString()}\n` +
                 `❌ <b>손절가(SL):</b> $${slPrice.toLocaleString()}\n\n` +
-                `ℹ️ 현재 포지션 보유/대기 중이라 실전 봇은 이 신호로 신규 진입하지 않습니다.`
+                `${tail}`
             );
         }
     } else if (lastMonitorSig !== 'hold') {
